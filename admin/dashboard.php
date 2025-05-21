@@ -280,6 +280,11 @@
                 <div class="collapse" id="submenu">
                   <ul class="nav nav-collapse">
                     <li>
+                      <a href="master_mandor.php">
+                        <span class="sub-item">Master Mandor</span>
+                      </a>
+                    </li>
+                                        <li>
                       <a href="master_user.php">
                         <span class="sub-item">Master User</span>
                       </a>
