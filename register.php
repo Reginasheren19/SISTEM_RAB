@@ -236,6 +236,7 @@
           </div>
         </div>
         <div class="back">
+          <img src="admin/assets/img/login.jpeg" alt="">
           <div class="text">
             <span class="text-1">Complete miles of journey <br> with one step</span>
             <span class="text-2">Let's get started</span>
@@ -245,7 +246,7 @@
       <div class="forms">
         <div class="form-content">
           <div class="login-form">
-            <div class="title">Login</div>
+            <div class="title">Register</div>
             <form action="login.php" method="post">
               <div class="input-boxes">
                 <div class="input-box">
