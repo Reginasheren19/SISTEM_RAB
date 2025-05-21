@@ -3,12 +3,6 @@ include("../config/koneksi_mysql.php");
 
 // Proses saat form disubmit
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-      // Debugging: Periksa apakah data POST diterima
-    echo '<pre>';
-    print_r($_POST);
-    print_r($_FILES);  // Memeriksa file yang di-upload
-    echo '</pre>';
-
     $username = mysqli_real_escape_string($koneksi, $_POST['username']);
     $email = mysqli_real_escape_string($koneksi, $_POST['email']);
     $password = $_POST['password'];  // Password dari form (belum di-hash)

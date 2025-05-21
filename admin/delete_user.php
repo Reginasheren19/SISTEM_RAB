@@ -2,9 +2,9 @@
 include("../config/koneksi_mysql.php");
 
 // Debugging $_GET
-echo "Parameter GET: ";
-print_r($_GET);
-echo "<br>";
+//echo "Parameter GET: ";
+//print_r($_GET);
+//echo "<br>";
 
 if (isset($_GET['user']) && !empty($_GET['user'])) { // Periksa 'user' di URL
     // Ambil ID user dari parameter URL dan sanitasi
