@@ -728,6 +728,34 @@ $result = mysqli_query($koneksi, "SELECT * FROM users");
         </button>
       </div>
 
+      <?php if (isset($_GET['msg'])): ?>
+        <div class="mb-3">
+          <div class="alert alert-success fade show" role="alert">
+            <?= htmlspecialchars($_GET['msg']) ?>
+          </div>
+        </div>
+      <?php endif; ?>
+
+      <script>
+      window.setTimeout(function() {
+        const alert = document.querySelector('.alert');
+        if (alert) {
+          alert.classList.add('fade');
+          alert.classList.remove('show');
+          setTimeout(() => alert.remove(), 350);
+        }
+      }, 3000);
+
+        // Hapus parameter 'msg' dari URL agar tidak muncul lagi saat reload
+      if (window.history.replaceState) {
+        const url = new URL(window.location);
+        if (url.searchParams.has('msg')) {
+          url.searchParams.delete('msg');
+          window.history.replaceState({}, document.title, url.pathname);
+        }
+      }
+      </script>
+
       <div class="card-body">
         <div class="table-responsive">
           <table

@@ -16,8 +16,8 @@ if (isset($_GET['user']) && !empty($_GET['user'])) { // Periksa 'user' di URL
 
     // Cek apakah query berhasil dieksekusi
     if ($sql && mysqli_affected_rows($koneksi) > 0) { // Pastikan ada baris yang terhapus
-        header("location: master_user.php"); // Redirect ke halaman master_user.php setelah berhasil
-        exit; // Pastikan untuk menghentikan eksekusi skrip setelah header
+        header("location: master_user.php?msg=Data%20berhasil%20dihapus"); // Redirect dengan pesan sukses
+        exit;
     } else {
         echo "Error deleting record: " . mysqli_error($koneksi);
     }

@@ -30,7 +30,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             VALUES ('$username', '$email', '$hashed_password', '$role', '$profilePic')";
 
     if (mysqli_query($koneksi, $sql)) {
-        echo "<script>alert('Data berhasil ditambahkan!'); window.location.href='master_user.php';</script>";
+        echo "<script>window.location.href='master_user.php?msg=Data%20berhasil%20ditambahkan';</script>";
+
     } else {
         echo "Error: " . mysqli_error($koneksi);
     }
