@@ -4,6 +4,8 @@ include("../config/koneksi_mysql.php");
 // Mengatur error reporting
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
+// Mengambil data user dari database
+$result = mysqli_query($koneksi, "SELECT * FROM users");
 ?>
 
 
@@ -310,7 +312,7 @@ ini_set('display_errors', 1);
             <div class="logo-header" data-background-color="dark">
               <a href="../index.html" class="logo">
                 <img
-                  src="../assets/img/kaiadmin/logo_light.svg"
+                  src="assets/img/kaiadmin/logo_light.svg"
                   alt="navbar brand"
                   class="navbar-brand"
                   height="20"
@@ -408,7 +410,7 @@ ini_set('display_errors', 1);
                           <a href="#">
                             <div class="notif-img">
                               <img
-                                src="../assets/img/jm_denis.jpg"
+                                src="assets/img/jm_denis.jpg"
                                 alt="Img Profile"
                               />
                             </div>
@@ -421,7 +423,7 @@ ini_set('display_errors', 1);
                           <a href="#">
                             <div class="notif-img">
                               <img
-                                src="../assets/img/chadengle.jpg"
+                                src="assets/img/chadengle.jpg"
                                 alt="Img Profile"
                               />
                             </div>
@@ -434,7 +436,7 @@ ini_set('display_errors', 1);
                           <a href="#">
                             <div class="notif-img">
                               <img
-                                src="../assets/img/mlane.jpg"
+                                src="assets/img/mlane.jpg"
                                 alt="Img Profile"
                               />
                             </div>
@@ -449,7 +451,7 @@ ini_set('display_errors', 1);
                           <a href="#">
                             <div class="notif-img">
                               <img
-                                src="../assets/img/talha.jpg"
+                                src="assets/img/talha.jpg"
                                 alt="Img Profile"
                               />
                             </div>
@@ -517,7 +519,7 @@ ini_set('display_errors', 1);
                           <a href="#">
                             <div class="notif-img">
                               <img
-                                src="../assets/img/profile2.jpg"
+                                src="assets/img/profile2.jpg"
                                 alt="Img Profile"
                               />
                             </div>
@@ -635,7 +637,7 @@ ini_set('display_errors', 1);
                   >
                     <div class="avatar-sm">
                       <img
-                        src="../assets/img/profile.jpg"
+                        src="assets/img/profile.jpg"
                         alt="..."
                         class="avatar-img rounded-circle"
                       />
@@ -651,7 +653,7 @@ ini_set('display_errors', 1);
                         <div class="user-box">
                           <div class="avatar-lg">
                             <img
-                              src="../assets/img/profile.jpg"
+                              src="assets/img/profile.jpg"
                               alt="image profile"
                               class="avatar-img rounded"
                             />
@@ -720,7 +722,7 @@ ini_set('display_errors', 1);
         <button
           class="btn btn-primary btn-round ms-auto"
           data-bs-toggle="modal"
-          data-bs-target="#addRowModal"
+          data-bs-target="#addUserModal"
         >
           <i class="fa fa-plus"></i> Tambah Data
         </button>
@@ -752,8 +754,7 @@ ini_set('display_errors', 1);
                     <td>" . htmlspecialchars($row['role']) . "</td>
                     <td>
                       <button class='btn btn-primary btn-sm btn-update' data-id_users='" . htmlspecialchars($row['id_users']) . "'>Update</button>
-                      <a href='delete_user.php?user=" . urlencode($row['id_users']) . "' class='btn btn-danger btn-sm' onclick=\"return confirm('Are you sure you want to delete this user?')\">Delete</a>
-                    </td>
+                      <button class='btn btn-danger btn-sm delete-btn' data-id_users='" . htmlspecialchars($row['id_users']) . "'>Delete</button>                    </td>
                   </tr>";
               }
               ?>
@@ -765,53 +766,169 @@ ini_set('display_errors', 1);
   </div>
 </div>
 
-        				<div class="card-body">
-									<p class="demo">
+<!-- Modal Tambah Data Karyawan -->
+<div class="modal fade" id="addUserModal" tabindex="-1" aria-labelledby="addUserModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <form method="POST" action="add_user.php">
+        <input type="hidden" name="action" value="add" />
+        <div class="modal-header">
+          <h5 class="modal-title" id="addUserModalLabel">Tambah Data Karyawan</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+
+          <!-- Avatar Preview -->
+          <div class="card-body mb-3 text-center">
 										<div class="avatar avatar-xxl">
-											<img src="../assets/img/jm_denis.jpg" alt="..." class="avatar-img rounded-circle">
+											<img src="assets/img/jm_denis.jpg" alt="..." class="avatar-img rounded-circle">
 										</div>
-									</p>
-								</div>
-                        <div class="form-group">
-                          <label for="exampleFormControlFile1"
-                            >Example file input</label
-                          >
-                          <input
-                            type="file"
-                            class="form-control-file"
-                            id="exampleFormControlFile1"
-                          />
-                        </div>
-                                                <div class="form-floating form-floating-custom mb-3">
-                          <input
-                            type="email"
-                            class="form-control"
-                            id="floatingInput"
-                            placeholder="name@example.com"
-                          />
-                          <label for="floatingInput">Email address</label>
-                        </div>
-                                                <div class="form-group">
-                          <label for="password">Password</label>
-                          <input
-                            type="password"
-                            class="form-control"
-                            id="password"
-                            placeholder="Password"
-                          />
-                        </div>
-                                                <div class="form-group">
-                          <label for="exampleFormControlSelect1"
-                            >Example select</label
-                          >
-                          <select
-                            class="form-select"
-                            id="exampleFormControlSelect1"
-                          >
-                            <option>1</option>
-                            <option>2</option>
-                            <option>3</option>
-                            <option>4</option>
-                            <option>5</option>
-                          </select>
-                        </div>
+          </div>
+
+          <!-- Input untuk foto profil -->
+          <div class="mb-3">
+            <label for="profilePic" class="form-label">Foto Profil (Optional)</label>
+            <input type="file" class="form-control" id="profilePic" name="profile_pic" accept="image/*" onchange="previewAvatar(event)" />
+          </div>
+
+          <div class="mb-3">
+            <label for="username" class="form-label">Username</label>
+            <input type="text" class="form-control" id="username" name="username" placeholder="Masukkan username" required />
+          </div>
+
+          <div class="mb-3">
+            <label for="email" class="form-label">Email</label>
+            <input type="email" class="form-control" id="email" name="email" placeholder="name@example.com" required />
+          </div>
+
+          <div class="form-group mb-3">
+            <label for="password" class="form-label">Password</label>
+            <input type="password" class="form-control" id="password" name="password" placeholder="Password" required />
+          </div>
+
+          <div class="form-group mb-3">
+            <label for="role" class="form-label">Role</label>
+            <select class="form-select form-control" id="role" name="role" required>
+              <option value="" disabled selected>Pilih Role</option>
+              <option value="admin">Admin</option>
+              <option value="direktur">Direktur</option>
+              <option value="pj_proyek">PJ Proyek</option>
+              <option value="div_teknik">Divisi Teknik</option>
+            </select>
+          </div>
+
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+          <button type="submit" class="btn btn-primary">Simpan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+</div>
+
+  <!-- Modal Update User -->
+  <div class="modal fade" id="updateUserModal" tabindex="-1" aria-labelledby="updateUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <form method="POST" action="update_user.php" enctype="multipart/form-data">
+          <div class="modal-header">
+            <h5 class="modal-title" id="updateUserModalLabel">Update Data User</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+
+            <div class="mb-3">
+              <label for="updateUsername" class="form-label">Username</label>
+              <input type="text" class="form-control" id="updateUsername" name="username" required />
+            </div>
+
+            <div class="mb-3">
+              <label for="updateEmail" class="form-label">Email</label>
+              <input type="email" class="form-control" id="updateEmail" name="email" required />
+            </div>
+
+            <div class="mb-3">
+              <label for="updateRole" class="form-label">Role</label>
+              <select class="form-select" id="updateRole" name="role" required>
+                <option value="admin">Admin</option>
+                <option value="direktur">Direktur</option>
+                <option value="pj_proyek">PJ Proyek</option>
+                <option value="div_teknik">Divisi Teknik</option>
+              </select>
+            </div>
+
+            <div class="mb-3">
+              <label for="updateProfilePic" class="form-label">Profile Picture</label>
+              <input type="file" class="form-control" id="updateProfilePic" name="profile_pic" accept="image/*" />
+            </div>
+
+            <input type="hidden" name="user_id" id="updateUserId">
+
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary">Update</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Delete Confirmation -->
+  <div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="confirmDeleteModalLabel">Confirm Deletion</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p>Are you sure you want to delete this user?</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <a href="#" id="confirmDeleteLink" class="btn btn-danger">Delete</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    // Konfirmasi penghapusan data user
+    document.querySelectorAll('.delete-btn').forEach(button => {
+      button.addEventListener('click', function() {
+        const userId = this.dataset.id_users;
+        const deleteLink = document.getElementById('confirmDeleteLink');
+        deleteLink.href = 'delete_user.php?user=' + userId;
+        const deleteModal = new bootstrap.Modal(document.getElementById('confirmDeleteModal'));
+        deleteModal.show();
+      });
+    });
+  </script>
+    <script>
+    // Menangani klik tombol update
+    document.querySelectorAll('.btn-update').forEach(button => {
+      button.addEventListener('click', function() {
+        const userId = this.dataset.id_users;
+        // Ambil data user berdasarkan ID
+        fetch('get_user_details.php?id=' + userId)
+          .then(response => response.json())
+          .then(data => {
+            // Isi modal dengan data user
+            document.getElementById('updateUserId').value = data.id_users;
+            document.getElementById('updateUsername').value = data.username;
+            document.getElementById('updateEmail').value = data.email;
+            document.getElementById('updateRole').value = data.role;
+
+            // Tampilkan modal update
+            var updateModal = new bootstrap.Modal(document.getElementById('updateUserModal'));
+            updateModal.show();
+          });
+      });
+    });
+  </script>
+</body>
+</html>
