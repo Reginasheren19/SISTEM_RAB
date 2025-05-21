@@ -2,18 +2,16 @@
 session_start();
 include("config/koneksi_mysql.php");
 
-// Cek koneksi
 if (!$koneksi) {
     die("Koneksi gagal: " . mysqli_connect_error());
 }
 
-// Debug cek data post (boleh dihapus setelah berfungsi)
 if (!isset($_POST['username'], $_POST['password'])) {
     header("Location: index.php?pesan=gagal");
     exit;
 }
 
-$username = $_POST['username'];
+$username = trim($_POST['username']);
 $password = $_POST['password'];
 
 $stmt = $koneksi->prepare("SELECT id_users, username, password, role FROM users WHERE username = ?");
@@ -26,23 +24,23 @@ $result = $stmt->get_result();
 
 if ($result->num_rows === 1) {
     $data = $result->fetch_assoc();
-
     if (password_verify($password, $data['password'])) {
+        session_regenerate_id(true);
         $_SESSION['id_users'] = $data['id_users'];
         $_SESSION['username'] = $data['username'];
         $_SESSION['role'] = $data['role'];
 
-        switch ($data['role']) {
-            case 'Admin':
-                header("Location: dashboard.php");
+        switch (strtolower($data['role'])) {
+            case 'admin':
+                header("Location: admin/dashboard.php");
                 break;
-            case 'Direktur':
+            case 'direktur':
                 header("Location: direktur/dashboard_direktur.php");
                 break;
-            case 'PJ Proyek':
+            case 'pj_proyek':
                 header("Location: pj_proyek/dashboard_pjproyek.php");
                 break;
-            case 'Divisi Teknik':
+            case 'div_teknik':
                 header("Location: divisi_teknik/dashboard_teknik.php");
                 break;
             default:
@@ -50,12 +48,10 @@ if ($result->num_rows === 1) {
         }
         exit;
     } else {
-        // Password salah
         header("Location: index.php?pesan=gagal");
         exit;
     }
 } else {
-    // Username tidak ditemukan
     header("Location: index.php?pesan=gagal");
     exit;
 }
