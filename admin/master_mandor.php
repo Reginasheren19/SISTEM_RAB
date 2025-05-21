@@ -5,7 +5,7 @@ include("../config/koneksi_mysql.php");
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 // Mengambil data user dari database
-$result = mysqli_query($koneksi, "SELECT * FROM users");
+$result = mysqli_query($koneksi, "SELECT * FROM master_mandor");
 ?>
 
 
@@ -736,21 +736,22 @@ $result = mysqli_query($koneksi, "SELECT * FROM users");
           >
             <thead>
               <tr>
-                <th>ID User</th>
-                <th>Username</th>
-                <th>Email</th>
-                <th>Role
+                <th>ID Mandor</th>
+                <th>Nama Mandor</th>
+                <th>Alamat</th>
+                <th>Nomer Telepon
                 <th>Action</th>
               </tr>
             </thead>
             <tbody>
               <?php
-              $result = mysqli_query($koneksi, "SELECT * FROM users");
+              $result = mysqli_query($koneksi, "SELECT * FROM master_mandor");
               while ($row = mysqli_fetch_assoc($result)) {
                 echo "<tr>
-                    <td>" . htmlspecialchars($row['id_users']) . "</td>
-                    <td>" . htmlspecialchars($row['username']) . "</td>
-                    <td>" . htmlspecialchars($row['email']) . "</td>
+                    <td>" . htmlspecialchars($row['id_mandor']) . "</td>
+                    <td>" . htmlspecialchars($row['nama_mandor']) . "</td>
+                    <td>" . htmlspecialchars($row['alamat']) . "</td>
+                    <td>" . htmlspecialchars($row['no_telp']) . "</td>
                     <td>" . htmlspecialchars($row['role']) . "</td>
                     <td>
                       <button class='btn btn-primary btn-sm btn-update' data-id_users='" . htmlspecialchars($row['id_users']) . "'>Update</button>
