@@ -23,6 +23,7 @@ $result = mysqli_query($koneksi, "SELECT * FROM master_mandor");
       href="assets/img/kaiadmin/favicon.ico"
       type="image/x-icon"
     />
+    <link href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css" rel="stylesheet" />
 
     <!-- Fonts and icons -->
     <script src="assets/js/plugin/webfont/webfont.min.js"></script>
@@ -292,7 +293,7 @@ $result = mysqli_query($koneksi, "SELECT * FROM master_mandor");
                   <ul class="nav nav-collapse">
                     <li>
                       <a href="master_user.php">
-                        <span class="sub-item">Master User</span>
+                        <span class="sub-item">Master Mandor</span>
                       </a>
                     </li>
                   </ul>
@@ -691,7 +692,7 @@ $result = mysqli_query($koneksi, "SELECT * FROM master_mandor");
         <div class="container">
           <div class="page-inner">
             <div class="page-header">
-              <h3 class="fw-bold mb-3">DataTables.Net</h3>
+              <h3 class="fw-bold mb-3">Mastering</h3>
               <ul class="breadcrumbs mb-3">
                 <li class="nav-home">
                   <a href="#">
@@ -702,13 +703,13 @@ $result = mysqli_query($koneksi, "SELECT * FROM master_mandor");
                   <i class="icon-arrow-right"></i>
                 </li>
                 <li class="nav-item">
-                  <a href="#">Tables</a>
+                  <a href="dashboard.php">Mastering</a>
                 </li>
                 <li class="separator">
                   <i class="icon-arrow-right"></i>
                 </li>
                 <li class="nav-item">
-                  <a href="#">Datatables</a>
+                  <a href="master_mandor.php">Master Mandor</a>
                 </li>
               </ul>
             </div>
@@ -718,15 +719,43 @@ $result = mysqli_query($koneksi, "SELECT * FROM master_mandor");
   <div class="col-md-12">
     <div class="card">
       <div class="card-header d-flex align-items-center">
-        <h4 class="card-title">Master User</h4>
+        <h4 class="card-title">Master Mandor</h4>
         <button
           class="btn btn-primary btn-round ms-auto"
           data-bs-toggle="modal"
-          data-bs-target="#addUserModal"
+          data-bs-target="#addMandorModal"
         >
           <i class="fa fa-plus"></i> Tambah Data
         </button>
       </div>
+
+            <?php if (isset($_GET['msg'])): ?>
+        <div class="mb-3">
+          <div class="alert alert-success fade show" role="alert">
+            <?= htmlspecialchars($_GET['msg']) ?>
+          </div>
+        </div>
+      <?php endif; ?>
+
+      <script>
+      window.setTimeout(function() {
+        const alert = document.querySelector('.alert');
+        if (alert) {
+          alert.classList.add('fade');
+          alert.classList.remove('show');
+          setTimeout(() => alert.remove(), 350);
+        }
+      }, 3000);
+
+        // Hapus parameter 'msg' dari URL agar tidak muncul lagi saat reload
+      if (window.history.replaceState) {
+        const url = new URL(window.location);
+        if (url.searchParams.has('msg')) {
+          url.searchParams.delete('msg');
+          window.history.replaceState({}, document.title, url.pathname);
+        }
+      }
+      </script>
 
       <div class="card-body">
         <div class="table-responsive">
@@ -752,10 +781,10 @@ $result = mysqli_query($koneksi, "SELECT * FROM master_mandor");
                     <td>" . htmlspecialchars($row['nama_mandor']) . "</td>
                     <td>" . htmlspecialchars($row['alamat']) . "</td>
                     <td>" . htmlspecialchars($row['no_telp']) . "</td>
-                    <td>" . htmlspecialchars($row['role']) . "</td>
                     <td>
-                      <button class='btn btn-primary btn-sm btn-update' data-id_users='" . htmlspecialchars($row['id_users']) . "'>Update</button>
-                      <button class='btn btn-danger btn-sm delete-btn' data-id_users='" . htmlspecialchars($row['id_users']) . "'>Delete</button>                    </td>
+                      <button class='btn btn-primary btn-sm btn-update' data-id_mandor='" . htmlspecialchars($row['id_mandor']) . "'>Update</button>
+                      <button class='btn btn-danger btn-sm delete-btn' data-id_mandor='" . htmlspecialchars($row['id_mandor']) . "'>Delete</button>                    
+                    </td>
                   </tr>";
               }
               ?>
@@ -767,58 +796,44 @@ $result = mysqli_query($koneksi, "SELECT * FROM master_mandor");
   </div>
 </div>
 
-<!-- Modal Tambah Data Karyawan -->
-<div class="modal fade" id="addUserModal" tabindex="-1" aria-labelledby="addUserModalLabel" aria-hidden="true">
+<!-- Modal Tambah Data Mandor -->
+<div class="modal fade" id="addMandorModal" tabindex="-1" aria-labelledby="addMandorModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
-      <form method="POST" action="add_user.php">
+      <form method="POST" action="add_mandor.php">
         <input type="hidden" name="action" value="add" />
         <div class="modal-header">
-          <h5 class="modal-title" id="addUserModalLabel">Tambah Data Karyawan</h5>
+          <h5 class="modal-title" id="addMandorModalLabel">Tambah Data Mandor</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
 
-          <!-- Avatar Preview -->
-          <div class="card-body mb-3 text-center">
-										<div class="avatar avatar-xxl">
-											<img src="assets/img/jm_denis.jpg" alt="..." class="avatar-img rounded-circle">
-										</div>
-          </div>
-
-          <!-- Input untuk foto profil -->
           <div class="mb-3">
-            <label for="profilePic" class="form-label">Foto Profil (Optional)</label>
-            <input type="file" class="form-control" id="profilePic" name="profile_pic" accept="image/*" onchange="previewAvatar(event)" />
+            <label for="nama_mandor" class="form-label">Nama Mandor</label>
+            <input type="text" class="form-control" id="nama_mandor" name="nama_mandor" placeholder="Masukkan nama mandor" required />
           </div>
 
           <div class="mb-3">
-            <label for="username" class="form-label">Username</label>
-            <input type="text" class="form-control" id="username" name="username" placeholder="Masukkan username" required />
+            <label for="no_telp" class="form-label">Nomor Telepon</label>
+            <input 
+              type="tel" 
+              class="form-control" 
+              id="no_telp" 
+              name="no_telp" 
+              placeholder="Masukkan nomor telepon" 
+              pattern="[0-9]+" 
+              title="Hanya boleh angka" 
+              required 
+            />
           </div>
 
           <div class="mb-3">
-            <label for="email" class="form-label">Email</label>
-            <input type="email" class="form-control" id="email" name="email" placeholder="name@example.com" required />
+            <label for="alamat" class="form-label">Alamat</label>
+            <textarea 
+              class="form-control" id="alamat" name="alamat" rows="3" placeholder="Masukkan Alamat" required>
+            </textarea>            
           </div>
 
-          <div class="form-group mb-3">
-            <label for="password" class="form-label">Password</label>
-            <input type="password" class="form-control" id="password" name="password" placeholder="Password" required />
-          </div>
-
-          <div class="form-group mb-3">
-            <label for="role" class="form-label">Role</label>
-            <select class="form-select form-control" id="role" name="role" required>
-              <option value="" disabled selected>Pilih Role</option>
-              <option value="admin">Admin</option>
-              <option value="direktur">Direktur</option>
-              <option value="pj_proyek">PJ Proyek</option>
-              <option value="div_teknik">Divisi Teknik</option>
-            </select>
-          </div>
-
-        </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
           <button type="submit" class="btn btn-primary">Simpan</button>
@@ -829,53 +844,53 @@ $result = mysqli_query($koneksi, "SELECT * FROM master_mandor");
 </div>
 </div>
 
-  <!-- Modal Update User -->
-  <div class="modal fade" id="updateUserModal" tabindex="-1" aria-labelledby="updateUserModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-      <div class="modal-content">
-        <form method="POST" action="update_user.php" enctype="multipart/form-data">
-          <div class="modal-header">
-            <h5 class="modal-title" id="updateUserModalLabel">Update Data User</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+<!-- Modal Update Data Mandor -->
+<div class="modal fade" id="updateMandorModal" tabindex="-1" aria-labelledby="updateMandorModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <form method="POST" action="update_mandor.php">
+        <input type="hidden" name="id_mandor" id="update_id_mandor" />
+        <div class="modal-header">
+          <h5 class="modal-title" id="updateMandorModalLabel">Update Data Mandor</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+
+          <div class="mb-3">
+            <label for="update_nama_mandor" class="form-label">Nama Mandor</label>
+            <input type="text" class="form-control" id="update_nama_mandor" name="nama_mandor" placeholder="Ubah nama mandor" required />
           </div>
-          <div class="modal-body">
 
-            <div class="mb-3">
-              <label for="updateUsername" class="form-label">Username</label>
-              <input type="text" class="form-control" id="updateUsername" name="username" required />
-            </div>
-
-            <div class="mb-3">
-              <label for="updateEmail" class="form-label">Email</label>
-              <input type="email" class="form-control" id="updateEmail" name="email" required />
-            </div>
-
-            <div class="mb-3">
-              <label for="updateRole" class="form-label">Role</label>
-              <select class="form-select" id="updateRole" name="role" required>
-                <option value="admin">Admin</option>
-                <option value="direktur">Direktur</option>
-                <option value="pj_proyek">PJ Proyek</option>
-                <option value="div_teknik">Divisi Teknik</option>
-              </select>
-            </div>
-
-            <div class="mb-3">
-              <label for="updateProfilePic" class="form-label">Profile Picture</label>
-              <input type="file" class="form-control" id="updateProfilePic" name="profile_pic" accept="image/*" />
-            </div>
-
-            <input type="hidden" name="user_id" id="updateUserId">
-
+          <div class="mb-3">
+            <label for="update_no_telp" class="form-label">Nomor Telepon</label>
+            <input
+              type="tel"
+              class="form-control"
+              id="update_no_telp"
+              name="no_telp"
+              placeholder="Ubah nomor telepon"
+              pattern="[0-9]+"
+              title="Hanya boleh angka"
+              required
+            />
           </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="submit" class="btn btn-primary">Update</button>
+          <div class="mb-3">
+            <label for="upate_alamat" class="form-label">Alamat</label>
+            <textarea 
+              class="form-control" id="update_alamat" name="alamat" rows="3" placeholder="Masukkan Alamat" required>
+            </textarea>            
           </div>
-        </form>
-      </div>
+
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+          <button type="submit" class="btn btn-primary">Update</button>
+        </div>
+      </form>
     </div>
   </div>
+</div>
+
 
   <!-- Modal Delete Confirmation -->
   <div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteModalLabel" aria-hidden="true">
@@ -897,48 +912,51 @@ $result = mysqli_query($koneksi, "SELECT * FROM master_mandor");
   </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+
+<script>
+  $(document).ready(function() {
+    $('#basic-datatables').DataTable();
+  });
+</script>
+
   <script>
     // Konfirmasi penghapusan data user
     document.querySelectorAll('.delete-btn').forEach(button => {
       button.addEventListener('click', function() {
-        const userId = this.dataset.id_users;
+        const mandorId = this.dataset.id_mandor;
         const deleteLink = document.getElementById('confirmDeleteLink');
-        deleteLink.href = 'delete_user.php?user=' + userId;
+        deleteLink.href = 'delete_mandor.php?mandor=' + mandorId;
         const deleteModal = new bootstrap.Modal(document.getElementById('confirmDeleteModal'));
         deleteModal.show();
       });
     });
   </script>
 <script>
-  // Menangani klik tombol update pada Master User
-  document.querySelectorAll('.btn-update').forEach(button => {
-    button.addEventListener('click', function() {
-      // Ambil data dari baris tabel yang bersangkutan
-      const row = this.closest('tr');
+  // Menangani klik tombol update pada Master Mandor
+document.querySelectorAll('.btn-update').forEach(button => {
+  button.addEventListener('click', function() {
+    const row = this.closest('tr');
 
-      // Ambil nilai kolom-kolom sesuai urutan di tabel
-      const userId = row.cells[0].innerText;
-      const username = row.cells[1].innerText;
-      const email = row.cells[2].innerText;
-      const role = row.cells[3].innerText;
+    // Ambil nilai kolom yang sesuai
+    const idMandor = row.cells[0].innerText.trim();
+    const namaMandor = row.cells[1].innerText.trim();
+    const alamat = row.cells[2].innerText.trim();
+    const noTelp = row.cells[3].innerText.trim();
 
-      // Isi modal update dengan data dari tabel
-      document.getElementById('updateUserId').value = userId;
-      document.getElementById('updateUsername').value = username;
-      document.getElementById('updateEmail').value = email;
-      document.getElementById('updateRole').value = role;
+    // Isi modal update dengan data tersebut
+    document.getElementById('update_id_mandor').value = idMandor;
+    document.getElementById('update_nama_mandor').value = namaMandor;
+    document.getElementById('update_alamat').value = alamat;
+    document.getElementById('update_no_telp').value = noTelp;
 
-      // Kosongkan input password supaya user bisa isi password baru jika mau
-      document.getElementById('updatePassword').value = '';
-
-      // Reset gambar avatar preview (opsional, bisa disesuaikan kalau ada data gambar)
-      // document.getElementById('avatarPreview').src = 'path_to_default_avatar.jpg';
-
-      // Tampilkan modal update user
-      var updateModal = new bootstrap.Modal(document.getElementById('updateUserModal'));
-      updateModal.show();
-    });
+    // Tampilkan modal update
+    const updateModal = new bootstrap.Modal(document.getElementById('updateMandorModal'));
+    updateModal.show();
   });
+});
+
 </script>
 
 </body>
