@@ -1,0 +1,26 @@
+<?php
+include("../config/koneksi_mysql.php");
+
+// Debugging $_GET
+echo "Parameter GET: ";
+print_r($_GET);
+echo "<br>";
+
+if (isset($_GET['kategori']) && !empty($_GET['kategori'])) { // Periksa 'user' di URL
+    // Ambil ID user dari parameter URL dan sanitasi
+    $hapus_id_kategori = mysqli_real_escape_string($koneksi, $_GET['kategori']);
+    echo "ID Mandor yang akan dihapus: " . $hapus_id_kategori . "<br>"; // Debugging
+
+    // Jalankan query untuk menghapus user berdasarkan ID
+    $sql = mysqli_query($koneksi, "DELETE FROM master_kategori WHERE id_kategori = '$hapus_id_kategori'");
+
+    // Cek apakah query berhasil dieksekusi
+    if ($sql && mysqli_affected_rows($koneksi) > 0) { // Pastikan ada baris yang terhapus
+        header("location: master_kategori.php?msg=Data%20berhasil%20dihapus");         exit; // Pastikan untuk menghentikan eksekusi skrip setelah header
+    } else {
+        echo "Error deleting record: " . mysqli_error($koneksi);
+    }
+} else {
+    echo "No user specified for deletion.";
+}
+?>

@@ -280,11 +280,41 @@
                 <div class="collapse" id="submenu">
                   <ul class="nav nav-collapse">
                     <li>
+                      <a href="master_perumahan.php">
+                        <span class="sub-item">Master Perumahan</span>
+                      </a>
+                    </li>
+                    <li>
+                      <a href="master_proyek.php">
+                        <span class="sub-item">Master Proyek</span>
+                      </a>
+                    </li>
+                    <li>
                       <a href="master_mandor.php">
                         <span class="sub-item">Master Mandor</span>
                       </a>
                     </li>
-                                        <li>
+                    <li>
+                      <a href="master_kategori.php">
+                        <span class="sub-item">Master Kategori</span>
+                      </a>
+                    </li>
+                    <li>
+                      <a href="master_satuan.php">
+                        <span class="sub-item">Master Satuan</span>
+                      </a>
+                    </li>
+                    <li>
+                      <a href="master_pekerjaan.php">
+                        <span class="sub-item">Master Pekerjaan</span>
+                      </a>
+                    </li>
+                    <li>
+                      <a href="master_material.php">
+                        <span class="sub-item">Master Material</span>
+                      </a>
+                    </li>
+                    <li>
                       <a href="master_user.php">
                         <span class="sub-item">Master User</span>
                       </a>
