@@ -292,8 +292,43 @@ $result = mysqli_query($koneksi, "SELECT * FROM master_mandor");
                 <div class="collapse" id="submenu">
                   <ul class="nav nav-collapse">
                     <li>
-                      <a href="master_user.php">
+                      <a href="master_perumahan.php">
+                        <span class="sub-item">Master Perumahan</span>
+                      </a>
+                    </li>
+                    <li>
+                      <a href="master_proyek.php">
+                        <span class="sub-item">Master Proyek</span>
+                      </a>
+                    </li>
+                    <li>
+                      <a href="master_mandor.php">
                         <span class="sub-item">Master Mandor</span>
+                      </a>
+                    </li>
+                    <li>
+                      <a href="master_kategori.php">
+                        <span class="sub-item">Master Kategori</span>
+                      </a>
+                    </li>
+                    <li>
+                      <a href="master_satuan.php">
+                        <span class="sub-item">Master Satuan</span>
+                      </a>
+                    </li>
+                    <li>
+                      <a href="master_pekerjaan.php">
+                        <span class="sub-item">Master Pekerjaan</span>
+                      </a>
+                    </li>
+                    <li>
+                      <a href="master_material.php">
+                        <span class="sub-item">Master Material</span>
+                      </a>
+                    </li>
+                    <li>
+                      <a href="master_user.php">
+                        <span class="sub-item">Master User</span>
                       </a>
                     </li>
                   </ul>
@@ -688,31 +723,6 @@ $result = mysqli_query($koneksi, "SELECT * FROM master_mandor");
           </nav>
           <!-- End Navbar -->
         </div>
-
-        <div class="container">
-          <div class="page-inner">
-            <div class="page-header">
-              <h3 class="fw-bold mb-3">Mastering</h3>
-              <ul class="breadcrumbs mb-3">
-                <li class="nav-home">
-                  <a href="#">
-                    <i class="icon-home"></i>
-                  </a>
-                </li>
-                <li class="separator">
-                  <i class="icon-arrow-right"></i>
-                </li>
-                <li class="nav-item">
-                  <a href="dashboard.php">Mastering</a>
-                </li>
-                <li class="separator">
-                  <i class="icon-arrow-right"></i>
-                </li>
-                <li class="nav-item">
-                  <a href="master_mandor.php">Master Mandor</a>
-                </li>
-              </ul>
-            </div>
 
 
 <div class="row">
