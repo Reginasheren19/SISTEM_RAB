@@ -4,8 +4,8 @@ include("../config/koneksi_mysql.php");
 // Mengatur error reporting
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
-// Mengambil data kategori dari database
-$result = mysqli_query($koneksi, "SELECT * FROM master_kategori");
+// Mengambil data satuan dari database
+$result = mysqli_query($koneksi, "SELECT * FROM master_satuan");
 ?>
 
 
@@ -744,7 +744,7 @@ $result = mysqli_query($koneksi, "SELECT * FROM master_kategori");
                   <i class="icon-arrow-right"></i>
                 </li>
                 <li class="nav-item">
-                  <a href="#">Master Kategori</a>
+                  <a href="#">Master Satuan</a>
                 </li>
               </ul>
             </div>
@@ -753,11 +753,11 @@ $result = mysqli_query($koneksi, "SELECT * FROM master_kategori");
   <div class="col-md-12">
     <div class="card">
       <div class="card-header d-flex align-items-center">
-        <h4 class="card-title">Master Kategori</h4>
+        <h4 class="card-title">Master Satuan</h4>
         <button
           class="btn btn-primary btn-round ms-auto"
           data-bs-toggle="modal"
-          data-bs-target="#addKategoriModal"
+          data-bs-target="#addSatuanModal"
         >
           <i class="fa fa-plus"></i> Tambah Data
         </button>
@@ -799,21 +799,23 @@ $result = mysqli_query($koneksi, "SELECT * FROM master_kategori");
           >
             <thead>
               <tr>
-                <th>ID Kategori</th>
-                <th>Nama Kategori</th>
+                <th>ID Satuan</th>
+                <th>Nama Satuan</th>
+                <th>Keterangan Satuan</th>
                 <th>Action</th>
               </tr>
             </thead>
             <tbody>
               <?php
-              $result = mysqli_query($koneksi, "SELECT * FROM master_kategori");
+              $result = mysqli_query($koneksi, "SELECT * FROM master_satuan");
               while ($row = mysqli_fetch_assoc($result)) {
                 echo "<tr>
-                    <td>" . htmlspecialchars($row['id_kategori']) . "</td>
-                    <td>" . htmlspecialchars($row['nama_kategori']) . "</td>
+                    <td>" . htmlspecialchars($row['id_satuan']) . "</td>
+                    <td>" . htmlspecialchars($row['nama_satuan']) . "</td>
+                    <td>" . htmlspecialchars($row['keterangan_satuan']) . "</td>
                     <td>
-                      <button class='btn btn-primary btn-sm btn-update' data-id_kategori='" . htmlspecialchars($row['id_kategori']) . "'>Update</button>
-                      <button class='btn btn-danger btn-sm delete-btn' data-id_kategori='" . htmlspecialchars($row['id_kategori']) . "'>Delete</button>                    
+                      <button class='btn btn-primary btn-sm btn-update' data-id_satuan='" . htmlspecialchars($row['id_satuan']) . "'>Update</button>
+                      <button class='btn btn-danger btn-sm delete-btn' data-id_satuan='" . htmlspecialchars($row['id_satuan']) . "'>Delete</button>                    
                     </td>
                   </tr>";
               }
@@ -826,22 +828,27 @@ $result = mysqli_query($koneksi, "SELECT * FROM master_kategori");
   </div>
 </div>
 
-<!-- Modal Tambah Data Kategori -->
-<div class="modal fade" id="addKategoriModal" tabindex="-1" aria-labelledby="addKategoriModalLabel" aria-hidden="true">
+<!-- Modal Tambah Data Satuan -->
+<div class="modal fade" id="addSatuanModal" tabindex="-1" aria-labelledby="addSatuanModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
-      <form method="POST" action="add_kategori.php">
+      <form method="POST" action="add_satuan.php">
         <input type="hidden" name="action" value="add" />
         <div class="modal-header">
-          <h5 class="modal-title" id="addKategoriModalLabel">Tambah Data Kategori</h5>
+          <h5 class="modal-title" id="addSatuanModalLabel">Tambah Data Satuan</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
 
           <div class="mb-3">
-            <label for="nama_kategori" class="form-label">Nama Kategori</label>
-            <input type="text" class="form-control" id="nama_kategori" name="nama_kategori" placeholder="Masukkan nama kategori" required />
+            <label for="nama_satuan" class="form-label">Nama Satuan</label>
+            <input type="text" class="form-control" id="nama_satuan" name="nama_satuan" placeholder="Masukkan nama satuan" required />
           </div>
+          <div class="mb-3">
+            <label for="keterangan_satuan" class="form-label">Keterangan Satuan</label>
+            <input type="text" class="form-control" id="keterangan_satuan" name="keterangan_satuan" placeholder="Masukkan keterangan satuan" required />
+          </div>
+
 
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
@@ -853,22 +860,27 @@ $result = mysqli_query($koneksi, "SELECT * FROM master_kategori");
 </div>
 </div>
 
-<!-- Modal Update Data Kategori -->
-<div class="modal fade" id="updateKategoriModal" tabindex="-1" aria-labelledby="updateKategoriModalLabel" aria-hidden="true">
+<!-- Modal Update Data Satuan -->
+<div class="modal fade" id="updateSatuanModal" tabindex="-1" aria-labelledby="updateSatuanModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
-      <form method="POST" action="update_kategori.php">
-        <input type="hidden" name="id_kategori" id="update_id_kategori" />
+      <form method="POST" action="update_satuan.php">
+        <input type="hidden" name="id_satuan" id="update_id_satuan" />
         <div class="modal-header">
-          <h5 class="modal-title" id="updateKategoriModalLabel">Update Data Kategori</h5>
+          <h5 class="modal-title" id="updateSatuanModalLabel">Update Data Satuan</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
 
           <div class="mb-3">
-            <label for="update_nama_kategori" class="form-label">Nama Kategori</label>
-            <input type="text" class="form-control" id="update_nama_kategori" name="nama_kategori" placeholder="Ubah nama kategori" required />
+            <label for="update_nama_satuan" class="form-label">Nama Satuan</label>
+            <input type="text" class="form-control" id="update_nama_satuan" name="nama_satuan" placeholder="Ubah nama satuan" required />
           </div>
+          <div class="mb-3">
+            <label for="update_keterangan_satuan" class="form-label">Keterangan Satuan</label>
+            <input type="text" class="form-control" id="update_keterangan_satuan" name="keterangan_satuan" placeholder="Ubah keterangan satuan" required />
+          </div>
+
 
         </div>
         <div class="modal-footer">
@@ -890,7 +902,7 @@ $result = mysqli_query($koneksi, "SELECT * FROM master_kategori");
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
-          <p>Are you sure you want to delete this kategori?</p>
+          <p>Are you sure you want to delete this satuan?</p>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -911,33 +923,36 @@ $result = mysqli_query($koneksi, "SELECT * FROM master_kategori");
 </script>
 
   <script>
-    // Konfirmasi penghapusan data kategori
+    // Konfirmasi penghapusan data satuan
     document.querySelectorAll('.delete-btn').forEach(button => {
       button.addEventListener('click', function() {
-        const kategoriId = this.dataset.id_kategori;
+        const satuanId = this.dataset.id_satuan;
         const deleteLink = document.getElementById('confirmDeleteLink');
-        deleteLink.href = 'delete_kategori.php?kategori=' + kategoriId;
+        deleteLink.href = 'delete_satuan.php?satuan=' + satuanId;
         const deleteModal = new bootstrap.Modal(document.getElementById('confirmDeleteModal'));
         deleteModal.show();
       });
     });
   </script>
 <script>
-  // Menangani klik tombol update pada Master Kategori
+  // Menangani klik tombol update pada Master Satuan
 document.querySelectorAll('.btn-update').forEach(button => {
   button.addEventListener('click', function() {
     const row = this.closest('tr');
 
     // Ambil nilai kolom yang sesuai
-    const idKategori = row.cells[0].innerText.trim();
-    const namaKategori = row.cells[1].innerText.trim();
+    const idSatuan = row.cells[0].innerText.trim();
+    const namaSatuan = row.cells[1].innerText.trim();
+    const keteranganSatuan = row.cells[2].innerText.trim();
+
 
     // Isi modal update dengan data tersebut
-    document.getElementById('update_id_kategori').value = idKategori;
-    document.getElementById('update_nama_kategori').value = namaKategori;
+    document.getElementById('update_id_satuan').value = idSatuan;
+    document.getElementById('update_nama_satuan').value = namaSatuan;
+    document.getElementById('update_keterangan_satuan').value = keteranganSatuan;
 
     // Tampilkan modal update
-    const updateModal = new bootstrap.Modal(document.getElementById('updateKategoriModal'));
+    const updateModal = new bootstrap.Modal(document.getElementById('updateSatuanModal'));
     updateModal.show();
   });
 });
