@@ -830,8 +830,7 @@ $result = mysqli_query($koneksi, "SELECT * FROM master_mandor");
           <div class="mb-3">
             <label for="alamat" class="form-label">Alamat</label>
             <textarea 
-              class="form-control" id="alamat" name="alamat" rows="3" placeholder="Masukkan Alamat" required>
-            </textarea>            
+              class="form-control" id="alamat" name="alamat" rows="3" placeholder="Masukkan Alamat" required></textarea>            
           </div>
 
         <div class="modal-footer">
