@@ -691,10 +691,10 @@ $result = mysqli_query($koneksi, "SELECT * FROM users");
         <div class="container">
           <div class="page-inner">
             <div class="page-header">
-              <h3 class="fw-bold mb-3">DataTables.Net</h3>
+              <h3 class="fw-bold mb-3">Mastering</h3>
               <ul class="breadcrumbs mb-3">
                 <li class="nav-home">
-                  <a href="#">
+                  <a href="dashboard.php">
                     <i class="icon-home"></i>
                   </a>
                 </li>
@@ -702,13 +702,13 @@ $result = mysqli_query($koneksi, "SELECT * FROM users");
                   <i class="icon-arrow-right"></i>
                 </li>
                 <li class="nav-item">
-                  <a href="#">Tables</a>
+                  <a href="#">Mastering</a>
                 </li>
                 <li class="separator">
                   <i class="icon-arrow-right"></i>
                 </li>
                 <li class="nav-item">
-                  <a href="#">Datatables</a>
+                  <a href="#">Master User</a>
                 </li>
               </ul>
             </div>

@@ -730,7 +730,7 @@ $result = mysqli_query($koneksi, "SELECT * FROM master_perumahan");
               <h3 class="fw-bold mb-3">Mastering</h3>
               <ul class="breadcrumbs mb-3">
                 <li class="nav-home">
-                  <a href="#">
+                  <a href="dashboard.php">
                     <i class="icon-home"></i>
                   </a>
                 </li>
@@ -738,13 +738,13 @@ $result = mysqli_query($koneksi, "SELECT * FROM master_perumahan");
                   <i class="icon-arrow-right"></i>
                 </li>
                 <li class="nav-item">
-                  <a href="dashboard.php">Mastering</a>
+                  <a href="#">Mastering</a>
                 </li>
                 <li class="separator">
                   <i class="icon-arrow-right"></i>
                 </li>
                 <li class="nav-item">
-                  <a href="master_mandor.php">Master Mandor</a>
+                  <a href="#">Master Perumahan</a>
                 </li>
               </ul>
             </div>
