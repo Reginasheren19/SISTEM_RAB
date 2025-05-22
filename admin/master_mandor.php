@@ -802,7 +802,7 @@ $result = mysqli_query($koneksi, "SELECT * FROM master_mandor");
                 <th>ID Mandor</th>
                 <th>Nama Mandor</th>
                 <th>Alamat</th>
-                <th>Nomer Telepon
+                <th>Nomer Telepon</th>
                 <th>Action</th>
               </tr>
             </thead>

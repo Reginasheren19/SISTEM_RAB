@@ -6,6 +6,10 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 // Mengambil data user dari database
 $result = mysqli_query($koneksi, "SELECT * FROM master_pekerjaan");
+$satuanResult = mysqli_query($koneksi, "SELECT id_satuan, nama_satuan FROM master_satuan ORDER BY nama_satuan ASC");
+if (!$satuanResult) {
+    die("Query Error (satuan): " . mysqli_error($koneksi));
+}
 ?>
 
 
@@ -753,11 +757,11 @@ $result = mysqli_query($koneksi, "SELECT * FROM master_pekerjaan");
   <div class="col-md-12">
     <div class="card">
       <div class="card-header d-flex align-items-center">
-        <h4 class="card-title">Master Mandor</h4>
+        <h4 class="card-title">Master Pekerjaan</h4>
         <button
           class="btn btn-primary btn-round ms-auto"
           data-bs-toggle="modal"
-          data-bs-target="#addMandorModal"
+          data-bs-target="#addPekerjaanModal"
         >
           <i class="fa fa-plus"></i> Tambah Data
         </button>
@@ -799,29 +803,37 @@ $result = mysqli_query($koneksi, "SELECT * FROM master_pekerjaan");
           >
             <thead>
               <tr>
-                <th>ID Mandor</th>
-                <th>Nama Mandor</th>
-                <th>Alamat</th>
-                <th>Nomer Telepon
+                <th>ID Pekerjaan</th>
+                <th>Uraian Pekerjaan</th>
+                <th>Nama Satuan</th>
                 <th>Action</th>
               </tr>
             </thead>
             <tbody>
               <?php
-              $result = mysqli_query($koneksi, "SELECT * FROM master_mandor");
+              $sql = "SELECT mp.id_pekerjaan, mp.uraian_pekerjaan, ms.nama_satuan
+                      FROM master_pekerjaan mp
+                      JOIN master_satuan ms ON mp.id_satuan = ms.id_satuan";
+
+              $result = mysqli_query($koneksi, $sql);
+
+              if (!$result) {
+                  die("Query Error: " . mysqli_error($koneksi));
+              }
+
               while ($row = mysqli_fetch_assoc($result)) {
-                echo "<tr>
-                    <td>" . htmlspecialchars($row['id_mandor']) . "</td>
-                    <td>" . htmlspecialchars($row['nama_mandor']) . "</td>
-                    <td>" . htmlspecialchars($row['alamat']) . "</td>
-                    <td>" . htmlspecialchars($row['no_telp']) . "</td>
-                    <td>
-                      <button class='btn btn-primary btn-sm btn-update' data-id_mandor='" . htmlspecialchars($row['id_mandor']) . "'>Update</button>
-                      <button class='btn btn-danger btn-sm delete-btn' data-id_mandor='" . htmlspecialchars($row['id_mandor']) . "'>Delete</button>                    
-                    </td>
-                  </tr>";
+                  echo "<tr>
+                      <td>" . htmlspecialchars($row['id_pekerjaan']) . "</td>
+                      <td>" . htmlspecialchars($row['uraian_pekerjaan']) . "</td>
+                      <td>" . htmlspecialchars($row['nama_satuan']) . "</td>
+                      <td>
+                        <button class='btn btn-primary btn-sm btn-update' data-id_pekerjaan='" . htmlspecialchars($row['id_pekerjaan']) . "'>Update</button>
+                        <button class='btn btn-danger btn-sm delete-btn' data-id_pekerjaan='" . htmlspecialchars($row['id_pekerjaan']) . "'>Delete</button>                    
+                      </td>
+                    </tr>";
               }
               ?>
+
             </tbody>
           </table>
         </div>
@@ -830,41 +842,35 @@ $result = mysqli_query($koneksi, "SELECT * FROM master_pekerjaan");
   </div>
 </div>
 
-<!-- Modal Tambah Data Mandor -->
-<div class="modal fade" id="addMandorModal" tabindex="-1" aria-labelledby="addMandorModalLabel" aria-hidden="true">
+<!-- Modal Tambah Data Pekerjaan -->
+<div class="modal fade" id="addPekerjaanModal" tabindex="-1" aria-labelledby="addPekerjaanModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
-      <form method="POST" action="add_mandor.php">
+      <form method="POST" action="add_pekerjaan.php">
         <input type="hidden" name="action" value="add" />
         <div class="modal-header">
-          <h5 class="modal-title" id="addMandorModalLabel">Tambah Data Mandor</h5>
+          <h5 class="modal-title" id="addPekerjaanModalLabel">Tambah Data Pekerjaan</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
 
           <div class="mb-3">
-            <label for="nama_mandor" class="form-label">Nama Mandor</label>
-            <input type="text" class="form-control" id="nama_mandor" name="nama_mandor" placeholder="Masukkan nama mandor" required />
+            <label for="uraian_pekerjaan" class="form-label">Uraian Pekerjaan</label>
+            <input type="text" class="form-control" id="uraian_pekerjaan" name="uraian_pekerjaan" placeholder="Masukkan uraian pekerjaan" required />
           </div>
 
           <div class="mb-3">
-            <label for="no_telp" class="form-label">Nomor Telepon</label>
-            <input 
-              type="tel" 
-              class="form-control" 
-              id="no_telp" 
-              name="no_telp" 
-              placeholder="Masukkan nomor telepon" 
-              pattern="[0-9]+" 
-              title="Hanya boleh angka" 
-              required 
-            />
-          </div>
+            <label for="id_satuan" class="form-label">Nama Satuan</label>
+            <select class="form-select" id="id_satuan" name="id_satuan" required>
+              <option value="" disabled selected>Pilih Nama Satuan</option>
 
-          <div class="mb-3">
-            <label for="alamat" class="form-label">Alamat</label>
-            <textarea 
-              class="form-control" id="alamat" name="alamat" rows="3" placeholder="Masukkan Alamat" required></textarea>            
+              <?php while ($satuan = mysqli_fetch_assoc($satuanResult)): ?>
+                <option value="<?= htmlspecialchars($satuan['id_satuan']) ?>">
+                  <?= htmlspecialchars($satuan['nama_satuan']) ?>
+                </option>
+              <?php endwhile; ?>
+
+            </select>
           </div>
 
         <div class="modal-footer">
