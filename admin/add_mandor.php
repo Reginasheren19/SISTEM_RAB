@@ -5,8 +5,8 @@ include("../config/koneksi_mysql.php");
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $nama_mandor = mysqli_real_escape_string($koneksi, $_POST['nama_mandor']);
     $alamat = mysqli_real_escape_string($koneksi, $_POST['alamat']);
-    $no_telp = $_POST['no_telp']; 
-
+    $no_telp = mysqli_real_escape_string($koneksi, $_POST['no_telp']);
+    
     // Query untuk menyimpan data ke database
     $sql = "INSERT INTO master_mandor (nama_mandor, alamat, no_telp) 
             VALUES ('$nama_mandor', '$alamat', '$no_telp')";

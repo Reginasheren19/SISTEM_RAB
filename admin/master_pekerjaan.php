@@ -5,7 +5,7 @@ include("../config/koneksi_mysql.php");
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 // Mengambil data user dari database
-$result = mysqli_query($koneksi, "SELECT * FROM master_perumahan");
+$result = mysqli_query($koneksi, "SELECT * FROM master_pekerjaan");
 ?>
 
 
@@ -744,21 +744,20 @@ $result = mysqli_query($koneksi, "SELECT * FROM master_perumahan");
                   <i class="icon-arrow-right"></i>
                 </li>
                 <li class="nav-item">
-                  <a href="#">Master Perumahan</a>
+                  <a href="#">Master Pekerjaan</a>
                 </li>
               </ul>
             </div>
-
 
 <div class="row">
   <div class="col-md-12">
     <div class="card">
       <div class="card-header d-flex align-items-center">
-        <h4 class="card-title">Master Perumahan</h4>
+        <h4 class="card-title">Master Mandor</h4>
         <button
           class="btn btn-primary btn-round ms-auto"
           data-bs-toggle="modal"
-          data-bs-target="#addPerumahanModal"
+          data-bs-target="#addMandorModal"
         >
           <i class="fa fa-plus"></i> Tambah Data
         </button>
@@ -800,23 +799,25 @@ $result = mysqli_query($koneksi, "SELECT * FROM master_perumahan");
           >
             <thead>
               <tr>
-                <th>ID Perumahan</th>
-                <th>Nama Perumahan</th>
-                <th>Lokasi</th>
+                <th>ID Mandor</th>
+                <th>Nama Mandor</th>
+                <th>Alamat</th>
+                <th>Nomer Telepon
                 <th>Action</th>
               </tr>
             </thead>
             <tbody>
               <?php
-              $result = mysqli_query($koneksi, "SELECT * FROM master_perumahan");
+              $result = mysqli_query($koneksi, "SELECT * FROM master_mandor");
               while ($row = mysqli_fetch_assoc($result)) {
                 echo "<tr>
-                    <td>" . htmlspecialchars($row['id_perumahan']) . "</td>
-                    <td>" . htmlspecialchars($row['nama_perumahan']) . "</td>
-                    <td>" . htmlspecialchars($row['lokasi']) . "</td>
+                    <td>" . htmlspecialchars($row['id_mandor']) . "</td>
+                    <td>" . htmlspecialchars($row['nama_mandor']) . "</td>
+                    <td>" . htmlspecialchars($row['alamat']) . "</td>
+                    <td>" . htmlspecialchars($row['no_telp']) . "</td>
                     <td>
-                      <button class='btn btn-primary btn-sm btn-update' data-id_perumahan='" . htmlspecialchars($row['id_perumahan']) . "'>Update</button>
-                      <button class='btn btn-danger btn-sm delete-btn' data-id_perumahan='" . htmlspecialchars($row['id_perumahan']) . "'>Delete</button>                    
+                      <button class='btn btn-primary btn-sm btn-update' data-id_mandor='" . htmlspecialchars($row['id_mandor']) . "'>Update</button>
+                      <button class='btn btn-danger btn-sm delete-btn' data-id_mandor='" . htmlspecialchars($row['id_mandor']) . "'>Delete</button>                    
                     </td>
                   </tr>";
               }
@@ -829,27 +830,41 @@ $result = mysqli_query($koneksi, "SELECT * FROM master_perumahan");
   </div>
 </div>
 
-<!-- Modal Tambah Data Perumahan -->
-<div class="modal fade" id="addPerumahanModal" tabindex="-1" aria-labelledby="addPerumahanModalLabel" aria-hidden="true">
+<!-- Modal Tambah Data Mandor -->
+<div class="modal fade" id="addMandorModal" tabindex="-1" aria-labelledby="addMandorModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
-      <form method="POST" action="add_perumahan.php">
+      <form method="POST" action="add_mandor.php">
         <input type="hidden" name="action" value="add" />
         <div class="modal-header">
-          <h5 class="modal-title" id="addPerumahanModalLabel">Tambah Data Perumahan</h5>
+          <h5 class="modal-title" id="addMandorModalLabel">Tambah Data Mandor</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
 
           <div class="mb-3">
-            <label for="nama_perumahan" class="form-label">Nama Perumahan</label>
-            <input type="text" class="form-control" id="nama_perumahan" name="nama_perumahan" placeholder="Masukkan nama perumahan" required />
+            <label for="nama_mandor" class="form-label">Nama Mandor</label>
+            <input type="text" class="form-control" id="nama_mandor" name="nama_mandor" placeholder="Masukkan nama mandor" required />
           </div>
 
           <div class="mb-3">
-            <label for="lokasi" class="form-label">Lokasi</label>
+            <label for="no_telp" class="form-label">Nomor Telepon</label>
+            <input 
+              type="tel" 
+              class="form-control" 
+              id="no_telp" 
+              name="no_telp" 
+              placeholder="Masukkan nomor telepon" 
+              pattern="[0-9]+" 
+              title="Hanya boleh angka" 
+              required 
+            />
+          </div>
+
+          <div class="mb-3">
+            <label for="alamat" class="form-label">Alamat</label>
             <textarea 
-              class="form-control" id="lokasi" name="lokasi" rows="3" placeholder="Masukkan lokasi" required></textarea>            
+              class="form-control" id="alamat" name="alamat" rows="3" placeholder="Masukkan Alamat" required></textarea>            
           </div>
 
         <div class="modal-footer">
@@ -862,27 +877,40 @@ $result = mysqli_query($koneksi, "SELECT * FROM master_perumahan");
 </div>
 </div>
 
-<!-- Modal Update Data Perumahan -->
-<div class="modal fade" id="updatePerumahanModal" tabindex="-1" aria-labelledby="updatePerumahanModalLabel" aria-hidden="true">
+<!-- Modal Update Data Mandor -->
+<div class="modal fade" id="updateMandorModal" tabindex="-1" aria-labelledby="updateMandorModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
-      <form method="POST" action="update_perumahan.php">
-        <input type="hidden" name="id_perumahan" id="update_id_perumahan" />
+      <form method="POST" action="update_mandor.php">
+        <input type="hidden" name="id_mandor" id="update_id_mandor" />
         <div class="modal-header">
-          <h5 class="modal-title" id="updatePerumahanModalLabel">Update Data Perumahan</h5>
+          <h5 class="modal-title" id="updateMandorModalLabel">Update Data Mandor</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
 
           <div class="mb-3">
-            <label for="update_nama_perumahan" class="form-label">Nama Perumahan</label>
-            <input type="text" class="form-control" id="update_nama_perumahan" name="nama_perumahan" placeholder="Ubah nama perumahan" required />
+            <label for="update_nama_mandor" class="form-label">Nama Mandor</label>
+            <input type="text" class="form-control" id="update_nama_mandor" name="nama_mandor" placeholder="Ubah nama mandor" required />
           </div>
 
           <div class="mb-3">
-            <label for="upate_lokasi" class="form-label">Lokasi</label>
+            <label for="update_no_telp" class="form-label">Nomor Telepon</label>
+            <input
+              type="tel"
+              class="form-control"
+              id="update_no_telp"
+              name="no_telp"
+              placeholder="Ubah nomor telepon"
+              pattern="[0-9]+"
+              title="Hanya boleh angka"
+              required
+            />
+          </div>
+          <div class="mb-3">
+            <label for="upate_alamat" class="form-label">Alamat</label>
             <textarea 
-              class="form-control" id="update_lokasi" name="lokasi" rows="3" placeholder="Masukkan lokasi" required>
+              class="form-control" id="update_alamat" name="alamat" rows="3" placeholder="Masukkan Alamat" required>
             </textarea>            
           </div>
 
@@ -930,33 +958,34 @@ $result = mysqli_query($koneksi, "SELECT * FROM master_perumahan");
     // Konfirmasi penghapusan data user
     document.querySelectorAll('.delete-btn').forEach(button => {
       button.addEventListener('click', function() {
-        const perumahanId = this.dataset.id_perumahan;
+        const mandorId = this.dataset.id_mandor;
         const deleteLink = document.getElementById('confirmDeleteLink');
-        deleteLink.href = 'delete_perumahan.php?perumahan=' + perumahanId;
+        deleteLink.href = 'delete_mandor.php?mandor=' + mandorId;
         const deleteModal = new bootstrap.Modal(document.getElementById('confirmDeleteModal'));
         deleteModal.show();
       });
     });
   </script>
-
 <script>
-  // Menangani klik tombol update pada Master Perumahan
+  // Menangani klik tombol update pada Master Mandor
 document.querySelectorAll('.btn-update').forEach(button => {
   button.addEventListener('click', function() {
     const row = this.closest('tr');
 
     // Ambil nilai kolom yang sesuai
-    const idPerumahan = row.cells[0].innerText.trim();
-    const namaPerumahan = row.cells[1].innerText.trim();
-    const lokasi = row.cells[2].innerText.trim();
+    const idMandor = row.cells[0].innerText.trim();
+    const namaMandor = row.cells[1].innerText.trim();
+    const alamat = row.cells[2].innerText.trim();
+    const noTelp = row.cells[3].innerText.trim();
 
     // Isi modal update dengan data tersebut
-    document.getElementById('update_id_perumahan').value = idPerumahan;
-    document.getElementById('update_nama_perumahan').value = namaPerumahan;
-    document.getElementById('update_lokasi').value = lokasi;
+    document.getElementById('update_id_mandor').value = idMandor;
+    document.getElementById('update_nama_mandor').value = namaMandor;
+    document.getElementById('update_alamat').value = alamat;
+    document.getElementById('update_no_telp').value = noTelp;
 
     // Tampilkan modal update
-    const updateModal = new bootstrap.Modal(document.getElementById('updatePerumahanModal'));
+    const updateModal = new bootstrap.Modal(document.getElementById('updateMandorModal'));
     updateModal.show();
   });
 });
