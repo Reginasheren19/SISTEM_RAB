@@ -10,6 +10,13 @@ $satuanResult = mysqli_query($koneksi, "SELECT id_satuan, nama_satuan FROM maste
 if (!$satuanResult) {
     die("Query Error (satuan): " . mysqli_error($koneksi));
 }
+$row = mysqli_fetch_assoc($result);
+if (isset($row)) {
+    $id_satuan_selected = $row['id_satuan'];
+} else {
+    $id_satuan_selected = ''; // Atau nilai default jika tidak ada
+}
+?>
 ?>
 
 
@@ -811,7 +818,7 @@ if (!$satuanResult) {
             </thead>
             <tbody>
               <?php
-              $sql = "SELECT mp.id_pekerjaan, mp.uraian_pekerjaan, ms.nama_satuan
+              $sql = "SELECT mp.id_pekerjaan, mp.uraian_pekerjaan, mp.id_satuan, ms.nama_satuan
                       FROM master_pekerjaan mp
                       JOIN master_satuan ms ON mp.id_satuan = ms.id_satuan";
 
@@ -827,8 +834,12 @@ if (!$satuanResult) {
                       <td>" . htmlspecialchars($row['uraian_pekerjaan']) . "</td>
                       <td>" . htmlspecialchars($row['nama_satuan']) . "</td>
                       <td>
-                        <button class='btn btn-primary btn-sm btn-update' data-id_pekerjaan='" . htmlspecialchars($row['id_pekerjaan']) . "'>Update</button>
-                        <button class='btn btn-danger btn-sm delete-btn' data-id_pekerjaan='" . htmlspecialchars($row['id_pekerjaan']) . "'>Delete</button>                    
+                         <button 
+                          class='btn btn-primary btn-sm btn-update' 
+                          data-id_pekerjaan='" . htmlspecialchars($row['id_pekerjaan']) . "' 
+                          data-uraian_pekerjaan='" . htmlspecialchars($row['uraian_pekerjaan']) . "' 
+                          data-id_satuan='" . htmlspecialchars($row['id_satuan']) . "'>Update</button>
+                         <button class='btn btn-danger btn-sm delete-btn' data-id_pekerjaan='" . htmlspecialchars($row['id_pekerjaan']) . "'>Delete</button>                                        
                       </td>
                     </tr>";
               }
@@ -883,41 +894,36 @@ if (!$satuanResult) {
 </div>
 </div>
 
-<!-- Modal Update Data Mandor -->
-<div class="modal fade" id="updateMandorModal" tabindex="-1" aria-labelledby="updateMandorModalLabel" aria-hidden="true">
+<!-- Modal Update Data Pekerjaan -->
+<div class="modal fade" id="updatePekerjaanModal" tabindex="-1" aria-labelledby="updatePekerjaanModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
-      <form method="POST" action="update_mandor.php">
-        <input type="hidden" name="id_mandor" id="update_id_mandor" />
+      <form method="POST" action="update_pekerjaan.php">
+        <input type="hidden" name="id_pekerjaan" id="update_id_pekerjaan" />
         <div class="modal-header">
-          <h5 class="modal-title" id="updateMandorModalLabel">Update Data Mandor</h5>
+          <h5 class="modal-title" id="updateMandorModalLabel">Update Data Pekerjaan</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
 
           <div class="mb-3">
-            <label for="update_nama_mandor" class="form-label">Nama Mandor</label>
-            <input type="text" class="form-control" id="update_nama_mandor" name="nama_mandor" placeholder="Ubah nama mandor" required />
+            <label for="update_uraian_pekerjaan" class="form-label">Uraian Pekerjaan</label>
+            <input type="text" class="form-control" id="update_uraian_pekerjaan" name="uraian_pekerjaan" placeholder="Ubah uraian pekerjaan" required />
           </div>
 
           <div class="mb-3">
-            <label for="update_no_telp" class="form-label">Nomor Telepon</label>
-            <input
-              type="tel"
-              class="form-control"
-              id="update_no_telp"
-              name="no_telp"
-              placeholder="Ubah nomor telepon"
-              pattern="[0-9]+"
-              title="Hanya boleh angka"
-              required
-            />
-          </div>
-          <div class="mb-3">
-            <label for="upate_alamat" class="form-label">Alamat</label>
-            <textarea 
-              class="form-control" id="update_alamat" name="alamat" rows="3" placeholder="Masukkan Alamat" required>
-            </textarea>            
+            <label for="update_id_satuan" class="form-label">Nama Satuan</label>
+            <select class="form-select" id="update_id_satuan" name="id_satuan" required>
+              <option value="" disabled selected>Pilih Nama Satuan</option>
+              <?php
+              $id_satuan_selected = $row['id_satuan'];
+              $satuanResult = mysqli_query($koneksi, "SELECT id_satuan, nama_satuan FROM master_satuan ORDER BY nama_satuan ASC");
+              while ($satuan = mysqli_fetch_assoc($satuanResult)) {
+                $selected = ($satuan['id_satuan'] == $id_satuan_selected) ? 'selected' : '';
+                echo '<option value="' . htmlspecialchars($satuan['id_satuan']) . '">' . htmlspecialchars($satuan['nama_satuan']) . '</option>';
+              }
+              ?>
+            </select>
           </div>
 
         </div>
@@ -961,7 +967,7 @@ if (!$satuanResult) {
 </script>
 
   <script>
-    // Konfirmasi penghapusan data user
+    // Konfirmasi penghapusan data pekerjaan
     document.querySelectorAll('.delete-btn').forEach(button => {
       button.addEventListener('click', function() {
         const mandorId = this.dataset.id_mandor;
@@ -973,25 +979,21 @@ if (!$satuanResult) {
     });
   </script>
 <script>
-  // Menangani klik tombol update pada Master Mandor
+  // Menangani klik tombol update pada Master Pekerjaan
 document.querySelectorAll('.btn-update').forEach(button => {
   button.addEventListener('click', function() {
-    const row = this.closest('tr');
+    // Ambil data dari atribut tombol
+    const idPekerjaan = this.dataset.id_pekerjaan;
+    const uraianPekerjaan = this.dataset.uraian_pekerjaan;
+    const idSatuan = this.dataset.id_satuan;  // ini id satuan yang benar
 
-    // Ambil nilai kolom yang sesuai
-    const idMandor = row.cells[0].innerText.trim();
-    const namaMandor = row.cells[1].innerText.trim();
-    const alamat = row.cells[2].innerText.trim();
-    const noTelp = row.cells[3].innerText.trim();
-
-    // Isi modal update dengan data tersebut
-    document.getElementById('update_id_mandor').value = idMandor;
-    document.getElementById('update_nama_mandor').value = namaMandor;
-    document.getElementById('update_alamat').value = alamat;
-    document.getElementById('update_no_telp').value = noTelp;
+    // Set nilai input modal
+    document.getElementById('update_id_pekerjaan').value = idPekerjaan;
+    document.getElementById('update_uraian_pekerjaan').value = uraianPekerjaan;
+    document.getElementById('update_id_satuan').value = idSatuan;  // ini akan otomatis pilih dropdown sesuai id_satuan
 
     // Tampilkan modal update
-    const updateModal = new bootstrap.Modal(document.getElementById('updateMandorModal'));
+    const updateModal = new bootstrap.Modal(document.getElementById('updatePekerjaanModal'));
     updateModal.show();
   });
 });
