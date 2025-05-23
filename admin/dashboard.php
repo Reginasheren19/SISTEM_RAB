@@ -1,32 +1,3 @@
-<?php
-include("../config/koneksi_mysql.php");
-
-// Mengatur error reporting
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-// Mengambil data user dari database
-$result = mysqli_query($koneksi, "SELECT * FROM master_proyek");
-$perumahanResult = mysqli_query($koneksi, "SELECT id_perumahan, nama_perumahan, lokasi FROM master_perumahan ORDER BY nama_perumahan ASC");
-if (!$perumahanResult) {
-    die("Query Error (perumahan): " . mysqli_error($koneksi));
-}
-
-$mandorResult = mysqli_query($koneksi, "SELECT id_mandor, nama_mandor FROM master_mandor ORDER BY nama_mandor ASC");
-if (!$mandorResult) {
-    die("Query Error (mandor): " . mysqli_error($koneksi));
-}
-
-$row = mysqli_fetch_assoc($result);
-if ($row) {
-    $id_perumahan_selected = $row['id_perumahan'];
-    $id_mandor_selected = $row['id_mandor'];
-} else {
-    $id_perumahan_selected = '';
-    $id_mandor_selected = '';
-}
-?>
-
-
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -41,7 +12,6 @@ if ($row) {
       href="assets/img/logo/LOGO PT.jpg"
       type="image/x-icon"
     />
-    <link href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css" rel="stylesheet" />
 
     <!-- Fonts and icons -->
     <script src="assets/js/plugin/webfont/webfont.min.js"></script>
@@ -194,7 +164,7 @@ if ($row) {
                 <div class="collapse" id="sidebarLayouts">
                   <ul class="nav nav-collapse">
                     <li>
-                      <a href="sidebar-style-2.html">
+                      <a href="transaksi_rab_upah.php">
                         <span class="sub-item">RAB Upah</span>
                       </a>
                     </li>
@@ -363,7 +333,7 @@ if ($row) {
           <div class="main-header-logo">
             <!-- Logo Header -->
             <div class="logo-header" data-background-color="dark">
-              <a href="../index.html" class="logo">
+              <a href="index.html" class="logo">
                 <img
                   src="assets/img/kaiadmin/logo_light.svg"
                   alt="navbar brand"
