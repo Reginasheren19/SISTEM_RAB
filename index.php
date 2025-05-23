@@ -22,7 +22,7 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        background: #7d2ae8;
+        background:rgb(225, 200, 147);
         padding: 30px;
       }
       .container {
@@ -86,7 +86,7 @@
         height: 100%;
         width: 100%;
         opacity: 0.5;
-        background: #7d2ae8;
+        background:rgb(225, 200, 147);
       }
       .cover .text .text-1,
       .cover .text .text-2 {
@@ -127,7 +127,7 @@
         bottom: 0;
         height: 3px;
         width: 25px;
-        background: #7d2ae8;
+        background:rgb(225, 200, 147);
       }
       .forms .register-form .title:before {
         width: 20px;
@@ -156,11 +156,11 @@
       }
       .form-content .input-box input:focus,
       .form-content .input-box input:valid {
-        border-color: #7d2ae8;
+        border-color:rgb(187, 160, 101);
       }
       .form-content .input-box i {
         position: absolute;
-        color: #7d2ae8;
+        color:rgb(225, 200, 147);
         font-size: 17px;
       }
       .forms .form-content .text {
@@ -169,6 +169,7 @@
         color: #333;
       }
       .forms .form-content .text a {
+        color: #333; 
         text-decoration: none;
       }
       .forms .form-content .text a:hover {
@@ -180,17 +181,17 @@
       }
       .forms .form-content .button input {
         color: #fff;
-        background: #7d2ae8;
+        background:rgb(187, 160, 101);
         border-radius: 6px;
         padding: 0;
         cursor: pointer;
         transition: all 0.4s ease;
       }
       .forms .form-content .button input:hover {
-        background: #5b13b9;
+        background:rgb(187, 160, 101);
       }
       .forms .form-content label {
-        color: #5b13b9;
+        color:rgb(187, 160, 101);
         cursor: pointer;
       }
       .forms .form-content label:hover {
@@ -254,10 +255,11 @@
                   <i class="fas fa-envelope"></i>
                   <input type="text" name="username" placeholder="Masukkan username" required>
                 </div>
-                <div class="input-box">
-                  <i class="fas fa-lock"></i>
-                  <input type="password" name="password" placeholder="Masukkan password" required>
-                </div>
+                  <div class="input-box" style="position: relative;">
+                    <i class="fas fa-lock"></i>
+                    <input type="password" id="password" name="password" placeholder="Masukkan password" required>
+                    <i class="far fa-eye" id="togglePassword" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; color:rgb(187, 160, 101);"></i>
+                  </div>
                 <div class="text"><a href="register.php">Lupa password?</a></div>
                 <div class="button input-box">
                   <input type="submit" value="Kirim">
@@ -268,5 +270,32 @@
         </div>
       </div>
     </div>
+
+      <script>
+        const togglePassword = document.querySelector('#togglePassword');
+        const password = document.querySelector('#password');
+
+        // Set ikon awal sesuai tipe password
+        function setIcon() {
+          if (password.type === 'password') {
+            togglePassword.classList.add('fa-eye-slash');
+            togglePassword.classList.remove('fa-eye');
+          } else {
+            togglePassword.classList.add('fa-eye');
+            togglePassword.classList.remove('fa-eye-slash');
+          }
+        }
+
+        // Inisialisasi ikon saat halaman pertama load
+        setIcon();
+
+        togglePassword.addEventListener('click', function () {
+          const type = password.getAttribute('type') === 'password' ? 'text' : 'password';
+          password.setAttribute('type', type);
+
+          setIcon();
+        });
+      </script>
+
   </body>
 </html>
