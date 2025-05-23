@@ -18,7 +18,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     if (mysqli_query($koneksi, $sql)) {
         // Redirect ke halaman master_mandor dengan tanda sukses update
-        header("Location: master_mandor.php?update_success=1");
+        header("Location: master_mandor.php?msg=Data%20berhasil%20diupdate");
         exit();
     } else {
         echo "Error updating record: " . mysqli_error($koneksi);
