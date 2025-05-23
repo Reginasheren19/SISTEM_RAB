@@ -5,16 +5,24 @@ include("../config/koneksi_mysql.php");
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 // Mengambil data user dari database
-$result = mysqli_query($koneksi, "SELECT * FROM master_pekerjaan");
-$satuanResult = mysqli_query($koneksi, "SELECT id_satuan, nama_satuan FROM master_satuan ORDER BY nama_satuan ASC");
-if (!$satuanResult) {
-    die("Query Error (satuan): " . mysqli_error($koneksi));
+$result = mysqli_query($koneksi, "SELECT * FROM master_proyek");
+$perumahanResult = mysqli_query($koneksi, "SELECT id_perumahan, nama_perumahan, lokasi FROM master_perumahan ORDER BY nama_perumahan ASC");
+if (!$perumahanResult) {
+    die("Query Error (perumahan): " . mysqli_error($koneksi));
 }
+
+$mandorResult = mysqli_query($koneksi, "SELECT id_mandor, nama_mandor FROM master_mandor ORDER BY nama_mandor ASC");
+if (!$mandorResult) {
+    die("Query Error (mandor): " . mysqli_error($koneksi));
+}
+
 $row = mysqli_fetch_assoc($result);
-if (isset($row)) {
-    $id_satuan_selected = $row['id_satuan'];
+if ($row) {
+    $id_perumahan_selected = $row['id_perumahan'];
+    $id_mandor_selected = $row['id_mandor'];
 } else {
-    $id_satuan_selected = ''; // Atau nilai default jika tidak ada
+    $id_perumahan_selected = '';
+    $id_mandor_selected = '';
 }
 ?>
 
@@ -754,7 +762,7 @@ if (isset($row)) {
                   <i class="icon-arrow-right"></i>
                 </li>
                 <li class="nav-item">
-                  <a href="#">Master Pekerjaan</a>
+                  <a href="#">Master Proyek</a>
                 </li>
               </ul>
             </div>
@@ -763,11 +771,11 @@ if (isset($row)) {
   <div class="col-md-12">
     <div class="card">
       <div class="card-header d-flex align-items-center">
-        <h4 class="card-title">Master Pekerjaan</h4>
+        <h4 class="card-title">Master Proyek</h4>
         <button
           class="btn btn-primary btn-round ms-auto"
           data-bs-toggle="modal"
-          data-bs-target="#addPekerjaanModal"
+          data-bs-target="#addProyekModal"
         >
           <i class="fa fa-plus"></i> Tambah Data
         </button>
@@ -809,17 +817,30 @@ if (isset($row)) {
           >
             <thead>
               <tr>
-                <th>ID Pekerjaan</th>
-                <th>Uraian Pekerjaan</th>
-                <th>Nama Satuan</th>
+                <th>ID Proyek</th>
+                <th>Perumahan</th>
+                <th>Kavling</th>
+                <th>Mandor</th>
+                <th>Lokasi</th>
                 <th>Action</th>
               </tr>
             </thead>
             <tbody>
               <?php
-              $sql = "SELECT mp.id_pekerjaan, mp.uraian_pekerjaan, mp.id_satuan, ms.nama_satuan
-                      FROM master_pekerjaan mp
-                      JOIN master_satuan ms ON mp.id_satuan = ms.id_satuan";
+              $sql = "SELECT 
+                          mpr.id_proyek,
+                          mpr.kavling,
+                          mpr.id_perumahan,
+                          mpr.id_mandor,
+                          mpe.nama_perumahan,
+                          mpe.lokasi,
+                          mm.nama_mandor
+                      FROM 
+                          master_proyek mpr
+                      JOIN 
+                          master_perumahan mpe ON mpr.id_perumahan = mpe.id_perumahan
+                      JOIN
+                          master_mandor mm ON mpr.id_mandor = mm.id_mandor";
 
               $result = mysqli_query($koneksi, $sql);
 
@@ -829,16 +850,19 @@ if (isset($row)) {
 
               while ($row = mysqli_fetch_assoc($result)) {
                   echo "<tr>
-                      <td>" . htmlspecialchars($row['id_pekerjaan']) . "</td>
-                      <td>" . htmlspecialchars($row['uraian_pekerjaan']) . "</td>
-                      <td>" . htmlspecialchars($row['nama_satuan']) . "</td>
+                      <td>" . htmlspecialchars($row['id_proyek']) . "</td>
+                      <td>" . htmlspecialchars($row['nama_perumahan']) . "</td>
+                      <td>" . htmlspecialchars($row['kavling']) . "</td>
+                      <td>" . htmlspecialchars($row['nama_mandor']) . "</td>
+                      <td>" . htmlspecialchars($row['lokasi']) . "</td>
                       <td>
                          <button 
                           class='btn btn-primary btn-sm btn-update' 
-                          data-id_pekerjaan='" . htmlspecialchars($row['id_pekerjaan']) . "' 
-                          data-uraian_pekerjaan='" . htmlspecialchars($row['uraian_pekerjaan']) . "' 
-                          data-id_satuan='" . htmlspecialchars($row['id_satuan']) . "'>Update</button>
-                         <button class='btn btn-danger btn-sm delete-btn' data-id_pekerjaan='" . htmlspecialchars($row['id_pekerjaan']) . "'>Delete</button>                                        
+                          data-id_proyek='" . htmlspecialchars($row['id_proyek']) . "' 
+                          data-id_perumahan='" . htmlspecialchars($row['id_perumahan']) . "' 
+                          data-kavling='" . htmlspecialchars($row['kavling']) . "' 
+                          data-id_mandor='" . htmlspecialchars($row['id_mandor']) . "'>Update</button>
+                         <button class='btn btn-danger btn-sm delete-btn' data-id_proyek='" . htmlspecialchars($row['id_proyek']) . "'>Delete</button>                                        
                       </td>
                     </tr>";
               }
@@ -853,34 +877,55 @@ if (isset($row)) {
 </div>
 
 <!-- Modal Tambah Data Pekerjaan -->
-<div class="modal fade" id="addPekerjaanModal" tabindex="-1" aria-labelledby="addPekerjaanModalLabel" aria-hidden="true">
+<div class="modal fade" id="addProyekModal" tabindex="-1" aria-labelledby="addProyekModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
-      <form method="POST" action="add_pekerjaan.php">
+      <form method="POST" action="add_proyek.php">
         <input type="hidden" name="action" value="add" />
         <div class="modal-header">
-          <h5 class="modal-title" id="addPekerjaanModalLabel">Tambah Data Pekerjaan</h5>
+          <h5 class="modal-title" id="addProyekModalLabel">Tambah Data Proyek</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
 
           <div class="mb-3">
-            <label for="uraian_pekerjaan" class="form-label">Uraian Pekerjaan</label>
-            <input type="text" class="form-control" id="uraian_pekerjaan" name="uraian_pekerjaan" placeholder="Masukkan uraian pekerjaan" required />
+            <label for="id_perumahan" class="form-label">Nama Perumahan</label>
+            <select class="form-select" id="id_perumahan" name="id_perumahan" required>
+              <option value="" disabled selected>Pilih Nama Perumahan</option>
+              <?php while ($perumahan = mysqli_fetch_assoc($perumahanResult)): ?>
+                <option 
+                  value="<?= htmlspecialchars($perumahan['id_perumahan']) ?>" 
+                  data-lokasi="<?= htmlspecialchars($perumahan['lokasi']) ?>"
+                >
+                  <?= htmlspecialchars($perumahan['nama_perumahan']) ?>
+                </option>
+              <?php endwhile; ?>
+            </select>
           </div>
 
           <div class="mb-3">
-            <label for="id_satuan" class="form-label">Nama Satuan</label>
-            <select class="form-select" id="id_satuan" name="id_satuan" required>
-              <option value="" disabled selected>Pilih Nama Satuan</option>
+            <label for="kavling" class="form-label">Kavling</label>
+            <input type="text" class="form-control" id="kavling" name="kavling" placeholder="Masukkan kavling" required />
+          </div>
 
-              <?php while ($satuan = mysqli_fetch_assoc($satuanResult)): ?>
-                <option value="<?= htmlspecialchars($satuan['id_satuan']) ?>">
-                  <?= htmlspecialchars($satuan['nama_satuan']) ?>
+          <div class="mb-3">
+            <label for="id_mandor" class="form-label">Nama Mandor</label>
+            <select class="form-select" id="id_mandor" name="id_mandor" required>
+              <option value="" disabled selected>Pilih Nama Mandor</option>
+
+              <?php while ($mandor = mysqli_fetch_assoc($mandorResult)): ?>
+                <option value="<?= htmlspecialchars($mandor['id_mandor']) ?>">
+                  <?= htmlspecialchars($mandor['nama_mandor']) ?>
                 </option>
               <?php endwhile; ?>
 
             </select>
+          </div>
+
+          <!-- Lokasi (read-only) -->
+          <div class="mb-3">
+            <label for="lokasi" class="form-label">Lokasi</label>
+            <input type="text" class="form-control" id="lokasi" name="lokasi" readonly placeholder="Lokasi akan muncul otomatis" />
           </div>
 
         <div class="modal-footer">
@@ -893,36 +938,59 @@ if (isset($row)) {
 </div>
 </div>
 
-<!-- Modal Update Data Pekerjaan -->
-<div class="modal fade" id="updatePekerjaanModal" tabindex="-1" aria-labelledby="updatePekerjaanModalLabel" aria-hidden="true">
+<!-- Modal Update Data Proyek -->
+<div class="modal fade" id="updateProyekModal" tabindex="-1" aria-labelledby="updateProyekModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
-      <form method="POST" action="update_pekerjaan.php">
-        <input type="hidden" name="id_pekerjaan" id="update_id_pekerjaan" />
+      <form method="POST" action="update_proyek.php">
+        <input type="hidden" name="id_proyek" id="update_id_proyek" />
         <div class="modal-header">
-          <h5 class="modal-title" id="updateMandorModalLabel">Update Data Pekerjaan</h5>
+          <h5 class="modal-title" id="updateMandorModalLabel">Update Data Proyek</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
 
           <div class="mb-3">
-            <label for="update_uraian_pekerjaan" class="form-label">Uraian Pekerjaan</label>
-            <input type="text" class="form-control" id="update_uraian_pekerjaan" name="uraian_pekerjaan" placeholder="Ubah uraian pekerjaan" required />
-          </div>
-
-          <div class="mb-3">
-            <label for="update_id_satuan" class="form-label">Nama Satuan</label>
-            <select class="form-select" id="update_id_satuan" name="id_satuan" required>
-              <option value="" disabled selected>Pilih Nama Satuan</option>
+            <label for="update_id_perumahan" class="form-label">Nama Perumahan</label>
+            <select class="form-select" id="update_id_perumahan" name="id_perumahan" required>
+              <option value="" disabled>Pilih Nama Perumahan</option>
               <?php
-              $id_satuan_selected = $row['id_satuan'];
-              $satuanResult = mysqli_query($koneksi, "SELECT id_satuan, nama_satuan FROM master_satuan ORDER BY nama_satuan ASC");
-              while ($satuan = mysqli_fetch_assoc($satuanResult)) {
-                $selected = ($satuan['id_satuan'] == $id_satuan_selected) ? 'selected' : '';
-                echo '<option value="' . htmlspecialchars($satuan['id_satuan']) . '">' . htmlspecialchars($satuan['nama_satuan']) . '</option>';
+              $id_perumahan_selected = $row['id_perumahan'];
+              $perumahanResult = mysqli_query($koneksi, "SELECT id_perumahan, nama_perumahan, lokasi FROM master_perumahan ORDER BY nama_perumahan ASC");
+              while ($perumahan = mysqli_fetch_assoc($perumahanResult)) {
+                $selected = ($perumahan['id_perumahan'] == $id_perumahan_selected) ? 'selected' : '';
+                echo "<option 
+                  value='" . htmlspecialchars($perumahan['id_perumahan']) . "' 
+                  data-lokasi='" . htmlspecialchars($perumahan['lokasi']) . "' 
+                $selected>" . htmlspecialchars($perumahan['nama_perumahan']) . "</option>";
               }
               ?>
             </select>
+          </div>
+
+          <div class="mb-3">
+            <label for="update_kavling" class="form-label">Kavling</label>
+            <input type="text" class="form-control" id="update_kavling" name="kavling" value="<?= htmlspecialchars($row['kavling']) ?>" placeholder="Ubah kavling" required />
+          </div>
+
+          <div class="mb-3">
+            <label for="update_id_mandor" class="form-label">Nama Mandor</label>
+            <select class="form-select" id="update_id_mandor" name="id_mandor" required>
+              <option value="" disabled>Pilih Nama Mandor</option>
+              <?php
+              $id_mandor_selected = $row['id_mandor'];
+              $mandorResult = mysqli_query($koneksi, "SELECT id_mandor, nama_mandor FROM master_mandor ORDER BY nama_mandor ASC");
+              while ($mandor = mysqli_fetch_assoc($mandorResult)) {
+                      $selected = ($mandor['id_mandor'] == $id_mandor_selected) ? 'selected' : '';
+                echo '<option value="' . htmlspecialchars($mandor['id_mandor']) . '">' . htmlspecialchars($mandor['nama_mandor']) . '</option>';
+              }
+              ?>
+            </select>
+          </div>
+
+          <div class="mb-3">
+            <label for="update_lokasi" class="form-label">Lokasi</label>
+            <input type="text" class="form-control" id="update_lokasi" name="lokasi" readonly value="<?= htmlspecialchars($row['lokasi'] ?? '') ?>" />
           </div>
 
         </div>
@@ -961,43 +1029,69 @@ if (isset($row)) {
 
 <script>
   $(document).ready(function() {
+    // Ketika dropdown nama perumahan berubah
+    $('#id_perumahan').on('change', function() {
+      // Ambil data-lokasi dari option yang dipilih
+      const lokasi = $(this).find(':selected').data('lokasi') || '';
+      // Set lokasi ke input lokasi
+      $('#lokasi').val(lokasi);
+    });
+  });
+</script>
+
+<script>
+  $(document).ready(function() {
     $('#basic-datatables').DataTable();
   });
 </script>
 
   <script>
-    // Konfirmasi penghapusan data pekerjaan
+    // Konfirmasi penghapusan data proyek
     document.querySelectorAll('.delete-btn').forEach(button => {
       button.addEventListener('click', function() {
-        const pekerjaanId = this.dataset.id_pekerjaan;
+        const proyekId = this.dataset.id_proyek;
         const deleteLink = document.getElementById('confirmDeleteLink');
-        deleteLink.href = 'delete_pekerjaan.php?pekerjaan=' + pekerjaanId;
+        deleteLink.href = 'delete_proyek.php?proyek=' + proyekId;
         const deleteModal = new bootstrap.Modal(document.getElementById('confirmDeleteModal'));
         deleteModal.show();
       });
     });
   </script>
 <script>
-  // Menangani klik tombol update pada Master Pekerjaan
-document.querySelectorAll('.btn-update').forEach(button => {
-  button.addEventListener('click', function() {
-    // Ambil data dari atribut tombol
-    const idPekerjaan = this.dataset.id_pekerjaan;
-    const uraianPekerjaan = this.dataset.uraian_pekerjaan;
-    const idSatuan = this.dataset.id_satuan;  // ini id satuan yang benar
+  document.addEventListener('DOMContentLoaded', function() {
+    const perumahanSelect = document.getElementById('update_id_perumahan');
+    const lokasiInput = document.getElementById('update_lokasi');
 
-    // Set nilai input modal
-    document.getElementById('update_id_pekerjaan').value = idPekerjaan;
-    document.getElementById('update_uraian_pekerjaan').value = uraianPekerjaan;
-    document.getElementById('update_id_satuan').value = idSatuan;  // ini akan otomatis pilih dropdown sesuai id_satuan
+    // Fungsi update lokasi berdasarkan opsi yang dipilih
+    function updateLokasi() {
+      const selectedOption = perumahanSelect.options[perumahanSelect.selectedIndex];
+      const lokasi = selectedOption.getAttribute('data-lokasi') || '';
+      lokasiInput.value = lokasi;
+    }
 
-    // Tampilkan modal update
-    const updateModal = new bootstrap.Modal(document.getElementById('updatePekerjaanModal'));
-    updateModal.show();
+    // Saat dropdown perumahan berubah
+    perumahanSelect.addEventListener('change', updateLokasi);
+
+    // Saat modal update dibuka lewat tombol update
+    document.querySelectorAll('.btn-update').forEach(button => {
+      button.addEventListener('click', function() {
+        // Isi field lain
+        document.getElementById('update_id_proyek').value = this.dataset.id_proyek;
+        document.getElementById('update_id_perumahan').value = this.dataset.id_perumahan;
+        document.getElementById('update_kavling').value = this.dataset.kavling;
+        document.getElementById('update_id_mandor').value = this.dataset.id_mandor;
+
+        // Update lokasi berdasarkan data dropdown perumahan terpilih
+        updateLokasi();
+
+        // Tampilkan modal update
+        const updateModal = new bootstrap.Modal(document.getElementById('updateProyekModal'));
+        updateModal.show();
+      });
+    });
   });
-});
-
 </script>
+
 
 </body>
 </html>
