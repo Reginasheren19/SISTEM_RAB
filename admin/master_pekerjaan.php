@@ -970,9 +970,9 @@ if (isset($row)) {
     // Konfirmasi penghapusan data pekerjaan
     document.querySelectorAll('.delete-btn').forEach(button => {
       button.addEventListener('click', function() {
-        const mandorId = this.dataset.id_mandor;
+        const pekerjaanId = this.dataset.id_pekerjaan;
         const deleteLink = document.getElementById('confirmDeleteLink');
-        deleteLink.href = 'delete_mandor.php?mandor=' + mandorId;
+        deleteLink.href = 'delete_pekerjaan.php?pekerjaan=' + pekerjaanId;
         const deleteModal = new bootstrap.Modal(document.getElementById('confirmDeleteModal'));
         deleteModal.show();
       });
