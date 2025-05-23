@@ -820,9 +820,10 @@ $detail_result = mysqli_query($koneksi, $sql_detail);
             <tr>
                 <th>No</th>
                 <th>Uraian Pekerjaan</th>
+                <th>Satuan</th>
                 <th>Volume</th>
                 <th>Harga Satuan</th>
-                <th>Total</th>
+                <th>Jumlah</th>
             </tr>
         </thead>
         <tbody>
@@ -830,14 +831,20 @@ $detail_result = mysqli_query($koneksi, $sql_detail);
             if ($detail_result && mysqli_num_rows($detail_result) > 0) {
                 $no = 1;
                 while ($row = mysqli_fetch_assoc($detail_result)) {
+                $grand_total += $row['total_rab_upah'];
                     echo "<tr>
                             <td>" . $no++ . "</td>
                             <td>" . htmlspecialchars($row['uraian_pekerjaan']) . "</td>
+                            <td>" . htmlspecialchars($row['satuan']) . "</td>
                             <td>" . htmlspecialchars($row['volume']) . "</td>
                             <td>" . number_format($row['harga_satuan'], 0, ',', '.') . "</td>
-                            <td>" . number_format($row['total_rab_upah'], 0, ',', '.') . "</td>
+                            <td>" . number_format($row['jumlah'], 0, ',', '.') . "</td>
                           </tr>";
                 }
+                          echo "<tr>
+                            <td colspan='5' class='text-end fw-bold'>Total</td>
+                            <td class='fw-bold'>" . number_format($grand_total, 0, ',', '.') . "</td>
+                          </tr>";
             } else {
                 echo "<tr><td colspan='5' class='text-center'>Tidak ada detail pekerjaan</td></tr>";
             }
