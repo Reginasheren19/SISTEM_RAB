@@ -856,11 +856,7 @@ if (isset($row)) {
                           data-id_rab_upah='" . htmlspecialchars($row['id_rab_upah']) . "'>
                           Detail
                         </button>
-                        <button 
-                          class='btn btn-danger btn-sm delete-btn' 
-                          data-id_rab_upah='" . htmlspecialchars($row['id_rab_upah']) . "'>
-                          Delete
-                        </button>                                      
+                        <button class='btn btn-danger btn-sm delete-btn' data-id_rab_upah='" . htmlspecialchars($row['id_rab_upah']) . "'>Delete</button>
                       </td>
                     </tr>";
               }
@@ -1014,12 +1010,12 @@ if (isset($row)) {
 </script>
 
   <script>
-    // Konfirmasi penghapusan data pekerjaan
+    // Konfirmasi penghapusan data upah 
     document.querySelectorAll('.delete-btn').forEach(button => {
       button.addEventListener('click', function() {
-        const pekerjaanId = this.dataset.id_pekerjaan;
+        const idRabUpah = this.dataset.id_rab_upah;  // ambil data-id_rab_upah
         const deleteLink = document.getElementById('confirmDeleteLink');
-        deleteLink.href = 'delete_pekerjaan.php?pekerjaan=' + pekerjaanId;
+        deleteLink.href = 'delete_rab_upah.php?id_rab_upah=' + idRabUpah;
         const deleteModal = new bootstrap.Modal(document.getElementById('confirmDeleteModal'));
         deleteModal.show();
       });
