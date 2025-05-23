@@ -851,11 +851,10 @@ if (isset($row)) {
                       <td>" . htmlspecialchars($row['tanggal_mulai']) . "</td>
                       <td>" . (isset($row['total']) ? number_format($row['total'], 0, ',', '.') : '0') . "</td>
                       <td>
-                        <button 
-                          class='btn btn-info btn-sm btn-detail' 
-                          data-id_rab_upah='" . htmlspecialchars($row['id_rab_upah']) . "'>
-                          Detail
-                        </button>
+                      <a href='detail_rab_upah.php?id_rab_upah=" . urlencode($row['id_rab_upah']) . "' 
+                        class='btn btn-info btn-sm'>
+                        Detail
+                      </a>
                         <button class='btn btn-danger btn-sm delete-btn' data-id_rab_upah='" . htmlspecialchars($row['id_rab_upah']) . "'>Delete</button>
                       </td>
                     </tr>";
@@ -937,49 +936,6 @@ if (isset($row)) {
 </div>
 </div>
 
-<!-- Modal Update Data Pekerjaan -->
-<div class="modal fade" id="updatePekerjaanModal" tabindex="-1" aria-labelledby="updatePekerjaanModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <form method="POST" action="update_pekerjaan.php">
-        <input type="hidden" name="id_pekerjaan" id="update_id_pekerjaan" />
-        <div class="modal-header">
-          <h5 class="modal-title" id="updateMandorModalLabel">Update Data Pekerjaan</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-
-          <div class="mb-3">
-            <label for="update_uraian_pekerjaan" class="form-label">Uraian Pekerjaan</label>
-            <input type="text" class="form-control" id="update_uraian_pekerjaan" name="uraian_pekerjaan" placeholder="Ubah uraian pekerjaan" required />
-          </div>
-
-          <div class="mb-3">
-            <label for="update_id_satuan" class="form-label">Nama Satuan</label>
-            <select class="form-select" id="update_id_satuan" name="id_satuan" required>
-              <option value="" disabled selected>Pilih Nama Satuan</option>
-              <?php
-              $id_satuan_selected = $row['id_satuan'];
-              $satuanResult = mysqli_query($koneksi, "SELECT id_satuan, nama_satuan FROM master_satuan ORDER BY nama_satuan ASC");
-              while ($satuan = mysqli_fetch_assoc($satuanResult)) {
-                $selected = ($satuan['id_satuan'] == $id_satuan_selected) ? 'selected' : '';
-                echo '<option value="' . htmlspecialchars($satuan['id_satuan']) . '">' . htmlspecialchars($satuan['nama_satuan']) . '</option>';
-              }
-              ?>
-            </select>
-          </div>
-
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-          <button type="submit" class="btn btn-primary">Update</button>
-        </div>
-      </form>
-    </div>
-  </div>
-</div>
-
-
   <!-- Modal Delete Confirmation -->
   <div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteModalLabel" aria-hidden="true">
     <div class="modal-dialog">
@@ -1021,27 +977,6 @@ if (isset($row)) {
       });
     });
   </script>
-<script>
-  // Menangani klik tombol update pada Master Pekerjaan
-document.querySelectorAll('.btn-update').forEach(button => {
-  button.addEventListener('click', function() {
-    // Ambil data dari atribut tombol
-    const idPekerjaan = this.dataset.id_pekerjaan;
-    const uraianPekerjaan = this.dataset.uraian_pekerjaan;
-    const idSatuan = this.dataset.id_satuan;  // ini id satuan yang benar
-
-    // Set nilai input modal
-    document.getElementById('update_id_pekerjaan').value = idPekerjaan;
-    document.getElementById('update_uraian_pekerjaan').value = uraianPekerjaan;
-    document.getElementById('update_id_satuan').value = idSatuan;  // ini akan otomatis pilih dropdown sesuai id_satuan
-
-    // Tampilkan modal update
-    const updateModal = new bootstrap.Modal(document.getElementById('updatePekerjaanModal'));
-    updateModal.show();
-  });
-});
-
-</script>
 
 <script>
   $(document).ready(function() {
@@ -1074,6 +1009,17 @@ document.querySelectorAll('.btn-update').forEach(button => {
           alert('Gagal mengambil data kavling.');
         }
       });
+    });
+  });
+</script>
+
+<script>
+  document.querySelectorAll('.btn-detail').forEach(button => {
+    button.addEventListener('click', function() {
+      const idRabUpah = this.dataset.id_rab_upah;
+      if(idRabUpah) {
+        window.location.href = 'detail_rab_upah.php?id_rab_upah=' + encodeURIComponent(idRabUpah);
+      }
     });
   });
 </script>
