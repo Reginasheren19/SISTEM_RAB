@@ -779,39 +779,39 @@ $detail_result = mysqli_query($koneksi, $sql_detail);
               </ul>
             </div>
 
-<div class="container mt-4">
+          <div class="container mt-4">
 
-<h3>Detail RAB Upah</h3>
+          <h3>Detail RAB Upah</h3>
 
-<div class="mb-3 d-flex align-items-center">
-  <label class="form-label me-3" style="width: 150px;">ID RAB</label>
-  <div><?= htmlspecialchars($data['id_rab_upah']) ?></div>
-</div>
+          <div class="mb-3 d-flex align-items-center">
+            <label class="form-label me-3" style="width: 150px;">ID RAB</label>
+            <div><?= htmlspecialchars($data['id_rab_upah']) ?></div>
+          </div>
 
-<div class="mb-3 d-flex align-items-center">
-  <label class="form-label me-3" style="width: 150px;">Pekerjaan</label>
-  <div><?= htmlspecialchars($data['pekerjaan']) ?></div>
-</div>
+          <div class="mb-3 d-flex align-items-center">
+            <label class="form-label me-3" style="width: 150px;">Pekerjaan</label>
+            <div><?= htmlspecialchars($data['pekerjaan']) ?></div>
+          </div>
 
-<div class="mb-3 d-flex align-items-center">
-  <label class="form-label me-3" style="width: 150px;">Type Proyek</label>
-  <div><?= htmlspecialchars($data['type_proyek']) ?></div>
-</div>
+          <div class="mb-3 d-flex align-items-center">
+            <label class="form-label me-3" style="width: 150px;">Type Proyek</label>
+            <div><?= htmlspecialchars($data['type_proyek']) ?></div>
+          </div>
 
-<div class="mb-3 d-flex align-items-center">
-  <label class="form-label me-3" style="width: 150px;">Lokasi</label>
-  <div><?= htmlspecialchars($data['lokasi']) ?></div>
-</div>
+          <div class="mb-3 d-flex align-items-center">
+            <label class="form-label me-3" style="width: 150px;">Lokasi</label>
+            <div><?= htmlspecialchars($data['lokasi']) ?></div>
+          </div>
 
-<div class="mb-3 d-flex align-items-center">
-  <label class="form-label me-3" style="width: 150px;">Tahun</label>
-  <div><?= htmlspecialchars($data['tahun']) ?></div>
-</div>
+          <div class="mb-3 d-flex align-items-center">
+            <label class="form-label me-3" style="width: 150px;">Tahun</label>
+            <div><?= htmlspecialchars($data['tahun']) ?></div>
+          </div>
 
-<div class="mb-3 d-flex align-items-center">
-  <label class="form-label me-3" style="width: 150px;">Mandor</label>
-  <div><?= htmlspecialchars($data['nama_mandor']) ?></div>
-</div>
+          <div class="mb-3 d-flex align-items-center">
+            <label class="form-label me-3" style="width: 150px;">Mandor</label>
+            <div><?= htmlspecialchars($data['nama_mandor']) ?></div>
+          </div>
 
 
     <h4>Detail Pekerjaan</h4>
@@ -827,28 +827,30 @@ $detail_result = mysqli_query($koneksi, $sql_detail);
             </tr>
         </thead>
         <tbody>
-            <?php
-            if ($detail_result && mysqli_num_rows($detail_result) > 0) {
-                $no = 1;
-                while ($row = mysqli_fetch_assoc($detail_result)) {
-                $grand_total += $row['total_rab_upah'];
-                    echo "<tr>
-                            <td>" . $no++ . "</td>
-                            <td>" . htmlspecialchars($row['uraian_pekerjaan']) . "</td>
-                            <td>" . htmlspecialchars($row['satuan']) . "</td>
-                            <td>" . htmlspecialchars($row['volume']) . "</td>
-                            <td>" . number_format($row['harga_satuan'], 0, ',', '.') . "</td>
-                            <td>" . number_format($row['jumlah'], 0, ',', '.') . "</td>
-                          </tr>";
-                }
-                          echo "<tr>
-                            <td colspan='5' class='text-end fw-bold'>Total</td>
-                            <td class='fw-bold'>" . number_format($grand_total, 0, ',', '.') . "</td>
-                          </tr>";
-            } else {
-                echo "<tr><td colspan='5' class='text-center'>Tidak ada detail pekerjaan</td></tr>";
-            }
-            ?>
+          <?php
+          if ($detail_result && mysqli_num_rows($detail_result) > 0) {
+              $no = 1;
+              $grand_total = 0;  // pastikan inisialisasi sebelum loop
+              while ($row = mysqli_fetch_assoc($detail_result)) {
+                  $grand_total += $row['total_rab_upah'];
+                  echo "<tr>
+                          <td>" . $no++ . "</td>
+                          <td>" . htmlspecialchars($row['uraian_pekerjaan']) . "</td>
+                          <td>" . htmlspecialchars($row['satuan']) . "</td>
+                          <td>" . htmlspecialchars($row['volume']) . "</td>
+                          <td>" . number_format($row['harga_satuan'], 0, ',', '.') . "</td>
+                          <td>" . number_format($row['jumlah'], 0, ',', '.') . "</td>
+                        </tr>";
+              }
+              // Baris total di luar loop
+              echo "<tr>
+                      <td colspan='5' class='text-end fw-bold'>Total</td>
+                      <td class='fw-bold'>" . number_format($grand_total, 0, ',', '.') . "</td>
+                    </tr>";
+          } else {
+              echo "<tr><td colspan='6' class='text-center'>Tidak ada detail pekerjaan</td></tr>";
+          }
+          ?>
         </tbody>
     </table>
 
