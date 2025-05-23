@@ -31,14 +31,14 @@ if ($row) {
 <html lang="en">
   <head>
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <title>Kaiadmin - Bootstrap 5 Admin Dashboard</title>
+    <title>Admin Dashboard</title>
     <meta
       content="width=device-width, initial-scale=1.0, shrink-to-fit=no"
       name="viewport"
     />
     <link
       rel="icon"
-      href="assets/img/kaiadmin/favicon.ico"
+      href="assets/img/logo/LOGO PT.jpg"
       type="image/x-icon"
     />
     <link href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css" rel="stylesheet" />
@@ -78,10 +78,9 @@ if ($row) {
         <div class="sidebar-logo">
           <!-- Logo Header -->
           <div class="logo-header" data-background-color="dark">
-            <a href="index.html" class="logo">
               <img
-                src="assets/img/kaiadmin/logo_light.svg"
-                alt="navbar brand"
+                src="assets/img/logo/LOGO PT.jpg"
+                alt="Logo PT"
                 class="navbar-brand"
                 height="20"
               />
@@ -117,8 +116,8 @@ if ($row) {
                 <div class="collapse" id="dashboard">
                   <ul class="nav nav-collapse">
                     <li>
-                      <a href="../demo1/index.html">
-                        <span class="sub-item">Dashboard 1</span>
+                      <a href="../admin/dashboard.php">
+                        <span class="sub-item">Dashboard Admin</span>
                       </a>
                     </li>
                   </ul>

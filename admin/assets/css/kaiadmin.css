@@ -5799,7 +5799,10 @@ label.error {
     .sidebar:before {
       background: none; }
     .sidebar .sidebar-logo {
-      display: none; }
+       display: flex !important;
+       justify-content: center !important;
+       align-items: center !important;
+       padding: 20px 0 !important; }
     .sidebar .scrollbar-inner > .scroll-element.scroll-y {
       width: 4px; }
     .sidebar .scrollbar-inner > .scroll-element.scroll-x {
@@ -5894,6 +5897,14 @@ label.error {
     .logo-header .navbar-brand {
       position: unset !important;
       margin-right: 0px; }
+
+    .logo-header .logo img,
+    .logo-header .navbar-brand {
+      height: 60px !important;      /* Perbesar ukuran */
+      width: auto;
+      display: block;
+      margin: 0 auto;
+    } 
 
   .topbar_open .logo-header {
     border-bottom: 2px solid rgba(255, 255, 255, 0.1); }
