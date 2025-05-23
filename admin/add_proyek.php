@@ -5,17 +5,18 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     // Tangkap dan sanitize input dari form
     $id_perumahan = mysqli_real_escape_string($koneksi, $_POST['id_perumahan']);
     $kavling = mysqli_real_escape_string($koneksi, $_POST['kavling']);
+    $type_proyek = mysqli_real_escape_string($koneksi, $_POST['type_proyek']);
     $id_mandor = mysqli_real_escape_string($koneksi, $_POST['id_mandor']);
 
     // Validasi sederhana
-    if (empty($id_perumahan) || empty($kavling) || empty($id_mandor)) {
+    if (empty($id_perumahan) || empty($kavling) || empty($type_proyek) || empty($id_mandor)) {
         echo "Semua data wajib diisi!";
         exit;
     }
 
     // Query insert menggunakan ID (bukan nama)
-    $sql = "INSERT INTO master_proyek (id_perumahan, kavling, id_mandor) 
-            VALUES ('$id_perumahan', '$kavling', '$id_mandor')";
+    $sql = "INSERT INTO master_proyek (id_perumahan, kavling, type_proyek, id_mandor) 
+            VALUES ('$id_perumahan', '$kavling', '$type_proyek', '$id_mandor')";
 
     if (mysqli_query($koneksi, $sql)) {
         // Redirect dengan pesan sukses
