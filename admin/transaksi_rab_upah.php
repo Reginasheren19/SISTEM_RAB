@@ -5,17 +5,7 @@ include("../config/koneksi_mysql.php");
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 // Mengambil data user dari database
-$result = mysqli_query($koneksi, "SELECT * FROM master_pekerjaan");
-$satuanResult = mysqli_query($koneksi, "SELECT id_satuan, nama_satuan FROM master_satuan ORDER BY nama_satuan ASC");
-if (!$satuanResult) {
-    die("Query Error (satuan): " . mysqli_error($koneksi));
-}
-$row = mysqli_fetch_assoc($result);
-if (isset($row)) {
-    $id_satuan_selected = $row['id_satuan'];
-} else {
-    $id_satuan_selected = ''; // Atau nilai default jika tidak ada
-}
+$result = mysqli_query($koneksi, "SELECT * FROM rab_upah");
 ?>
 
 

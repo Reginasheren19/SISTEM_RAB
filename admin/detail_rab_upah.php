@@ -781,16 +781,38 @@ $detail_result = mysqli_query($koneksi, $sql_detail);
 
 <div class="container mt-4">
 
-    <h3>Detail RAB Upah</h3>
+<h3>Detail RAB Upah</h3>
 
-    <table class="table table-bordered">
-        <tr><th>ID RAB</th><td><?= htmlspecialchars($data['id_rab_upah']) ?></td></tr>
-        <tr><th>Pekerjaan</th><td><?= htmlspecialchars($data['pekerjaan']) ?></td></tr>
-        <tr><th>Type Proyek</th><td><?= htmlspecialchars($data['type_proyek']) ?></td></tr>
-        <tr><th>Lokasi</th><td><?= htmlspecialchars($data['lokasi']) ?></td></tr>
-        <tr><th>Tahun</th><td><?= htmlspecialchars($data['tahun']) ?></td></tr>
-        <tr><th>Mandor</th><td><?= htmlspecialchars($data['nama_mandor']) ?></td></tr>
-    </table>
+<div class="mb-3 d-flex align-items-center">
+  <label class="form-label me-3" style="width: 150px;">ID RAB</label>
+  <div><?= htmlspecialchars($data['id_rab_upah']) ?></div>
+</div>
+
+<div class="mb-3 d-flex align-items-center">
+  <label class="form-label me-3" style="width: 150px;">Pekerjaan</label>
+  <div><?= htmlspecialchars($data['pekerjaan']) ?></div>
+</div>
+
+<div class="mb-3 d-flex align-items-center">
+  <label class="form-label me-3" style="width: 150px;">Type Proyek</label>
+  <div><?= htmlspecialchars($data['type_proyek']) ?></div>
+</div>
+
+<div class="mb-3 d-flex align-items-center">
+  <label class="form-label me-3" style="width: 150px;">Lokasi</label>
+  <div><?= htmlspecialchars($data['lokasi']) ?></div>
+</div>
+
+<div class="mb-3 d-flex align-items-center">
+  <label class="form-label me-3" style="width: 150px;">Tahun</label>
+  <div><?= htmlspecialchars($data['tahun']) ?></div>
+</div>
+
+<div class="mb-3 d-flex align-items-center">
+  <label class="form-label me-3" style="width: 150px;">Mandor</label>
+  <div><?= htmlspecialchars($data['nama_mandor']) ?></div>
+</div>
+
 
     <h4>Detail Pekerjaan</h4>
     <table class="table table-striped table-bordered">
