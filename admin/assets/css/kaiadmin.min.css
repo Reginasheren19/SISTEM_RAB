@@ -9245,38 +9245,48 @@ label.error {
       background: #fff
    }
 
+   .sidebar .sidenav-toggler {
+  display: none !important;
+}
+
    .logo-header {
       display: flex;
-      width: 100% !important;
-      text-align: left;
-      position: relative;
-      padding-left: 15px;
-      padding-right: 15px
+      justify-content: space-between; /* Sebar kiri-kanan */
+      align-items: center;
+      padding: 0;
+      background-color: #1f1f2e !important; 
+      border-bottom: none !important;
+      margin: 0 !important;
    }
+
+   @media (max-width: 1024px) {
+   .sidebar .logo {
+      display: none !important;
+     }
 
    .logo-header .logo {
-      position: absolute;
-      left: 50%;
-      transform: translateX(-50%)
+      display: flex in !important;
+      justify-content: center;
+      align-items: center;
    }
+   .logo-header .logo-img {
+      width: 50px;
+      height: 50px;
+      object-fit: contain;
+      border-radius: 50%;
+}
 
    .logo-header .navbar-toggler {
-      height: 100%;
-      margin-left: 0 !important;
-      opacity: 1;
-      display: block;
-      order: 1
+      background: none;
+      border: none;
+      font-size: 20px;
+      color: #333;
+      display: none !important;
    }
 
    .logo-header .more {
-      opacity: 1;
-      color: #545454;
-      cursor: pointer;
-      display: inline-block;
-      line-height: 56px;
-      order: 3;
-      width: unset;
-      margin-left: auto
+      font-size: 20px;
+      color: #333;
    }
 
    .logo-header .navbar-brand {
@@ -10728,4 +10738,5 @@ body[data-background-color=dark] .jvm-zoom-btn {
    .wrapper.not-found .desc {
       font-size: 18px !important
    }
+}
 }
