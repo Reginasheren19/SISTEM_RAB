@@ -1,0 +1,28 @@
+<?php
+include("../config/koneksi_mysql.php");
+
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    $id_perumahan = mysqli_real_escape_string($koneksi, $_POST['id_perumahan']);
+    $id_proyek = mysqli_real_escape_string($koneksi, $_POST['id_proyek']);
+    $id_mandor = mysqli_real_escape_string($koneksi, $_POST['id_mandor']);
+    $tanggal = mysqli_real_escape_string($koneksi, $_POST['tanggal']);
+
+    // Insert the new record
+    $sql = "INSERT INTO transaksi_rab_material (id_perumahan, id_proyek, id_mandor, tanggal) 
+            VALUES ('$id_perumahan', '$id_proyek', '$id_mandor', '$tanggal')";
+
+    if (mysqli_query($koneksi, $sql)) {
+    $new_id = mysqli_insert_id($koneksi);
+    $tahun = date('Y');
+    $formatted_id = 'RABM' . $new_id . $tahun;
+
+    // Jika redirect ke detail:
+    header("Location: detail_rab_material.php?id_rab_material=" . $new_id);
+    exit();
+    } else {
+        echo "Error: " . mysqli_error($koneksi);
+    }
+} else {
+    echo "Metode request tidak valid.";
+}
+?>
