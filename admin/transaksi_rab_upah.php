@@ -841,8 +841,18 @@ if (!$perumahanResult) {
               }
 
               while ($row = mysqli_fetch_assoc($result)) {
-                  echo "<tr>
-                      <td>" . htmlspecialchars($row['id_rab_upah']) . "</td>
+                  // Ambil ID asli dari DB (angka)
+                  $id_rab = $row['id_rab_upah']; 
+                  
+                  // Buat format custom untuk tampilkan saja
+                  $tahun = date('Y');
+                  $bulan = date('m');
+                  $id_proyek_3digit = str_pad($row['id_proyek'], 3, '0', STR_PAD_LEFT); // contoh ambil id_proyek juga kalau perlu
+
+                  // Format tampilannya
+                  $formatted_id = 'RABP' . $tahun . $bulan . $id_proyek_3digit;
+                     echo "<tr>
+                      <td>" . htmlspecialchars($formatted_id) . "</td>
                       <td>" . htmlspecialchars($row['nama_perumahan']) . "</td>
                       <td>" . htmlspecialchars($row['kavling']) . "</td>
                       <td>" . htmlspecialchars($row['nama_mandor']) . "</td>

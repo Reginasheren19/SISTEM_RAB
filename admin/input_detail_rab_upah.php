@@ -781,7 +781,7 @@ $detail_result = mysqli_query($koneksi, $sql_detail);
 
           <div class="container mt-4">
 
-          <h3>Detail RAB Upah</h3>
+          <h3>RAB Upah</h3>
 
           <div class="mb-3 d-flex align-items-center">
             <label class="form-label me-3" style="width: 150px;">ID RAB</label>
@@ -816,13 +816,6 @@ $detail_result = mysqli_query($koneksi, $sql_detail);
 <div class="card">
   <div class="card-header d-flex align-items-center">
     <h4 class="card-title">Detail RAB</h4>
-    <button
-      class="btn btn-primary btn-round ms-auto"
-      data-bs-toggle="modal"
-      data-bs-target="#addRABUpahModal"
-    >
-      <i class="fa fa-plus"></i> Tambah Data
-    </button>
   </div>
 
   <!-- Tambahkan div card-body di sini -->
@@ -839,6 +832,7 @@ $detail_result = mysqli_query($koneksi, $sql_detail);
           <th scope="col" style="width:15%;">Aksi</th>
         </tr>
       </thead>
+      
       <tbody>
         <?php
         if ($detail_result && mysqli_num_rows($detail_result) > 0) {
@@ -852,14 +846,9 @@ $detail_result = mysqli_query($koneksi, $sql_detail);
                         <td>" . htmlspecialchars($row['satuan']) . "</td>
                         <td>" . htmlspecialchars($row['volume']) . "</td>
                         <td>Rp " . number_format($row['harga_satuan'], 0, ',', '.') . "</td>
-                        <td>Rp " . number_format($row['total_rab_upah'], 0, ',', '.') . "</td>                                                <td class='text-center'>
-                            <button
-                              type='button'
-                              class='btn btn-danger'
-                              data-dismiss='modal'
-                            >
-                              Close
-                            </button>
+                        <td>Rp " . number_format($row['total_rab_upah'], 0, ',', '.') . "</td>  
+                                                                      
+                        <td class='text-center'>
                         </td>
                       </tr>";
             }
