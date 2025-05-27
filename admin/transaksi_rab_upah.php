@@ -1074,6 +1074,30 @@ $('#id_proyek').on('change', function () {
       }
     });
   });
+
+  newRow.find('.kategori').autocomplete({
+  source: function(request, response) {
+    $.ajax({
+      url: 'get_kategori.php',
+      dataType: 'json',
+      data: {
+        term: request.term
+      },
+      success: function(data) {
+        response(data);
+      },
+      error: function() {
+        response([]);
+      }
+    });
+  },
+  minLength: 1,
+  select: function(event, ui) {
+    $(this).val(ui.item.value); // gunakan ui.item.value agar sesuai dengan 'value'
+    return false;
+  }
+});
+
 </script>
 
 

@@ -8,8 +8,10 @@ $sql = "SELECT nama_kategori FROM master_kategori WHERE nama_kategori LIKE '%$te
 $result = mysqli_query($koneksi, $sql);
 
 $data = [];
+
 while ($row = mysqli_fetch_assoc($result)) {
-    $data[] = $row['nama_kategori'];
+    // Format objek dengan label dan value agar lebih kompatibel
+    $data[] = ['label' => $row['nama_kategori'], 'value' => $row['nama_kategori']];
 }
 
 header('Content-Type: application/json');

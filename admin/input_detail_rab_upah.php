@@ -926,7 +926,7 @@ $(document).ready(function() {
     const newRow = $(`
       <tr class="input-kategori">
         <td>${noRomawi}</td>
-        <td colspan="6">
+        <td colspan="5">
           <input type="text" class="form-control form-control-sm kategori" placeholder="Ketik kategori" required>
         </td>
         <td class="text-center">
@@ -942,7 +942,7 @@ $(document).ready(function() {
     newRow.find('.kategori').autocomplete({
   source: function(request, response) {
     $.ajax({
-      url: 'fetch_kategori.php',
+      url: 'admin/get_kategori.php',
       dataType: 'json',
       data: {
         term: request.term
