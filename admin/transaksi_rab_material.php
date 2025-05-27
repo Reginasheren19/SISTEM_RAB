@@ -884,12 +884,14 @@ if (!$perumahanResult) {
             <label for="id_perumahan" class="form-label">Nama Perumahan</label>
             <select class="form-select" id="id_perumahan" name="id_perumahan" required>
               <option value="" disabled selected>Pilih Nama Perumahan</option>
-              <?php
-              $perumahanResult = mysqli_query($koneksi, "SELECT id_perumahan, nama_perumahan FROM master_perumahan ORDER BY nama_perumahan ASC");
-              while ($perumahan = mysqli_fetch_assoc($perumahanResult)) {
-                  echo '<option value="' . htmlspecialchars($perumahan['id_perumahan']) . '">' . htmlspecialchars($perumahan['nama_perumahan']) . '</option>';
-              }
-              ?>
+              <?php while ($perumahan = mysqli_fetch_assoc($perumahanResult)): ?>
+                <option 
+                  value="<?= htmlspecialchars($perumahan['id_perumahan']) ?>" 
+                  data-lokasi="<?= htmlspecialchars($perumahan['lokasi']) ?>"
+                >
+                  <?= htmlspecialchars($perumahan['nama_perumahan']) ?>
+                </option>
+              <?php endwhile; ?>
             </select>
           </div>
 
@@ -898,8 +900,20 @@ if (!$perumahanResult) {
             <label for="id_proyek" class="form-label">Kavling</label>
             <select class="form-select" id="id_proyek" name="id_proyek" required>
               <option value="" disabled selected>Pilih Kavling</option>
-              <!-- Opsi kavling akan diisi secara dinamis -->
+              <?php while ($proyek = mysqli_fetch_assoc($kavlingResult)): ?>
+                <option 
+                  value="<?= htmlspecialchars($proyek['id_proyek']) ?>" 
+                  data-type_proyek="<?= htmlspecialchars($proyek['type_proyek']) ?>"
+                >
+                  <?= htmlspecialchars($proyek['kavling']) ?>
+                </option>
+              <?php endwhile; ?>            
             </select>
+          </div>
+
+          <div class="mb-3">
+            <label for="type_proyek" class="form-label">Tipe Proyek</label>
+            <input type="text" class="form-control" id="type_proyek" name="type_proyek" readonly />
           </div>
 
                     <!-- Dropdown Mandor -->
@@ -920,6 +934,11 @@ if (!$perumahanResult) {
           <div class="mb-3">
             <label for="tanggal" class="form-label">Tanggal Mulai</label>
             <input type="date" class="form-control" id="tanggal" name="tanggal" required />
+          </div>
+
+          <div class="mb-3">
+            <label for="update_lokasi" class="form-label">Lokasi</label>
+            <input type="text" class="form-control" id="update_lokasi" name="lokasi" readonly value="<?= htmlspecialchars($row['lokasi'] ?? '') ?>" />
           </div>
 
           <!-- Total tidak diinput -->
@@ -963,13 +982,37 @@ if (!$perumahanResult) {
   });
 </script>
 
+<script>
+  $(document).ready(function() {
+    // Ketika dropdown nama perumahan berubah
+    $('#id_perumahan').on('change', function() {
+      // Ambil data-lokasi dari option yang dipilih
+      const lokasi = $(this).find(':selected').data('lokasi') || '';
+      // Set lokasi ke input lokasi
+      $('#update_lokasi').val(lokasi);
+    });
+  });
+</script>
+
+<script>
+  $(document).ready(function() {
+    // Ketika dropdown nama perumahan berubah
+    $('#id_proyek').on('change', function() {
+      // Ambil data-lokasi dari option yang dipilih
+      const type_proyek = $(this).find(':selected').data('type_proyek') || '';
+      // Set lokasi ke input lokasi
+      $('#update_type_proyek').val(type_proyek);
+    });
+  });
+</script>
+
   <script>
-    // Konfirmasi penghapusan data material 
+    // Konfirmasi penghapusan data upah 
     document.querySelectorAll('.delete-btn').forEach(button => {
       button.addEventListener('click', function() {
-        const idRabMaterial = this.dataset.id_rab_material;  // ambil data-id_rab_material
+        const idRabUpah = this.dataset.id_rab_upah;  // ambil data-id_rab_upah
         const deleteLink = document.getElementById('confirmDeleteLink');
-        deleteLink.href = 'delete_rab_material.php?id_rab_material=' + idRabMaterial;
+        deleteLink.href = 'delete_rab_upah.php?id_rab_upah=' + idRabUpah;
         const deleteModal = new bootstrap.Modal(document.getElementById('confirmDeleteModal'));
         deleteModal.show();
       });
@@ -977,38 +1020,42 @@ if (!$perumahanResult) {
   </script>
 
 <script>
-  $(document).ready(function() {
-    $('#id_perumahan').on('change', function() {
-      const idPerumahan = $(this).val();
+$('#id_perumahan').on('change', function() {
+  const idPerumahan = $(this).val();
 
-      if (!idPerumahan) {
-        $('#id_proyek').html('<option value="" disabled selected>Pilih Kavling</option>');
-        return;
+  if (!idPerumahan) {
+    $('#id_proyek').html('<option value="" disabled selected>Pilih Kavling</option>');
+    $('#type_proyek').val('');
+    return;
+  }
+
+  $.ajax({
+    url: 'get_kavling.php',
+    method: 'POST',
+    data: { id_perumahan: idPerumahan },
+    dataType: 'json',
+    success: function(response) {
+      let options = '<option value="" disabled selected>Pilih Kavling</option>';
+      if (response.length > 0) {
+        response.forEach(function(proyek) {
+          options += `<option value="${proyek.id_proyek}" data-type_proyek="${proyek.type_proyek}">${proyek.kavling}</option>`;
+        });
+      } else {
+        options += '<option value="" disabled>Tidak ada kavling</option>';
       }
-
-      // Panggil AJAX untuk dapatkan kavling berdasarkan id_perumahan
-      $.ajax({
-        url: 'get_kavling.php',
-        method: 'POST',
-        data: { id_perumahan: idPerumahan },
-        dataType: 'json',
-        success: function(response) {
-          let options = '<option value="" disabled selected>Pilih Kavling</option>';
-          if (response.length > 0) {
-            response.forEach(function(proyek) {
-              options += `<option value="${proyek.id_proyek}">${proyek.kavling}</option>`;
-            });
-          } else {
-            options += '<option value="" disabled>Tidak ada kavling</option>';
-          }
-          $('#id_proyek').html(options);
-        },
-        error: function() {
-          alert('Gagal mengambil data kavling.');
-        }
-      });
-    });
+      $('#id_proyek').html(options);
+      $('#type_proyek').val(''); // clear tipe proyek kalau sebelumnya terisi
+    },
+    error: function(xhr, status, error) {
+      alert('Gagal mengambil data kavling: ' + error);
+    }
   });
+});
+
+$('#id_proyek').on('change', function () {
+  const typeProyek = $(this).find(':selected').data('type_proyek') || '';
+  $('#type_proyek').val(typeProyek);
+});
 </script>
 
 <script>
