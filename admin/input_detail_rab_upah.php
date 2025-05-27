@@ -37,6 +37,7 @@ $sql_detail = "SELECT d.id_detail_rab_upah, mp.uraian_pekerjaan, d.volume, d.har
                WHERE d.id_rab_upah = '$id_rab_upah'";
 
 $detail_result = mysqli_query($koneksi, $sql_detail);
+
 ?>
 
 
@@ -51,12 +52,16 @@ $detail_result = mysqli_query($koneksi, $sql_detail);
     />
     <link
       rel="icon"
-      href="../assets/img/kaiadmin/favicon.ico"
+      href="assets/img/kaiadmin/favicon.ico"
       type="image/x-icon"
     />
+    <link
+  rel="stylesheet"
+  href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css"
+/>
 
     <!-- Fonts and icons -->
-    <script src="../assets/js/plugin/webfont/webfont.min.js"></script>
+    <script src="assets/js/plugin/webfont/webfont.min.js"></script>
     <script>
       WebFont.load({
         google: { families: ["Public Sans:300,400,500,600,700"] },
@@ -779,14 +784,15 @@ $detail_result = mysqli_query($koneksi, $sql_detail);
               </ul>
             </div>
 
-          <div class="container mt-4">
 
-          <h3>RAB Upah</h3>
+      <div class="container mt-4">
+        <h3>RAB Upah</h3>
 
-          <div class="mb-3 d-flex align-items-center">
-            <label class="form-label me-3" style="width: 150px;">ID RAB</label>
-            <div><?= htmlspecialchars($data['id_rab_upah']) ?></div>
-          </div>
+        <!-- Info RAB -->
+        <div class="mb-3 d-flex align-items-center">
+          <label class="form-label me-3" style="width: 150px;">ID RAB</label>
+          <div><?= htmlspecialchars($data['id_rab_upah']) ?></div>
+        </div>
 
           <div class="mb-3 d-flex align-items-center">
             <label class="form-label me-3" style="width: 150px;">Pekerjaan</label>
@@ -813,14 +819,20 @@ $detail_result = mysqli_query($koneksi, $sql_detail);
             <div><?= htmlspecialchars($data['nama_mandor']) ?></div>
           </div>
 
-<div class="card">
-  <div class="card-header d-flex align-items-center">
-    <h4 class="card-title">Detail RAB</h4>
-  </div>
+    <div class="card">
+      <div class="card-header d-flex align-items-center">
+        <h4 class="card-title">Detail RAB</h4>
+      </div>
 
-  <!-- Tambahkan div card-body di sini -->
-  <div class="card-body p-3"> 
-    <table class="table table-striped table-bordered mt-3">
+      <!-- Tambahkan div card-body di sini -->
+      <div class="card-body p-3"> 
+        <button
+          id="btnTambahKategori"
+          class="btn btn-primary btn-round ms-auto">
+          <i class="fa fa-plus"></i> Tambah Kategori
+        </button>
+
+    <table class="table table-striped table-bordered mt-3" id="tblKategori">
       <thead>
         <tr>
           <th scope="col" style="width:5%;">No</th>
@@ -869,6 +881,127 @@ $detail_result = mysqli_query($koneksi, $sql_detail);
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+<script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
+
+    <script>
+$(document).ready(function() {
+  const tbodyKategori = $('#tblKategori tbody');
+  let isAddingKategori = false;
+
+  function toRoman(num) {
+    const lookup = {M:1000,CM:900,D:500,CD:400,C:100,XC:90,L:50,XL:40,X:10,IX:9,V:5,IV:4,I:1};
+    let roman = '';
+    for (let i in lookup ) {
+      while ( num >= lookup[i] ) {
+        roman += i;
+        num -= lookup[i];
+      }
+    }
+    return roman;
+  }
+
+  function updateRowNumbersKategori() {
+    let no = 1;
+    tbodyKategori.find('tr:not(.input-kategori)').each(function() {
+      const firstTd = $(this).find('td').first();
+      firstTd.text(toRoman(no++));
+    });
+  }
+
+  $('#btnTambahKategori').click(function(e) {
+    e.preventDefault();
+    if (isAddingKategori) return;
+    isAddingKategori = true;
+
+    tbodyKategori.find('tr').each(function() {
+      const td = $(this).find('td');
+      if(td.length === 1 && td.attr('colspan') == '6' && td.text().trim() === 'Tidak ada detail pekerjaan') {
+        $(this).remove();
+      }
+    });
+
+    const no = tbodyKategori.find('tr:not(.input-kategori)').length + 1;
+    const noRomawi = toRoman(no);
+
+    const newRow = $(`
+      <tr class="input-kategori">
+        <td>${noRomawi}</td>
+        <td colspan="6">
+          <input type="text" class="form-control form-control-sm kategori" placeholder="Ketik kategori" required>
+        </td>
+        <td class="text-center">
+          <button class="btn btn-sm btn-success save-kategori"><i class="fa fa-check"></i></button>
+          <button class="btn btn-sm btn-danger cancel-kategori"><i class="fa fa-times"></i></button>
+        </td>
+      </tr>
+    `);
+
+    tbodyKategori.append(newRow);
+    updateRowNumbersKategori();
+
+    newRow.find('.kategori').autocomplete({
+  source: function(request, response) {
+    $.ajax({
+      url: 'fetch_kategori.php',
+      dataType: 'json',
+      data: {
+        term: request.term
+      },
+      success: function(data) {
+        response(data);
+      },
+      error: function() {
+        response([]);
+      }
+    });
+  },
+  minLength: 1,
+  select: function(event, ui) {
+    $(this).val(ui.item.label); // isi input dengan nama kategori terpilih
+    return false; // mencegah default
+  }
+});
+
+    
+
+    newRow.find('.save-kategori').click(function() {
+      const kategori = newRow.find('.kategori').val().trim();
+      if(!kategori) {
+        alert('Kategori wajib diisi.');
+        newRow.find('.kategori').focus();
+        return;
+      }
+
+      const no = tbodyKategori.find('tr:not(.input-kategori)').length + 1;
+      const dataRow = $(`
+        <tr>
+          <td>${toRoman(no)}</td>
+          <td colspan="5">${$('<div>').text(kategori).html()}</td>
+          <td></td>
+        </tr>
+      `);
+
+      newRow.remove();
+      tbodyKategori.append(dataRow);
+      updateRowNumbersKategori();
+
+      isAddingKategori = false;
+    });
+
+    newRow.find('.cancel-kategori').click(function() {
+      newRow.remove();
+      isAddingKategori = false;
+
+      if(tbodyKategori.children().length === 0) {
+        tbodyKategori.append('<tr><td colspan="7" class="text-center">Tidak ada detail pekerjaan</td></tr>');
+      }
+      updateRowNumbersKategori();
+    });
+
+  });
+});
+    </script>
+
 
 
 </body>
