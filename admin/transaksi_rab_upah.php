@@ -841,8 +841,7 @@ if (!$perumahanResult) {
               }
 
               while ($row = mysqli_fetch_assoc($result)) {
-                  // Ambil ID asli dari DB (angka)
-                  $id_rab = $row['id_rab_upah']; 
+                  // Ambil ID asli dari DB (angka) 
                   
                   // Buat format custom untuk tampilkan saja
                   $tahun = date('Y');
