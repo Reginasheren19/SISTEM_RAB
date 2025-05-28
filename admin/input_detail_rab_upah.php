@@ -831,7 +831,7 @@ $detail_result = mysqli_query($koneksi, $sql_detail);
           class="btn btn-primary btn-round ms-auto">
           <i class="fa fa-plus"></i> Tambah Kategori
         </button>
-
+  <div class="table-responsive">
     <table class="table table-striped table-bordered mt-3" id="tblKategori">
       <thead>
         <tr>
@@ -872,8 +872,9 @@ $detail_result = mysqli_query($koneksi, $sql_detail);
             echo "<tr><td colspan='6' class='text-center'>Tidak ada detail pekerjaan</td></tr>";
         }
         ?>
-      </tbody>
-    </table>
+        </tbody>
+      </table>
+    </div>
   </div>
 </div>
 
