@@ -896,8 +896,7 @@ $(document).ready(function() {
   function updateRowNumbersKategori() {
     let no = 1;
     tbodyKategori.find('tr:not(.input-kategori)').each(function() {
-      const firstTd = $(this).find('td').first();
-      firstTd.text(toRoman(no++));
+      $(this).find('td').first().text(toRoman(no++));
     });
   }
 
@@ -907,7 +906,7 @@ $(document).ready(function() {
     if (isAddingKategori) return;
     isAddingKategori = true;
 
-    // Hapus pesan "Tidak ada detail pekerjaan"
+    // Hapus pesan placeholder
     tbodyKategori.find('tr').each(function() {
       const td = $(this).find('td');
       if(td.length === 1 && td.attr('colspan') == '7' && td.text().trim() === 'Tidak ada detail pekerjaan') {
@@ -917,12 +916,11 @@ $(document).ready(function() {
 
     const no = tbodyKategori.find('tr:not(.input-kategori)').length + 1;
 
-    // Baris input baru dengan nomor romawi
     const newRow = $(`
       <tr class="input-kategori">
-        <td class="romawi-no">${toRoman(no)}</td>
+        <td>${toRoman(no)}</td>
         <td colspan="5">
-          <input type="text" class="form-control form-control-sm kategori" placeholder="Ketik kategori" required autocomplete="off">
+          <input type="text" class="form-control form-control-sm kategori" placeholder="Ketik kategori" required autocomplete="off" />
         </td>
         <td class="text-center">
           <button class="btn btn-sm btn-success save-kategori"><i class="fa fa-check"></i></button>
@@ -934,57 +932,70 @@ $(document).ready(function() {
     tbodyKategori.append(newRow);
     updateRowNumbersKategori();
 
-    // Init autocomplete pada input kategori
+    // Init autocomplete
     newRow.find('.kategori').autocomplete({
       source: function(request, response) {
         $.ajax({
-          url: "get_kategori.php",
-          dataType: "json",
+          url: '../admin/get_kategori.php', // pastikan path benar
+          dataType: 'json',
           data: { term: request.term },
           success: function(data) {
             response(data);
+          },
+          error: function() {
+            response([]);
           }
         });
       },
-      minLength: 1
-    });
-
-    // Event delegation for save and cancel buttons
-    tbodyKategori.on('click', '.save-kategori', function() {
-      const row = $(this).closest('tr');
-      const kategori = row.find('.kategori').val().trim();
-      if(!kategori) {
-        alert('Kategori wajib diisi.');
-        row.find('.kategori').focus();
-        return;
+      minLength: 1,
+      select: function(event, ui) {
+        $(this).val(ui.item.label);
+        return false;
       }
-
-      const no = tbodyKategori.find('tr:not(.input-kategori)').length + 1;
-      const dataRow = $(`
-        <tr>
-          <td>${toRoman(no)}</td>
-          <td colspan="5">${$('<div>').text(kategori).html()}</td>
-          <td></td>
-        </tr>
-      `);
-
-      row.remove();
-      tbodyKategori.append(dataRow);
-      updateRowNumbersKategori();
-
-      isAddingKategori = false;
     });
+  });
 
-    tbodyKategori.on('click', '.cancel-kategori', function() {
-      const row = $(this).closest('tr');
-      row.remove();
-      isAddingKategori = false;
+  // Event delegation tombol simpan kategori
+  tbodyKategori.on('click', '.save-kategori', function(e) {
+    e.preventDefault();
 
-      if(tbodyKategori.children().length === 0) {
-        tbodyKategori.append('<tr><td colspan="7" class="text-center">Tidak ada detail pekerjaan</td></tr>');
-      }
-      updateRowNumbersKategori();
-    });
+    const row = $(this).closest('tr');
+    const kategori = row.find('.kategori').val().trim();
+
+    if (!kategori) {
+      alert('Kategori wajib diisi.');
+      row.find('.kategori').focus();
+      return;
+    }
+
+    const no = tbodyKategori.find('tr:not(.input-kategori)').length + 1;
+    const dataRow = $(`
+      <tr>
+        <td>${toRoman(no)}</td>
+        <td colspan="5">${$('<div>').text(kategori).html()}</td>
+        <td></td>
+      </tr>
+    `);
+
+    row.remove();
+    tbodyKategori.append(dataRow);
+    updateRowNumbersKategori();
+
+    isAddingKategori = false;
+  });
+
+  // Event delegation tombol batal kategori
+  tbodyKategori.on('click', '.cancel-kategori', function(e) {
+    e.preventDefault();
+
+    const row = $(this).closest('tr');
+    row.remove();
+    isAddingKategori = false;
+
+    if (tbodyKategori.children().length === 0) {
+      tbodyKategori.append('<tr><td colspan="7" class="text-center">Tidak ada detail pekerjaan</td></tr>');
+    }
+    updateRowNumbersKategori();
   });
 });
 
