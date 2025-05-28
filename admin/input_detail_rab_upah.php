@@ -956,8 +956,9 @@ $(document).ready(function() {
   });
 
   // Event delegation tombol simpan kategori
-  tbodyKategori.on('click', '.save-kategori', function(e) {
+   $(document).on('click', '.save-kategori', function(e) {
     e.preventDefault();
+    console.log('Tombol simpan diklik');
 
     const row = $(this).closest('tr');
     const kategori = row.find('.kategori').val().trim();
