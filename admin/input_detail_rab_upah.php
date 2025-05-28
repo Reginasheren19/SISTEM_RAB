@@ -915,7 +915,7 @@ $(document).ready(function() {
       }
     });
 
-    const no = tbodyKategori.find('tr:not(.input-kategori)').length + 1;
+    const no = 1;
 
     const newRow = $(`
       <tr class="input-kategori">
@@ -931,7 +931,6 @@ $(document).ready(function() {
     `);
 
     tbodyKategori.append(newRow);
-    updateRowNumbersKategori();
 
     // Init autocomplete
     newRow.find('.kategori').autocomplete({
