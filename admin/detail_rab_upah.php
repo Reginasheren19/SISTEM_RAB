@@ -781,36 +781,50 @@ $detail_result = mysqli_query($koneksi, $sql_detail);
 
           <div class="container mt-4">
 
-          <h3>Detail RAB Upah</h3>
-
-          <div class="mb-3 d-flex align-items-center">
-            <label class="form-label me-3" style="width: 150px;">ID RAB</label>
-            <div><?= htmlspecialchars($data['id_rab_upah']) ?></div>
-          </div>
-
-          <div class="mb-3 d-flex align-items-center">
-            <label class="form-label me-3" style="width: 150px;">Pekerjaan</label>
-            <div><?= htmlspecialchars($data['pekerjaan']) ?></div>
-          </div>
-
-          <div class="mb-3 d-flex align-items-center">
-            <label class="form-label me-3" style="width: 150px;">Type Proyek</label>
-            <div><?= htmlspecialchars($data['type_proyek']) ?></div>
-          </div>
-
-          <div class="mb-3 d-flex align-items-center">
-            <label class="form-label me-3" style="width: 150px;">Lokasi</label>
-            <div><?= htmlspecialchars($data['lokasi']) ?></div>
-          </div>
-
-          <div class="mb-3 d-flex align-items-center">
-            <label class="form-label me-3" style="width: 150px;">Tahun</label>
-            <div><?= htmlspecialchars($data['tahun']) ?></div>
-          </div>
-
-          <div class="mb-3 d-flex align-items-center">
-            <label class="form-label me-3" style="width: 150px;">Mandor</label>
-            <div><?= htmlspecialchars($data['nama_mandor']) ?></div>
+          <div class="card shadow-sm mb-4">
+            <div class="card-header fw-bold">
+              Detail RAB Upah
+            </div>
+            <div class="card-body">
+              <div class="row row-cols-1 row-cols-md-2 g-3">
+                <div class="col">
+                  <div class="d-flex">
+                    <span class="fw-semibold me-2" style="min-width: 120px;">ID RAB</span>
+                    <span>: <?= htmlspecialchars($data['id_rab_upah']) ?></span>
+                  </div>
+                </div>
+                <div class="col">
+                  <div class="d-flex">
+                    <span class="fw-semibold me-2" style="min-width: 120px;">Pekerjaan</span>
+                    <span>: <?= htmlspecialchars($data['pekerjaan']) ?></span>
+                  </div>
+                </div>
+                <div class="col">
+                  <div class="d-flex">
+                    <span class="fw-semibold me-2" style="min-width: 120px;">Type Proyek</span>
+                    <span>: <?= htmlspecialchars($data['type_proyek']) ?></span>
+                  </div>
+                </div>
+                <div class="col">
+                  <div class="d-flex">
+                    <span class="fw-semibold me-2" style="min-width: 120px;">Lokasi</span>
+                    <span>: <?= htmlspecialchars($data['lokasi']) ?></span>
+                  </div>
+                </div>
+                <div class="col">
+                  <div class="d-flex">
+                    <span class="fw-semibold me-2" style="min-width: 120px;">Tahun</span>
+                    <span>: <?= htmlspecialchars($data['tahun']) ?></span>
+                  </div>
+                </div>
+                <div class="col">
+                  <div class="d-flex">
+                    <span class="fw-semibold me-2" style="min-width: 120px;">Mandor</span>
+                    <span>: <?= htmlspecialchars($data['nama_mandor']) ?></span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
 
