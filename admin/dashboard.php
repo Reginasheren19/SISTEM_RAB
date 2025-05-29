@@ -178,6 +178,12 @@
                 </div>
               </li>
               <li class="nav-item">
+                <a href="pengajuan_upah.php">
+                  <i class="fas fa-pen-square"></i>
+                  <p>Pengajuah Upah</p>
+                </a>
+              </li>
+              <li class="nav-item">
                 <a data-bs-toggle="collapse" href="#forms">
                   <i class="fas fa-pen-square"></i>
                   <p>Forms</p>
