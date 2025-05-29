@@ -989,12 +989,11 @@ $('#tblKategori').on('click', '.btn-simpan', function() {
         alert('Kategori tidak boleh kosong!');
         return;
     }
-    // TODO: implementasi AJAX simpan kategori ke DB, dll
-    alert('Simpan kategori: ' + kategoriVal);
 
     // Setelah simpan sukses, bisa ubah baris jadi tampil teks biasa:
     row.find('td:nth-child(2)').html(kategoriVal);
-    row.find('td:last').html(''); // Hapus tombol simpan/batal
+    row.find('td:last').html(''); // Hapus tombol simpan/
+    
 });
 
 // Event Batal hapus baris input kategori
@@ -1024,6 +1023,7 @@ $('#tblKategori').on('click', '.btn-batal', function() {
         } else {
             tambahBarisKategori();
         }
+        
     });
 
     // Jika ada baris yang dihapus nanti, bisa panggil updateRowNumber() untuk refresh nomor
