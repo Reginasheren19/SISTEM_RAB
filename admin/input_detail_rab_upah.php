@@ -40,7 +40,6 @@ $detail_result = mysqli_query($koneksi, $sql_detail);
 
 ?>
 
-
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -881,7 +880,7 @@ $detail_result = mysqli_query($koneksi, $sql_detail);
                     <td class='fw-bold'>Rp " . number_format($grand_total, 0, ',', '.') . "</td>
                   </tr>";
         } else {
-            echo "<tr><td colspan='6' class='text-center'>Tidak ada detail pekerjaan</td></tr>";
+            echo "<tr><td colspan='7' class='text-center'>Tidak ada detail pekerjaan</td></tr>";
         }
         ?>
         </tbody>
@@ -896,124 +895,144 @@ $detail_result = mysqli_query($koneksi, $sql_detail);
 <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
 <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
 
-    <script>
+
+<script>
+// Fungsi konversi angka ke Romawi (1-3999)
+function toRoman(num) {
+    const romans = [
+        ["M",1000],["CM",900],["D",500],["CD",400],
+        ["C",100],["XC",90],["L",50],["XL",40],
+        ["X",10],["IX",9],["V",5],["IV",4],["I",1]
+    ];
+    let result = '';
+    for (let [letter, value] of romans) {
+        while (num >= value) {
+            result += letter;
+            num -= value;
+        }
+    }
+    return result;
+}
+
 $(document).ready(function() {
-  const tbodyKategori = $('#tblKategori tbody');
-  let isAddingKategori = false;
+    let kategoriList = [];
 
-  function toRoman(num) {
-    const romanNumerals = ['I','II','III','IV','V','VI','VII','VIII','IX','X'];
-    return romanNumerals[num-1] || num;
-  }
-
-  function updateRowNumbersKategori() {
-    let no = 1;
-    tbodyKategori.find('tr:not(.input-kategori)').each(function() {
-      $(this).find('td').first().text(toRoman(no++));
-    });
-  }
-
-  $('#btnTambahKategori').click(function(e) {
-    e.preventDefault();
-
-    if (isAddingKategori) return;
-    isAddingKategori = true;
-
-    // Hapus pesan placeholder
-    tbodyKategori.find('tr').each(function() {
-      const td = $(this).find('td');
-      if(td.length === 1 && td.attr('colspan') == '7' && td.text().trim() === 'Tidak ada detail pekerjaan') {
-        $(this).remove();
-      }
-    });
-
-    const no = 1;
-
-    const newRow = $(`
-      <tr class="input-kategori">
-        <td>${toRoman(no)}</td>
-        <td colspan="5">
-          <input type="text" class="form-control form-control-sm kategori" placeholder="Ketik kategori" required autocomplete="off" />
-        </td>
-        <td class="text-center">
-          <button class="btn btn-sm btn-success save-kategori"><i class="fa fa-check"></i></button>
-          <button class="btn btn-sm btn-danger cancel-kategori"><i class="fa fa-times"></i></button>
-        </td>
-      </tr>
-    `);
-
-    tbodyKategori.append(newRow);
-
-
-    // Init autocomplete
-    newRow.find('.kategori').autocomplete({
-      source: function(request, response) {
-        $.ajax({
-          url: '../admin/get_kategori.php', // pastikan path benar
-          dataType: 'json',
-          data: { term: request.term },
-          success: function(data) {
-            response(data);
-          },
-          error: function() {
-            response([]);
-          }
+    // Ambil data kategori dari server
+    function loadKategori() {
+        return $.ajax({
+            url: 'get_kategori.php',
+            method: 'GET',
+            dataType: 'json',
+            success: function(data) {
+                kategoriList = data;
+            },
+            error: function() {
+                kategoriList = [];
+            }
         });
-      },
-      minLength: 1,
-      select: function(event, ui) {
-        $(this).val(ui.item.label);
-        return false;
-      }
+    }
+
+    // Update nomor baris (kolom No) jadi angka Romawi berdasarkan posisi tr input-kategori dan tr data
+    function updateRowNumber() {
+        $('#tblKategori tbody tr').each(function(index) {
+            // Abaikan baris total (jika ada), hanya update nomor untuk baris yang bukan total
+            if (!$(this).hasClass('total-row')) {
+                // update kolom pertama (No)
+                $(this).find('td:first').text(toRoman(index));
+            }
+        });
+    }
+
+    // Fungsi menambah baris input kategori baru
+function tambahBarisKategori() {
+    const noDataRow = $('#tblKategori tbody tr.no-data');
+    if (noDataRow.length) {
+        noDataRow.remove();
+    }
+
+    const rowCount = $('#tblKategori tbody tr').length + 1;
+    const newRow = `
+        <tr class="input-kategori">
+            <td style="vertical-align: middle;">${toRoman(rowCount)}</td>
+            <td colspan="5">
+                <input type="text" class="form-control kategori-autocomplete" placeholder="Ketik kategori" autocomplete="off" />
+            </td>
+<td class="text-center" style="position: relative;">
+                <button type="button" class="btn btn-success btn-sm btn-simpan me-1" title="Simpan">
+                    <i class="fa fa-check"></i>
+                </button>
+                <button type="button" class="btn btn-danger btn-sm btn-batal" title="Batal">
+                    <i class="fa fa-times"></i>
+                </button>
+            </td>
+        </tr>
+    `;
+
+    $('#tblKategori tbody').append(newRow);
+
+    $('.kategori-autocomplete').last().autocomplete({
+        source: kategoriList,
+        minLength: 0,
+        delay: 100
+    }).focus(function() {
+        $(this).autocomplete("search", "");
     });
-  });
 
-  // Event delegation tombol simpan kategori
-   $(document).on('click', '.save-kategori', function(e) {
-    e.preventDefault();
-    console.log('Tombol simpan diklik');
+    updateRowNumber();
+}
 
+// Event Simpan (contoh: hanya alert, harus implementasi simpan ke server)
+$('#tblKategori').on('click', '.btn-simpan', function() {
     const row = $(this).closest('tr');
-    const kategori = row.find('.kategori').val().trim();
-
-    if (!kategori) {
-      alert('Kategori wajib diisi.');
-      row.find('.kategori').focus();
-      return;
+    const kategoriVal = row.find('input.kategori-autocomplete').val().trim();
+    if (!kategoriVal) {
+        alert('Kategori tidak boleh kosong!');
+        return;
     }
+    // TODO: implementasi AJAX simpan kategori ke DB, dll
+    alert('Simpan kategori: ' + kategoriVal);
 
-    const no = tbodyKategori.find('tr:not(.input-kategori)').length + 1;
-    const dataRow = $(`
-      <tr>
-        <td>${toRoman(no)}</td>
-        <td colspan="5">${$('<div>').text(kategori).html()}</td>
-        <td></td>
-      </tr>
-    `);
-
-    row.remove();
-    tbodyKategori.append(dataRow);
-    updateRowNumbersKategori();
-
-    isAddingKategori = false;
-  });
-
-  // Event delegation tombol batal kategori
-  tbodyKategori.on('click', '.cancel-kategori', function(e) {
-    e.preventDefault();
-
-    const row = $(this).closest('tr');
-    row.remove();
-    isAddingKategori = false;
-
-    if (tbodyKategori.children().length === 0) {
-      tbodyKategori.append('<tr><td colspan="7" class="text-center">Tidak ada detail pekerjaan</td></tr>');
-    }
-    updateRowNumbersKategori();
-  });
+    // Setelah simpan sukses, bisa ubah baris jadi tampil teks biasa:
+    row.find('td:nth-child(2)').html(kategoriVal);
+    row.find('td:last').html(''); // Hapus tombol simpan/batal
 });
 
-    </script>
+// Event Batal hapus baris input kategori
+$('#tblKategori').on('click', '.btn-batal', function() {
+    const row = $(this).closest('tr');
+    row.remove();
+
+    // Jika sudah tidak ada baris, tampilkan baris no-data
+    if ($('#tblKategori tbody tr').length === 0) {
+        $('#tblKategori tbody').append('<tr class="no-data"><td colspan="7" class="text-center">Tidak ada detail pekerjaan</td></tr>');
+    }
+
+    updateRowNumber();
+});
+
+
+    // Load kategori saat halaman siap
+    loadKategori();
+
+    // Event tombol tambah kategori
+    $('#btnTambahKategori').click(function() {
+        // Pastikan kategori sudah ter-load
+        if(kategoriList.length === 0) {
+            loadKategori().done(function() {
+                tambahBarisKategori();
+            });
+        } else {
+            tambahBarisKategori();
+        }
+    });
+
+    // Jika ada baris yang dihapus nanti, bisa panggil updateRowNumber() untuk refresh nomor
+
+    // Optional: jika ingin update nomor sekali saat load halaman
+    updateRowNumber();
+});
+</script>
+
 
 
 
