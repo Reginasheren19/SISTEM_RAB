@@ -978,35 +978,99 @@ $(function() {
       if ($(this).hasClass('kategori') || $(this).hasClass('input-kategori')) {
         kategoriCount++;
         $(this).find('td:first').text(toRoman(kategoriCount));
+
         let pekerjaanCount = 0;
+        let totalKategori = 0;
         let nextRow = $(this).next();
-        while (nextRow.length && (nextRow.hasClass('pekerjaan') || nextRow.hasClass('input-pekerjaan') || nextRow.hasClass('sub-total'))) {
-          if(nextRow.hasClass('sub-total')) {
-            // skip nomor untuk baris subtotal
-            nextRow = nextRow.next();
-            continue;
+        while(nextRow.length && (nextRow.hasClass('pekerjaan') || nextRow.hasClass('input-pekerjaan') || nextRow.hasClass('sub-total'))) {
+          if(nextRow.hasClass('pekerjaan') || nextRow.hasClass('input-pekerjaan')) {
+            pekerjaanCount++;
+            nextRow.find('td:first').text(pekerjaanCount);
+
+            let jumlahText = nextRow.find('td').eq(5).text().replace(/[^\d]/g, '');
+            let jumlahVal = parseInt(jumlahText) || 0;
+            totalKategori += jumlahVal;
           }
-          pekerjaanCount++;
-          nextRow.find('td:first').text(pekerjaanCount);
           nextRow = nextRow.next();
         }
+
+        updateSubTotalRow($(this), totalKategori);
       }
     });
-    updateSubTotals();
+
     updateTotalKeseluruhan();
+  }
+
+  function updateSubTotalRow(kategoriRow, totalKategori) {
+    let lastRow = kategoriRow.nextUntil('tr.kategori').filter('.sub-total').first();
+
+    if (lastRow.length) {
+      lastRow.find('td').eq(1).text('Sub Total');
+      lastRow.find('td').eq(5).text('Rp ' + totalKategori.toLocaleString('id-ID'));
+    } else {
+      let insertAfterRow = kategoriRow;
+      let nextRow = kategoriRow.next();
+      while(nextRow.length && (nextRow.hasClass('pekerjaan') || nextRow.hasClass('input-pekerjaan'))) {
+        insertAfterRow = nextRow;
+        nextRow = nextRow.next();
+      }
+
+      const subTotalRow = $(`
+        <tr class="table-warning sub-total">
+          <td></td>
+          <td class="fw-bold">Sub Total</td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td class="fw-bold">Rp ${totalKategori.toLocaleString('id-ID')}</td>
+          <td></td>
+        </tr>
+      `);
+
+      insertAfterRow.after(subTotalRow);
+    }
+  }
+
+  function updateTotalKeseluruhan() {
+    let totalKeseluruhan = 0;
+    $('#tblKategori tbody tr.sub-total').each(function() {
+      let subtotalText = $(this).find('td').eq(5).text().replace(/[^\d]/g, '');
+      let subtotalVal = parseInt(subtotalText) || 0;
+      totalKeseluruhan += subtotalVal;
+    });
+
+    let totalRow = $('#tblKategori tbody tr.total-keseluruhan');
+    if (totalRow.length) {
+      totalRow.find('td').eq(1).text('Total Keseluruhan');
+      totalRow.find('td').eq(5).text('Rp ' + totalKeseluruhan.toLocaleString('id-ID'));
+    } else {
+      const totalRowHtml = $(`
+        <tr class="table-danger total-keseluruhan">
+          <td></td>
+          <td class="fw-bold">Total Keseluruhan</td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td class="fw-bold">Rp ${totalKeseluruhan.toLocaleString('id-ID')}</td>
+          <td></td>
+        </tr>
+      `);
+      $('#tblKategori tbody').append(totalRowHtml);
+    }
   }
 
   function tambahBarisKategori() {
     $('#tblKategori tbody tr.no-data').remove();
-    const newRow = $(  
-      `<tr class="input-kategori" data-kategori-id="${(new Date()).getTime()}">
+    const newRow = $(`
+      <tr class="input-kategori" data-kategori-id="${(new Date()).getTime()}">
         <td></td>
         <td colspan="5"><input type="text" class="form-control kategori-autocomplete" placeholder="Ketik kategori" autocomplete="off" /></td>
         <td class="text-center">
           <button type="button" class="btn btn-success btn-sm btn-simpan"><i class="fa fa-check"></i></button>
           <button type="button" class="btn btn-danger btn-sm btn-batal"><i class="fa fa-times"></i></button>
         </td>
-      </tr>`);
+      </tr>
+    `);
     $('#tblKategori tbody').append(newRow);
     bindAutocompleteKategori(newRow.find('input.kategori-autocomplete'));
     updateRowNumber();
@@ -1045,7 +1109,8 @@ $(function() {
         <button class="btn btn-primary btn-sm btn-tambah-pekerjaan" title="Tambah Pekerjaan" style="border-radius:50%;padding:6px 9px;">
           <i class="fa fa-plus"></i>
         </button>
-      </td>`);
+      </td>
+    `);
     row.addClass('table-primary mt-4');
     updateRowNumber();
   });
@@ -1108,6 +1173,7 @@ $(function() {
     }
 
     bindAutocompletePekerjaan(pekerjaanRow.find('input.uraian-pekerjaan'));
+    // Jangan updateRowNumber di sini supaya nomor tidak kacau saat input baru
   });
 
   $('#tblKategori').on('click', '.btn-simpan-pekerjaan', function() {
@@ -1161,76 +1227,11 @@ $(function() {
     }
   });
 
-  function updateSubTotals() {
-    // Hapus baris sub-total yang lama supaya tidak duplikat
-    $('#tblKategori tbody tr.sub-total').remove();
-
-    // Loop tiap kategori dan jumlahkan pekerjaan di bawahnya
-    $('#tblKategori tbody tr.kategori').each(function() {
-      const kategoriRow = $(this);
-      const kategoriId = kategoriRow.data('kategori-id');
-
-      let subTotal = 0;
-      let nextRow = kategoriRow.next();
-      while (nextRow.length && (nextRow.hasClass('pekerjaan') || nextRow.hasClass('input-pekerjaan'))) {
-        if(nextRow.data('parent-kategori-id') === kategoriId) {
-          let jumlahText = nextRow.find('td').eq(5).text().replace(/[^\d]/g, '');
-          let jumlahVal = parseInt(jumlahText) || 0;
-          subTotal += jumlahVal;
-        }
-        nextRow = nextRow.next();
-      }
-
-      // Tambahkan baris sub-total di bawah pekerjaan terakhir kategori ini
-      const subTotalRow = $(`<tr class="table-warning sub-total" data-parent-kategori-id="${kategoriId}">
-        <td></td>
-        <td colspan="4" class="text-end fw-bold">Sub Total</td>
-        <td class="fw-bold">Rp ${subTotal.toLocaleString('id-ID')}</td>
-        <td></td>
-      </tr>`);
-
-      // Cari posisi terakhir pekerjaan kategori ini
-      let lastPekerjaanRow = kategoriRow;
-      kategoriRow.nextAll('tr.pekerjaan, tr.input-pekerjaan').each(function() {
-        if($(this).data('parent-kategori-id') === kategoriId) {
-          lastPekerjaanRow = $(this);
-        } else {
-          return false;
-        }
-      });
-
-      lastPekerjaanRow.after(subTotalRow);
-    });
-  }
-
-
-  
-function updateTotalKeseluruhan() {
-  let totalKeseluruhan = 0;
-  $('#tblKategori tbody tr.sub-total').each(function() {
-    let subtotalText = $(this).find('td').eq(5).text().trim();
-    let subtotalVal = parseRupiahToInt(subtotalText);
-    totalKeseluruhan += subtotalVal;
-  });
-
-    $('#tblKategori tbody tr.total-keseluruhan').remove();
-
-    const totalRowHtml = $(`<tr class="table-danger total-keseluruhan">
-      <td></td>
-      <td class="fw-bold">Total Keseluruhan</td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td class="fw-bold">Rp ${totalKeseluruhan.toLocaleString('id-ID')}</td>
-      <td></td>
-    </tr>`);
-
-    $('#tblKategori tbody').append(totalRowHtml);
-  }
-
+  // Load awal data dan bind autocomplete
   $.when(loadKategori(), loadPekerjaanSatuan()).done(function() {
     bindAutocompleteKategori($('input.kategori-autocomplete'));
     bindAutocompletePekerjaan($('input.uraian-pekerjaan'));
+    updateRowNumber();
   });
 });
 
