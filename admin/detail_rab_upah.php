@@ -828,47 +828,51 @@ $detail_result = mysqli_query($koneksi, $sql_detail);
           </div>
 
 
-    <h4>Detail Pekerjaan</h4>
-    <table class="table table-striped table-bordered">
-        <thead>
-            <tr>
-                <th>No</th>
-                <th>Uraian Pekerjaan</th>
-                <th>Satuan</th>
-                <th>Volume</th>
-                <th>Harga Satuan</th>
-                <th>Jumlah</th>
-            </tr>
+<div class="card shadow-sm mb-4">
+  <div class="card-header fw-bold">
+    Detail RAB
+  </div>
+  <div class="card-body">
+    <div class="table-responsive">
+      <table class="table table-bordered table-striped" id="tblDetailRAB">
+        <thead class="table-primary">
+          <tr>
+            <th style="width:5%;">No</th>
+            <th>Uraian Pekerjaan</th>
+            <th style="width:10%;">Satuan</th>
+            <th style="width:10%;">Volume</th>
+            <th style="width:15%;">Harga Satuan</th>
+            <th style="width:15%;">Jumlah</th>
+          </tr>
         </thead>
         <tbody>
           <?php
           if ($detail_result && mysqli_num_rows($detail_result) > 0) {
               $no = 1;
-              $grand_total = 0;  // pastikan inisialisasi sebelum loop
+              $grand_total = 0;
               while ($row = mysqli_fetch_assoc($detail_result)) {
-                  $grand_total += $row['total_rab_upah'];
+                  $grand_total += $row['sub_total'];
                   echo "<tr>
                           <td>" . $no++ . "</td>
                           <td>" . htmlspecialchars($row['uraian_pekerjaan']) . "</td>
                           <td>" . htmlspecialchars($row['satuan']) . "</td>
                           <td>" . htmlspecialchars($row['volume']) . "</td>
-                          <td>" . number_format($row['harga_satuan'], 0, ',', '.') . "</td>
-                          <td>" . number_format($row['jumlah'], 0, ',', '.') . "</td>
+                          <td>Rp " . number_format($row['harga_satuan'], 0, ',', '.') . "</td>
+                          <td>Rp " . number_format($row['sub_total'], 0, ',', '.') . "</td>
                         </tr>";
               }
-              // Baris total di luar loop
-              echo "<tr>
-                      <td colspan='5' class='text-end fw-bold'>Total</td>
-                      <td class='fw-bold'>" . number_format($grand_total, 0, ',', '.') . "</td>
+              echo "<tr class='table-success fw-bold'>
+                      <td colspan='5' class='text-end'>Total</td>
+                      <td>Rp " . number_format($grand_total, 0, ',', '.') . "</td>
                     </tr>";
           } else {
               echo "<tr><td colspan='6' class='text-center'>Tidak ada detail pekerjaan</td></tr>";
           }
           ?>
         </tbody>
-    </table>
-
-    <a href="transaksi_rab_upah.php" class="btn btn-secondary">Kembali</a>
+      </table>
+    </div>
+  </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
