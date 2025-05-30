@@ -276,7 +276,27 @@
                   <span class="badge badge-secondary">1</span>
                 </a>
               </li>
-
+              <li class="nav-item">
+                <a data-bs-toggle="collapse" href="#">
+                  <i class="fas fa-file"></i>
+                  <p>Laporan RAB Upah</p>
+                  <span class="caret"></span>
+                </a>
+                <div class="collapse" id="charts">
+                  <ul class="nav nav-collapse">
+                    <li>
+                      <a href="charts/charts.html">
+                        <span class="sub-item">Lap</span>
+                      </a>
+                    </li>
+                    <li>
+                      <a href="charts/sparkline.html">
+                        <span class="sub-item">Sparkline</span>
+                      </a>
+                    </li>
+                  </ul>
+                </div>
+              </li>
               <li class="nav-item">
                 <a data-bs-toggle="collapse" href="#submenu">
                   <i class="fas fa-bars"></i>

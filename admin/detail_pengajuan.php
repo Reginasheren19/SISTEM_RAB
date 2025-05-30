@@ -1,44 +1,54 @@
 <?php
 include("../config/koneksi_mysql.php");
 
-if (!isset($_GET['id_rab_upah'])) {
-    echo "ID RAB Upah tidak diberikan.";
-    exit;
-}
+// Query mengambil data pengajuan lengkap dengan mandor, proyek, kontrak (total_rab_upah)
+$sql = "
+SELECT
+  p.id_pengajuan,
+  p.id_proyek,
+  m.nama_mandor,
+  CONCAT(mp.nama_perumahan, ' - ', pr.kavling) AS proyek,
+  rab.total_kontrak,
+  COALESCE(SUM(CASE WHEN p2.status = 'paid' THEN p2.nominal_pengajuan ELSE 0 END), 0) AS pencairan,
+  rab.total_kontrak - COALESCE(SUM(CASE WHEN p2.status = 'paid' THEN p2.nominal_pengajuan ELSE 0 END), 0) AS sisa,
+  p.tanggal_pengajuan,
+  p.status
+FROM pengajuan_upah p
+JOIN master_mandor m ON p.id_mandor = m.id_mandor
+JOIN master_proyek pr ON p.id_proyek = pr.id_proyek
+JOIN master_perumahan mp ON pr.id_perumahan = mp.id_perumahan
+JOIN (
+    SELECT
+      id_rab_upah,
+      SUM(total_rab_upah) AS total_kontrak
+    FROM detail_rab_upah
+    GROUP BY id_rab_upah
+) rab ON p.id_rab_upah = rab.id_rab_upah
+LEFT JOIN pengajuan_upah p2 ON p2.id_proyek = p.id_proyek AND p2.status = 'paid'
+GROUP BY
+  p.id_pengajuan,
+  p.id_proyek,
+  m.nama_mandor,
+  proyek,
+  rab.total_kontrak,
+  p.tanggal_pengajuan,
+  p.status
+ORDER BY p.tanggal_pengajuan DESC;
 
-$id_rab_upah = mysqli_real_escape_string($koneksi, $_GET['id_rab_upah']);
-
-// Query ambil data RAB Upah beserta data terkait
-$sql = "SELECT 
-            tr.id_rab_upah,
-            CONCAT(mpe.nama_perumahan, ' - ', mpr.kavling) AS pekerjaan,
-            mpr.type_proyek,
-            mpe.lokasi,
-            YEAR(tr.tanggal_mulai) AS tahun,
-            mm.nama_mandor
-        FROM rab_upah tr
-        JOIN master_perumahan mpe ON tr.id_perumahan = mpe.id_perumahan
-        JOIN master_proyek mpr ON tr.id_proyek = mpr.id_proyek
-        JOIN master_mandor mm ON tr.id_mandor = mm.id_mandor
-        WHERE tr.id_rab_upah = '$id_rab_upah'";
+";
 
 $result = mysqli_query($koneksi, $sql);
-if (!$result || mysqli_num_rows($result) == 0) {
-    echo "Data RAB Upah tidak ditemukan.";
-    exit;
+if (!$result) {
+    die("Query Error: " . mysqli_error($koneksi));
 }
 
-$data = mysqli_fetch_assoc($result);
-
-// Query ambil detail rab upah (pekerjaan dan biaya)
-$sql_detail = "SELECT d.id_detail_rab_upah, mp.uraian_pekerjaan, d.volume, d.harga_satuan, d.total_rab_upah
-               FROM detail_rab_upah d
-               JOIN master_pekerjaan mp ON d.id_pekerjaan = mp.id_pekerjaan
-               WHERE d.id_rab_upah = '$id_rab_upah'";
-
-$detail_result = mysqli_query($koneksi, $sql_detail);
-
+// Ambil data mandor untuk dropdown
+$mandorResult = mysqli_query($koneksi, "SELECT id_mandor, nama_mandor FROM master_mandor ORDER BY nama_mandor ASC");
+if (!$mandorResult) {
+    die("Query Error (mandor): " . mysqli_error($koneksi));
+}
 ?>
+
 
 <!DOCTYPE html>
 <html lang="en">
@@ -54,10 +64,7 @@ $detail_result = mysqli_query($koneksi, $sql_detail);
       href="assets/img/kaiadmin/favicon.ico"
       type="image/x-icon"
     />
-    <link
-  rel="stylesheet"
-  href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css"
-/>
+    <link href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css" rel="stylesheet" />
 
     <!-- Fonts and icons -->
     <script src="assets/js/plugin/webfont/webfont.min.js"></script>
@@ -205,19 +212,19 @@ $detail_result = mysqli_query($koneksi, $sql_detail);
               <li class="nav-item">
                 <a data-bs-toggle="collapse" href="#sidebarLayouts">
                   <i class="fas fa-th-list"></i>
-                  <p>Rancang RAB</p>
+                  <p>Sidebar Layouts</p>
                   <span class="caret"></span>
                 </a>
                 <div class="collapse" id="sidebarLayouts">
                   <ul class="nav nav-collapse">
                     <li>
                       <a href="sidebar-style-2.html">
-                        <span class="sub-item">RAB Upah</span>
+                        <span class="sub-item">Sidebar Style 2</span>
                       </a>
                     </li>
                     <li>
                       <a href="icon-menu.html">
-                        <span class="sub-item">RAB Material</span>
+                        <span class="sub-item">Icon Menu</span>
                       </a>
                     </li>
                   </ul>
@@ -380,7 +387,7 @@ $detail_result = mysqli_query($koneksi, $sql_detail);
           <div class="main-header-logo">
             <!-- Logo Header -->
             <div class="logo-header" data-background-color="dark">
-              <a href="index.html" class="logo">
+              <a href="../index.html" class="logo">
                 <img
                   src="assets/img/kaiadmin/logo_light.svg"
                   alt="navbar brand"
@@ -761,7 +768,7 @@ $detail_result = mysqli_query($koneksi, $sql_detail);
         <div class="container">
           <div class="page-inner">
             <div class="page-header">
-              <h3 class="fw-bold mb-3">Rancang RAB</h3>
+              <h3 class="fw-bold mb-3">Mastering</h3>
               <ul class="breadcrumbs mb-3">
                 <li class="nav-home">
                   <a href="dashboard.php">
@@ -772,376 +779,272 @@ $detail_result = mysqli_query($koneksi, $sql_detail);
                   <i class="icon-arrow-right"></i>
                 </li>
                 <li class="nav-item">
-                  <a href="#">Rancang RAB</a>
+                  <a href="#">Mastering</a>
                 </li>
                 <li class="separator">
                   <i class="icon-arrow-right"></i>
                 </li>
                 <li class="nav-item">
-                  <a href="#">RAB Upah</a>
+                  <a href="#">Master Proyek</a>
                 </li>
               </ul>
             </div>
 
-
-                <div class="card shadow-sm mb-4">
-                  <div class="card-header fw-bold">
-                    Info RAB Upah
-                  </div>
-                  <div class="card-body">
-                    <div class="row row-cols-1 row-cols-md-2 g-3">
-                      <div class="col">
-                        <div class="d-flex">
-                          <span class="fw-semibold me-2" style="min-width: 120px;">ID RAB</span>
-                          <span>: <?= htmlspecialchars($data['id_rab_upah']) ?></span>
-                        </div>
-                      </div>
-                      <div class="col">
-                        <div class="d-flex">
-                          <span class="fw-semibold me-2" style="min-width: 120px;">Pekerjaan</span>
-                          <span>: <?= htmlspecialchars($data['pekerjaan']) ?></span>
-                        </div>
-                      </div>
-                      <div class="col">
-                        <div class="d-flex">
-                          <span class="fw-semibold me-2" style="min-width: 120px;">Type Proyek</span>
-                          <span>: <?= htmlspecialchars($data['type_proyek']) ?></span>
-                        </div>
-                      </div>
-                      <div class="col">
-                        <div class="d-flex">
-                          <span class="fw-semibold me-2" style="min-width: 120px;">Lokasi</span>
-                          <span>: <?= htmlspecialchars($data['lokasi']) ?></span>
-                        </div>
-                      </div>
-                      <div class="col">
-                        <div class="d-flex">
-                          <span class="fw-semibold me-2" style="min-width: 120px;">Tahun</span>
-                          <span>: <?= htmlspecialchars($data['tahun']) ?></span>
-                        </div>
-                      </div>
-                      <div class="col">
-                        <div class="d-flex">
-                          <span class="fw-semibold me-2" style="min-width: 120px;">Mandor</span>
-                          <span>: <?= htmlspecialchars($data['nama_mandor']) ?></span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
+<div class="row">
+  <div class="col-md-12">
     <div class="card">
       <div class="card-header d-flex align-items-center">
-        <h4 class="card-title">Detail RAB</h4>
+        <h4 class="card-title">Pengajuan Upah</h4>
+        <button
+          class="btn btn-primary btn-round ms-auto"
+          data-bs-toggle="modal"
+          data-bs-target="#addPengajuanModal"
+        >
+          <i class="fa fa-plus"></i> Tambah Pengajuan
+        </button>
       </div>
 
-      <!-- Tambahkan div card-body di sini -->
-      <div class="card-body p-3"> 
-        <button
-          id="btnTambahKategori"
-          class="btn btn-primary btn-round ms-auto">
-          <i class="fa fa-plus"></i> Tambah Kategori
-        </button>
-  <div class="table-responsive">
-    <table class="table table-striped table-bordered mt-3" id="tblKategori">
-      <thead>
-        <tr>
-          <th scope="col" style="width:5%;">No</th>
-          <th scope="col">Uraian Pekerjaan</th>
-          <th scope="col" style="width:10%;">Satuan</th>
-          <th scope="col" style="width:10%;">Volume</th>
-          <th scope="col" style="width:15%;">Harga Satuan</th>
-          <th scope="col" style="width:15%;">Jumlah</th>
-          <th scope="col" style="width:15%;">Aksi</th>
-        </tr>
-      </thead>
-      
-      <tbody>
-        <?php
-        if ($detail_result && mysqli_num_rows($detail_result) > 0) {
-            $no = 1;
-            $grand_total = 0;
-            while ($row = mysqli_fetch_assoc($detail_result)) {
-                $grand_total += $row['total_rab_upah'];
-                echo "<tr>
-                        <td>" . $no++ . "</td>
-                        <td>" . htmlspecialchars($row['uraian_pekerjaan']) . "</td>
-                        <td>" . htmlspecialchars($row['satuan']) . "</td>
-                        <td>" . htmlspecialchars($row['volume']) . "</td>
-                        <td>Rp " . number_format($row['harga_satuan'], 0, ',', '.') . "</td>
-                        <td>Rp " . number_format($row['total_rab_upah'], 0, ',', '.') . "</td>  
-                                                                      
-                        <td class='text-center'>
-                        </td>
-                      </tr>";
-            }
-            echo "<tr>
-                    <td colspan='5' class='text-end fw-bold'>Total</td>
-                    <td class='fw-bold'>Rp " . number_format($grand_total, 0, ',', '.') . "</td>
-                  </tr>";
-        } 
-        ?>
-        </tbody>
-      </table>
-      
-    </div>
-    <div class="mt-3 text-end">
-  <button id="btnSimpanSemua" class="btn btn-success">
-    <i class="fa fa-save"></i> Simpan RAB
-  </button>
+            <?php if (isset($_GET['msg'])): ?>
+        <div class="mb-3">
+          <div class="alert alert-success fade show" role="alert">
+            <?= htmlspecialchars($_GET['msg']) ?>
+          </div>
+        </div>
+      <?php endif; ?>
+
+      <script>
+      window.setTimeout(function() {
+        const alert = document.querySelector('.alert');
+        if (alert) {
+          alert.classList.add('fade');
+          alert.classList.remove('show');
+          setTimeout(() => alert.remove(), 350);
+        }
+      }, 3000);
+
+        // Hapus parameter 'msg' dari URL agar tidak muncul lagi saat reload
+      if (window.history.replaceState) {
+        const url = new URL(window.location);
+        if (url.searchParams.has('msg')) {
+          url.searchParams.delete('msg');
+          window.history.replaceState({}, document.title, url.pathname);
+        }
+      }
+      </script>
+
+      <div class="card-body">
+									<ul class="nav nav-pills nav-secondary mb-4" id="pills-tab" role="tablist">
+										<li class="nav-item">
+											<a class="nav-link active" id="pills-home-tab" data-bs-toggle="pill" href="#pills-home" role="tab" aria-controls="pills-home" aria-selected="true">Semua</a>
+										</li>
+										<li class="nav-item">
+											<a class="nav-link" id="pills-profile-tab" data-bs-toggle="pill" href="#pills-profile" role="tab" aria-controls="pills-profile" aria-selected="false">Perlu Dicairkan</a>
+										</li>
+										<li class="nav-item">
+											<a class="nav-link" id="pills-contact-tab" data-bs-toggle="pill" href="#pills-contact" role="tab" aria-controls="pills-contact" aria-selected="false">Sudah Dicairkan</a>
+										</li>
+									</ul>
+
+<!-- Tabel -->
+<div class="table-responsive">
+  <table id="basic-datatables" class="display table table-striped table-hover nowrap" style="width:100%">
+    <thead>
+      <tr>
+        <th>ID Pengajuan</th>
+        <th>Mandor</th>
+        <th>Proyek</th>
+        <th>Kontrak (Rp)</th>
+        <th>Pencairan (Rp)</th>
+        <th>Sisa (Rp)</th>
+        <th>Progress</th>
+        <th>Status</th>
+        <th>Aksi</th>
+      </tr>
+    </thead>
+    <tbody>
+      <?php
+      while ($row = mysqli_fetch_assoc($result)) {
+          // Progress sementara default 0 karena tidak ada kolom progress
+          $progress = 0;
+          echo "<tr>
+                  <td>" . htmlspecialchars($row['id_pengajuan']) . "</td>
+                  <td>" . htmlspecialchars($row['nama_mandor']) . "</td>
+                  <td>" . htmlspecialchars($row['proyek']) . "</td>
+                  <td>" . number_format($row['total_kontrak'], 0, ',', '.') . "</td>
+                  <td>" . number_format($row['pencairan'], 0, ',', '.') . "</td>
+                  <td>" . number_format($row['sisa'], 0, ',', '.') . "</td>
+                  <td>
+                    <div class='progress' style='height:20px;'>
+                      <div class='progress-bar' role='progressbar' style='width: {$progress}%;' aria-valuenow='{$progress}' aria-valuemin='0' aria-valuemax='100'>{$progress}%</div>
+                    </div>
+                  </td>
+                  <td>" . htmlspecialchars(ucfirst($row['status'])) . "</td>
+                </tr>";
+      }
+      ?>
+    </tbody>
+  </table>
 </div>
+
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Tambah Data Pengajuan -->
+<div class="modal fade" id="addPengajuanModal" tabindex="-1" aria-labelledby="addPengajuanModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <form method="POST" action="add_pengajuan.php" id="formTambahPengajuan">
+        <div class="modal-header">
+          <h5 class="modal-title" id="addPengajuanModalLabel">Tambah Data Pengajuan Pencairan</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+
+          <!-- Dropdown Mandor -->
+          <div class="mb-3">
+            <label for="id_mandor" class="form-label">Nama Mandor</label>
+            <select class="form-select" id="id_mandor" name="id_mandor" required>
+              <option value="" disabled selected>Pilih Nama Mandor</option>
+              <?php
+              mysqli_data_seek($mandorResult, 0); // reset pointer
+              while ($mandor = mysqli_fetch_assoc($mandorResult)) : ?>
+                <option value="<?= htmlspecialchars($mandor['id_mandor']) ?>">
+                  <?= htmlspecialchars($mandor['nama_mandor']) ?>
+                </option>
+              <?php endwhile; ?>
+            </select>
+          </div>
+
+          <!-- Dropdown Proyek (disabled awalnya, akan diisi JS berdasarkan mandor) -->
+          <div class="mb-3">
+            <label for="id_proyek" class="form-label">Proyek (Perumahan - Kavling)</label>
+            <select class="form-select" id="id_proyek" name="id_proyek" required disabled>
+              <option value="" disabled selected>Pilih Proyek</option>
+              <!-- Options akan diisi otomatis via JS -->
+            </select>
+          </div>
+
+          <!-- Lokasi (readonly, otomatis dari proyek yang dipilih) -->
+          <div class="mb-3">
+            <label for="lokasi" class="form-label">Lokasi</label>
+            <input type="text" class="form-control" id="lokasi" name="lokasi" readonly placeholder="Lokasi akan muncul otomatis" />
+          </div>
+
+          <!-- Tanggal Pengajuan -->
+          <div class="mb-3">
+            <label for="tanggal_pengajuan" class="form-label">Tanggal Pengajuan</label>
+            <input type="date" class="form-control" id="tanggal_pengajuan" name="tanggal_pengajuan" required />
+          </div>
+
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+          <button type="submit" class="btn btn-primary">Lanjut</button>
+        </div>
+      </form>
+    </div>
   </div>
 </div>
 
 
+  <!-- Modal Delete Confirmation -->
+  <div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="confirmDeleteModalLabel">Confirm Deletion</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p>Are you sure you want to delete this user?</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <a href="#" id="confirmDeleteLink" class="btn btn-danger">Delete</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
-<script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
+
+<script>
+  $(document).ready(function() {
+    // Ketika dropdown nama perumahan berubah
+    $('#id_perumahan').on('change', function() {
+      // Ambil data-lokasi dari option yang dipilih
+      const lokasi = $(this).find(':selected').data('lokasi') || '';
+      // Set lokasi ke input lokasi
+      $('#lokasi').val(lokasi);
+    });
+  });
+</script>
+
+<script>
+  $(document).ready(function() {
+    $('#basic-datatables').DataTable();
+  });
+</script>
 
 
 <script>
-$(function() {
-  function toRoman(num) {
-    const romans = [["M",1000],["CM",900],["D",500],["CD",400],["C",100],["XC",90],["L",50],["XL",40],["X",10],["IX",9],["V",5],["IV",4],["I",1]];
-    let result = '';
-    for (let [letter, value] of romans) {
-      while (num >= value) {
-        result += letter;
-        num -= value;
+  document.addEventListener('DOMContentLoaded', function () {
+    const mandorSelect = document.getElementById('id_mandor');
+    const proyekSelect = document.getElementById('id_proyek');
+    const lokasiInput = document.getElementById('lokasi');
+
+    mandorSelect.addEventListener('change', function () {
+      const mandorId = this.value;
+      if (!mandorId) {
+        proyekSelect.innerHTML = '<option value="" disabled selected>Pilih Proyek</option>';
+        proyekSelect.disabled = true;
+        lokasiInput.value = '';
+        return;
       }
-    }
-    return result;
-  }
 
-  let kategoriList = [];
-  let pekerjaanList = [];
-
-  function loadKategori() {
-    return $.ajax({
-      url: 'get_kategori.php',
-      dataType: 'json',
-      success: function(data) { kategoriList = data; },
-      error: function() { kategoriList = []; }
+      fetch('get_proyek_by_mandor.php?id_mandor=' + mandorId)
+        .then(response => response.json())
+        .then(data => {
+          proyekSelect.innerHTML = '<option value="" disabled selected>Pilih Proyek</option>';
+          data.forEach(proyek => {
+            const option = document.createElement('option');
+            option.value = proyek.id_proyek;
+            option.textContent = proyek.nama_perumahan + ' - ' + proyek.kavling;
+            option.dataset.lokasi = proyek.lokasi;
+            proyekSelect.appendChild(option);
+          });
+          proyekSelect.disabled = false;
+          lokasiInput.value = '';
+        })
+        .catch(() => {
+          proyekSelect.innerHTML = '<option value="" disabled selected>Pilih Proyek</option>';
+          proyekSelect.disabled = true;
+          lokasiInput.value = '';
+        });
     });
-  }
 
-  function loadPekerjaanSatuan() {
-    return $.ajax({
-      url: 'get_pekerjaan.php',
-      dataType: 'json',
-      success: function(data) { pekerjaanList = data; },
-      error: function() { pekerjaanList = []; }
+    proyekSelect.addEventListener('change', function () {
+      const selectedOption = this.options[this.selectedIndex];
+      lokasiInput.value = selectedOption.dataset.lokasi || '';
     });
-  }
-
-  function bindAutocompleteKategori(input) {
-    input.autocomplete({
-      source: kategoriList,
-      minLength: 0,
-      delay: 100
-    }).focus(function() {
-      $(this).autocomplete("search", "");
-    });
-  }
-
-  function bindAutocompletePekerjaan(input) {
-    input.autocomplete({
-      source: pekerjaanList.map(p => p.uraian_pekerjaan),
-      minLength: 0,
-      delay: 100,
-      select: function(event, ui) {
-        let p = pekerjaanList.find(x => x.uraian_pekerjaan === ui.item.value);
-        if (p) {
-          $(this).closest('tr').find('input.satuan').val(p.nama_satuan);
-        }
-      }
-    }).focus(function() {
-      $(this).autocomplete("search", "");
-    });
-  }
-
-  function updateRowNumber() {
-    let kategoriCount = 0;
-    $('#tblKategori tbody tr').each(function() {
-      if ($(this).hasClass('kategori') || $(this).hasClass('input-kategori')) {
-        kategoriCount++;
-        $(this).find('td:first').text(toRoman(kategoriCount));
-        let pekerjaanCount = 0;
-        let nextRow = $(this).next();
-        while (nextRow.length && (nextRow.hasClass('pekerjaan') || nextRow.hasClass('input-pekerjaan'))) {
-          pekerjaanCount++;
-          nextRow.find('td:first').text(pekerjaanCount);
-          nextRow = nextRow.next();
-        }
-      }
-    });
-  }
-
-  function tambahBarisKategori() {
-    $('#tblKategori tbody tr.no-data').remove();
-    const newRow = $(`
-      <tr class="input-kategori" data-kategori-id="${(new Date()).getTime()}">
-        <td></td>
-        <td colspan="5"><input type="text" class="form-control kategori-autocomplete" placeholder="Ketik kategori" autocomplete="off" /></td>
-        <td class="text-center">
-          <button type="button" class="btn btn-success btn-sm btn-simpan"><i class="fa fa-check"></i></button>
-          <button type="button" class="btn btn-danger btn-sm btn-batal"><i class="fa fa-times"></i></button>
-        </td>
-      </tr>
-    `);
-    $('#tblKategori tbody').append(newRow);
-    bindAutocompleteKategori(newRow.find('input.kategori-autocomplete'));
-    updateRowNumber();
-  }
-
-  $('#btnTambahKategori').on('click', function() {
-    if (kategoriList.length === 0) {
-      $.when(loadKategori()).done(function() {
-        tambahBarisKategori();
-      });
-    } else {
-      tambahBarisKategori();
-    }
   });
-
-  $('#tblKategori').on('click', '.btn-simpan', function() {
-    const row = $(this).closest('tr');
-    const val = row.find('input.kategori-autocomplete').val().trim();
-    if (!val) {
-      alert('Kategori tidak boleh kosong!');
-      return;
-    }
-    const kategoriId = row.data('kategori-id') || (new Date()).getTime();
-    row.removeClass('input-kategori').addClass('kategori');
-    row.attr('data-kategori-id', kategoriId);
-    row.html(`
-      <td></td>
-      <td>
-        ${val}
-        <button type="button" class="btn btn-outline-secondary btn-sm btn-toggle-pekerjaan ms-2" title="Tampilkan / Sembunyikan Pekerjaan" style="padding: 2px 6px; font-size: 0.75rem;">
-          <i class="fa fa-chevron-up"></i>
-        </button>
-      </td>
-      <td colspan="4"></td>
-      <td class="text-center">
-        <button class="btn btn-primary btn-sm btn-tambah-pekerjaan" title="Tambah Pekerjaan" style="border-radius:50%;padding:6px 9px;">
-          <i class="fa fa-plus"></i>
-        </button>
-      </td>
-    `);
-      row.addClass('table-primary mt-4');
-
-    updateRowNumber();
-  });
-
-  $('#tblKategori').on('click', '.btn-batal', function() {
-    const row = $(this).closest('tr');
-    row.remove();
-    if ($('#tblKategori tbody tr').length === 0) {
-      $('#tblKategori tbody').append('<tr class="no-data"><td colspan="7" class="text-center">Tidak ada detail pekerjaan</td></tr>');
-    }
-    updateRowNumber();
-  });
-
-$('#tblKategori').on('click', '.btn-tambah-pekerjaan', function() {
-  const kategoriRow = $(this).closest('tr');
-  const kategoriId = kategoriRow.data('kategori-id');
-
-  // Hitung jumlah pekerjaan yang sudah ada pada kategori ini (baik yg sudah disimpan maupun input)
-  let pekerjaanCount = 0;
-  kategoriRow.nextAll('tr.pekerjaan, tr.input-pekerjaan').each(function() {
-    if ($(this).data('parent-kategori-id') === kategoriId) {
-      pekerjaanCount++;
-    } else {
-      return false; // berhenti iterasi jika sudah keluar dari pekerjaan kategori itu
-    }
-  });
-
-  if (kategoriRow.next().hasClass('input-pekerjaan')) return;
-
-  const pekerjaanRow = $(`
-    <tr class="input-pekerjaan" data-parent-kategori-id="${kategoriId}">
-      <td>${pekerjaanCount + 1}</td> <!-- No urut pekerjaan -->
-      <td><input type="text" class="form-control uraian-pekerjaan" placeholder="Ketik uraian pekerjaan" autocomplete="off" /></td>
-      <td><input type="text" class="form-control satuan" placeholder="Satuan" readonly /></td>
-      <td><input type="number" class="form-control volume" placeholder="Volume" min="0" /></td>
-      <td><input type="number" class="form-control harga-satuan" placeholder="Harga Satuan" min="0" /></td>
-      <td><input type="text" class="form-control jumlah" placeholder="Jumlah" readonly /></td>
-      <td class="text-center">
-        <button type="button" class="btn btn-success btn-sm btn-simpan-pekerjaan"><i class="fa fa-check"></i></button>
-        <button type="button" class="btn btn-danger btn-sm btn-batal-pekerjaan"><i class="fa fa-times"></i></button>
-      </td>
-    </tr>
-  `);
-  kategoriRow.after(pekerjaanRow);
-  bindAutocompletePekerjaan(pekerjaanRow.find('input.uraian-pekerjaan'));
-  updateRowNumber();
-});
-
-$('#tblKategori').on('click', '.btn-simpan-pekerjaan', function() {
-  const row = $(this).closest('tr');
-  const uraian = row.find('input.uraian-pekerjaan').val().trim();
-  const satuan = row.find('input.satuan').val().trim();
-  const volume = parseFloat(row.find('input.volume').val());
-  const hargaSatuan = parseFloat(row.find('input.harga-satuan').val());
-
-  if (!uraian) { alert('Uraian pekerjaan tidak boleh kosong!'); return; }
-  if (!satuan) { alert('Satuan tidak boleh kosong!'); return; }
-  if (isNaN(volume) || volume <= 0) { alert('Volume harus lebih dari 0!'); return; }
-  if (isNaN(hargaSatuan) || hargaSatuan <= 0) { alert('Harga satuan harus lebih dari 0!'); return; }
-
-  const total = volume * hargaSatuan;
-
-  const nomor = row.find('td:first').text(); // ambil nomor yang sudah ada saat tambah pekerjaan
-
-  row.removeClass('input-pekerjaan').addClass('pekerjaan');
-  row.html(`
-    <td>${nomor}</td>
-    <td>${uraian}</td>
-    <td>${satuan}</td>
-    <td>${volume}</td>
-    <td>Rp ${hargaSatuan.toLocaleString('id-ID')}</td>
-    <td>Rp ${total.toLocaleString('id-ID')}</td>
-    <td></td>
-  `);
-  updateRowNumber();
-});
-
-
-  $('#tblKategori').on('click', '.btn-batal-pekerjaan', function() {
-    $(this).closest('tr').remove();
-    updateRowNumber();
-  });
-
-  // Toggle pekerjaan terkait kategori (sembunyi/tampil)
-  $('#tblKategori').on('click', '.btn-toggle-pekerjaan', function() {
-    const kategoriRow = $(this).closest('tr.kategori, tr.input-kategori');
-    if (!kategoriRow.length) return;
-
-    const kategoriId = kategoriRow.data('kategori-id');
-    if (!kategoriId) return;
-
-    // Cari semua pekerjaan dengan data-parent-kategori-id yang sama
-    const pekerjaanRows = $(`#tblKategori tbody tr.pekerjaan[data-parent-kategori-id='${kategoriId}'], #tblKategori tbody tr.input-pekerjaan[data-parent-kategori-id='${kategoriId}']`);
-
-    if (pekerjaanRows.is(':visible')) {
-      pekerjaanRows.hide();
-      $(this).find('i').removeClass('fa-chevron-up').addClass('fa-chevron-down');
-    } else {
-      pekerjaanRows.show();
-      $(this).find('i').removeClass('fa-chevron-down').addClass('fa-chevron-up');
-    }
-  });
-
-  $.when(loadKategori(), loadPekerjaanSatuan()).done(function() {
-    bindAutocompleteKategori($('input.kategori-autocomplete'));
-    bindAutocompletePekerjaan($('input.uraian-pekerjaan'));
-    updateRowNumber();
-  });
-});
-
 </script>
+
+<!-- DataTables JS dan Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+<script>
+  $(document).ready(function() {
+    $('#basic-datatables').DataTable();
+  });
+</script>
+
 
 </body>
 </html>
