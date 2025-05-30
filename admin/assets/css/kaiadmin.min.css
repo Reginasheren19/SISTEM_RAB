@@ -10739,4 +10739,18 @@ body[data-background-color=dark] .jvm-zoom-btn {
       font-size: 18px !important
    }
 }
+
+#tblKategori {
+  width: 100%;          /* supaya tabel lebar penuh container */
+  table-layout: fixed;  /* kolom punya lebar tetap, gak melar */
+}
+
+#tblKategori th,
+#tblKategori td {
+  white-space: normal;  /* ini penting, biar teks bisa turun baris kalau panjang */
+  word-wrap: break-word;/* supaya kata panjang bisa pecah dan gak bikin kolom melar */
+  vertical-align: middle;
+  padding: 8px 12px;
+}
+
 }
