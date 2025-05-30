@@ -30,12 +30,23 @@ if (!$result || mysqli_num_rows($result) == 0) {
 
 $data = mysqli_fetch_assoc($result);
 
-// Query ambil detail rab upah (pekerjaan dan biaya)
-$sql_detail = "SELECT d.id_detail_rab_upah, mp.uraian_pekerjaan, d.volume, d.harga_satuan, d.total_rab_upah
-               FROM detail_rab_upah d
-               JOIN master_pekerjaan mp ON d.id_pekerjaan = mp.id_pekerjaan
-               WHERE d.id_rab_upah = '$id_rab_upah'";
-
+// Query detail RAB harus include kategori nama
+$sql_detail = "
+    SELECT 
+        d.id_detail_rab_upah,
+        k.nama_kategori,
+        mp.uraian_pekerjaan,
+        ms.nama_satuan AS satuan,
+        d.volume,
+        d.harga_satuan,
+        d.sub_total
+    FROM detail_rab_upah d
+    JOIN master_pekerjaan mp ON d.id_pekerjaan = mp.id_pekerjaan
+    JOIN master_kategori k ON d.id_kategori = k.id_kategori
+            JOIN master_satuan ms ON mp.id_satuan = ms.id_satuan
+    WHERE d.id_rab_upah = '$id_rab_upah'
+    ORDER BY k.nama_kategori, mp.uraian_pekerjaan
+";
 $detail_result = mysqli_query($koneksi, $sql_detail);
 ?>
 
@@ -879,7 +890,26 @@ $detail_result = mysqli_query($koneksi, $sql_detail);
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
 
-
+<script>
+$(document).ready(function() {
+    $('#tblDetailRAB').DataTable({
+        paging: true,
+        searching: true,
+        ordering: true,
+        lengthChange: false,
+        language: {
+            search: "Cari:",
+            zeroRecords: "Data tidak ditemukan",
+            info: "Menampilkan _START_ sampai _END_ dari _TOTAL_ data",
+            infoEmpty: "Tidak ada data",
+            paginate: {
+                previous: "Sebelumnya",
+                next: "Berikutnya"
+            }
+        }
+    });
+});
+</script>
 
 </body>
 </html>
