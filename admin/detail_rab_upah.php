@@ -783,7 +783,7 @@ $detail_result = mysqli_query($koneksi, $sql_detail);
 
           <div class="card shadow-sm mb-4">
             <div class="card-header fw-bold">
-              Detail RAB Upah
+              Info RAB Upah
             </div>
             <div class="card-body">
               <div class="row row-cols-1 row-cols-md-2 g-3">

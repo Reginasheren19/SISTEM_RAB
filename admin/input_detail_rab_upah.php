@@ -914,170 +914,154 @@ $detail_result = mysqli_query($koneksi, $sql_detail);
 
 
 <script>
-    let kategoriList = [];
+  let kategoriList = [];
   let pekerjaanList = [];
-$(function() {
-  // Konversi angka ke angka romawi
-  function toRoman(num) {
-    const romans = [
-      ["M",1000], ["CM",900], ["D",500], ["CD",400],
-      ["C",100], ["XC",90], ["L",50], ["XL",40],
-      ["X",10], ["IX",9], ["V",5], ["IV",4], ["I",1]
-    ];
-    let result = '';
-    for (let [letter, value] of romans) {
-      while (num >= value) {
-        result += letter;
-        num -= value;
-      }
-    }
-    return result;
-  }
 
-  // Load data kategori dari server
-  function loadKategori() {
-    return $.ajax({
-      url: 'get_kategori.php',
-      dataType: 'json',
-      success: data => kategoriList = data,
-      error: () => kategoriList = []
-    });
-  }
-
-  // Load data pekerjaan dan satuannya dari server
-  function loadPekerjaanSatuan() {
-    return $.ajax({
-      url: 'get_pekerjaan.php',
-      dataType: 'json',
-      success: data => {
-        pekerjaanList = data;
-        console.log("Pekerjaan List:", pekerjaanList); // Debug log
-      },
-      error: () => {
-        pekerjaanList = [];
-        console.error('Gagal memuat data pekerjaan');
-      }
-    });
-  }
-
-  // Autocomplete untuk input kategori
-// Autocomplete untuk input kategori
-function bindAutocompleteKategori(input) {
-  input.autocomplete({
-    source: kategoriList,
-    minLength: 0,
-    delay: 100,
-    select: function(event, ui) {
-      let kategori = kategoriList.find(k => k.nama_kategori === ui.item.value);
-      if (kategori) {
-      }
-    }
-  }).focus(function() {
-    $(this).autocomplete("search", "");
-  });
-}
-
-
-  // Autocomplete untuk input pekerjaan
-  function bindAutocompletePekerjaan(input) {
-    input.autocomplete({
-      source: pekerjaanList.map(p => p.uraian_pekerjaan),
-      minLength: 0,
-      delay: 100,
-      select: function(event, ui) {
-        let pekerjaan = pekerjaanList.find(p => p.uraian_pekerjaan === ui.item.value);
-        if (pekerjaan) {
-          $(this).closest('tr').find('input.satuan').val(pekerjaan.nama_satuan);
+  $(function() {
+    // Konversi angka ke angka romawi
+    function toRoman(num) {
+      const romans = [
+        ["M",1000], ["CM",900], ["D",500], ["CD",400],
+        ["C",100], ["XC",90], ["L",50], ["XL",40],
+        ["X",10], ["IX",9], ["V",5], ["IV",4], ["I",1]
+      ];
+      let result = '';
+      for (let [letter, value] of romans) {
+        while (num >= value) {
+          result += letter;
+          num -= value;
         }
       }
-    }).focus(() => input.autocomplete("search", ""));
-  }
+      return result;
+    }
 
-  // Update nomor kategori dan pekerjaan, serta subtotal dan total keseluruhan
-  function updateRowNumber() {
-    let kategoriCount = 0;
-    $('#tblKategori tbody tr').each(function() {
-      if ($(this).hasClass('kategori') || $(this).hasClass('input-kategori')) {
-        kategoriCount++;
-        $(this).find('td:first').text(toRoman(kategoriCount));
+    // Load data kategori dari server (harus berupa objek dengan id_kategori & nama_kategori)
+    function loadKategori() {
+      return $.ajax({
+        url: 'get_kategori.php',
+        dataType: 'json',
+        success: data => kategoriList = data,
+        error: () => kategoriList = []
+      });
+    }
 
-        let pekerjaanCount = 0;
-        let totalKategori = 0;
-        let nextRow = $(this).next();
+    // Load data pekerjaan & satuan (harus berupa objek dengan id_pekerjaan, uraian_pekerjaan, nama_satuan)
+    function loadPekerjaanSatuan() {
+      return $.ajax({
+        url: 'get_pekerjaan.php',
+        dataType: 'json',
+        success: data => pekerjaanList = data,
+        error: () => pekerjaanList = []
+      });
+    }
 
-        while (nextRow.length && (nextRow.hasClass('pekerjaan') || nextRow.hasClass('input-pekerjaan') || nextRow.hasClass('sub-total'))) {
-          if (nextRow.hasClass('pekerjaan') || nextRow.hasClass('input-pekerjaan')) {
-            pekerjaanCount++;
-            nextRow.find('td:first').text(pekerjaanCount);
+    // Autocomplete input kategori
+    function bindAutocompleteKategori(input) {
+      input.autocomplete({
+        source: kategoriList.map(k => k.nama_kategori),
+        minLength: 0,
+        delay: 100,
+      }).focus(function() {
+        $(this).autocomplete("search", "");
+      });
+    }
 
-            let jumlahText = nextRow.find('td').eq(5).text().replace(/[^\d]/g, '');
-            let jumlahVal = parseInt(jumlahText) || 0;
-            totalKategori += jumlahVal;
+    // Autocomplete input pekerjaan
+    function bindAutocompletePekerjaan(input) {
+      input.autocomplete({
+        source: pekerjaanList.map(p => p.uraian_pekerjaan),
+        minLength: 0,
+        delay: 100,
+        select: function(event, ui) {
+          let pekerjaan = pekerjaanList.find(p => p.uraian_pekerjaan === ui.item.value);
+          if (pekerjaan) {
+            $(this).closest('tr').find('input.satuan').val(pekerjaan.nama_satuan);
           }
+        }
+      }).focus(function() {
+        $(this).autocomplete("search", "");
+      });
+    }
+
+    // Update nomor kategori, pekerjaan, subtotal kategori, dan total keseluruhan
+    function updateRowNumber() {
+      let kategoriCount = 0;
+      $('#tblKategori tbody tr').each(function() {
+        if ($(this).hasClass('kategori') || $(this).hasClass('input-kategori')) {
+          kategoriCount++;
+          $(this).find('td:first').text(toRoman(kategoriCount));
+
+          let pekerjaanCount = 0;
+          let totalKategori = 0;
+          let nextRow = $(this).next();
+
+          while (nextRow.length && (nextRow.hasClass('pekerjaan') || nextRow.hasClass('input-pekerjaan') || nextRow.hasClass('sub-total'))) {
+            if (nextRow.hasClass('pekerjaan') || nextRow.hasClass('input-pekerjaan')) {
+              pekerjaanCount++;
+              nextRow.find('td:first').text(pekerjaanCount);
+
+              let jumlahText = nextRow.find('td').eq(5).text().replace(/[^\d]/g, '');
+              let jumlahVal = parseInt(jumlahText) || 0;
+              totalKategori += jumlahVal;
+            }
+            nextRow = nextRow.next();
+          }
+          updateSubTotalRow($(this), totalKategori);
+        }
+      });
+      updateTotalKeseluruhan();
+    }
+
+    // Update atau buat baris subtotal kategori
+    function updateSubTotalRow(kategoriRow, totalKategori) {
+      if (totalKategori === 0) {
+        kategoriRow.nextUntil('tr.kategori').filter('.sub-total').remove();
+        return;
+      }
+
+      let subTotalRow = kategoriRow.nextUntil('tr.kategori').filter('.sub-total').first();
+
+      if (subTotalRow.length) {
+        subTotalRow.find('td').eq(1).text('Sub Total');
+        subTotalRow.find('td').eq(5).text('Rp ' + totalKategori.toLocaleString('id-ID'));
+      } else {
+        let insertAfter = kategoriRow;
+        let nextRow = kategoriRow.next();
+
+        while(nextRow.length && (nextRow.hasClass('pekerjaan') || nextRow.hasClass('input-pekerjaan'))) {
+          insertAfter = nextRow;
           nextRow = nextRow.next();
         }
-        updateSubTotalRow($(this), totalKategori);
+
+        const subTotalHtml = $(` 
+          <tr class="sub-total">
+            <td></td>
+            <td class="fw-bold">Sub Total</td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td class="fw-bold">Rp ${totalKategori.toLocaleString('id-ID')}</td>
+            <td></td>
+          </tr>
+        `);
+
+        insertAfter.after(subTotalHtml);
       }
-    });
-
-    updateTotalKeseluruhan();
-  }
-
-  // Update baris subtotal per kategori
-  function updateSubTotalRow(kategoriRow, totalKategori) {
-    if (totalKategori === 0) {
-      kategoriRow.nextUntil('tr.kategori').filter('.sub-total').remove();
-      return;
     }
 
-    let subTotalRow = kategoriRow.nextUntil('tr.kategori').filter('.sub-total').first();
+    // Update atau buat baris total keseluruhan
+    function updateTotalKeseluruhan() {
+      let totalKeseluruhan = 0;
+      $('#tblKategori tbody tr.sub-total').each(function() {
+        let subtotalText = $(this).find('td').eq(5).text().replace(/[^\d]/g, '');
+        let subtotalVal = parseInt(subtotalText) || 0;
+        totalKeseluruhan += subtotalVal;
+      });
 
-    if (subTotalRow.length) {
-      subTotalRow.find('td').eq(1).text('Sub Total');
-      subTotalRow.find('td').eq(5).text('Rp ' + totalKategori.toLocaleString('id-ID'));
-    } else {
-      let insertAfter = kategoriRow;
-      let nextRow = kategoriRow.next();
+      $('#tblKategori tbody tr.total-keseluruhan').remove();
 
-      while(nextRow.length && (nextRow.hasClass('pekerjaan') || nextRow.hasClass('input-pekerjaan'))) {
-        insertAfter = nextRow;
-        nextRow = nextRow.next();
-      }
+      if (totalKeseluruhan === 0) return;
 
-      const subTotalHtml = $(`
-        <tr class="sub-total">
-          <td></td>
-          <td class="fw-bold">Sub Total</td>
-          <td></td>
-          <td></td>
-          <td></td>
-          <td class="fw-bold">Rp ${totalKategori.toLocaleString('id-ID')}</td>
-          <td></td>
-        </tr>
-      `);
-
-      insertAfter.after(subTotalHtml);
-    }
-  }
-
-  // Update baris total keseluruhan
-  function updateTotalKeseluruhan() {
-    let totalKeseluruhan = 0;
-    $('#tblKategori tbody tr.sub-total').each(function() {
-      let subtotalText = $(this).find('td').eq(5).text().replace(/[^\d]/g, '');
-      let subtotalVal = parseInt(subtotalText) || 0;
-      totalKeseluruhan += subtotalVal;
-    });
-
-    $('#tblKategori tbody tr.total-keseluruhan').remove();
-
-    if (totalKeseluruhan === 0) return;
-
-    const existingTotalRow = $('#tblKategori tbody tr.total-keseluruhan');
-    if (existingTotalRow.length) {
-      existingTotalRow.find('td').eq(1).text('Total Keseluruhan');
-      existingTotalRow.find('td').eq(5).text('Rp ' + totalKeseluruhan.toLocaleString('id-ID'));
-    } else {
       const totalRowHtml = $(`
         <tr class="table-success total-keseluruhan">
           <td></td>
@@ -1089,284 +1073,262 @@ function bindAutocompleteKategori(input) {
           <td></td>
         </tr>
       `);
+
       $('#tblKategori tbody').append(totalRowHtml);
     }
-  }
 
-  // Tambah baris input kategori baru
-  function tambahBarisKategori() {
-    $('#tblKategori tbody tr.no-data').remove();
-    const newRow = $(`
-      <tr class="input-kategori" data-kategori-id="${Date.now()}">
+    // Tambah baris kategori baru
+    function tambahBarisKategori() {
+      $('#tblKategori tbody tr.no-data').remove();
+      const newRow = $(`
+        <tr class="input-kategori" data-kategori-id="${Date.now()}">
+          <td></td>
+          <td colspan="5"><input type="text" class="form-control kategori-autocomplete" placeholder="Ketik kategori" autocomplete="off" /></td>
+          <td class="text-center">
+            <button type="button" class="btn btn-success btn-sm btn-simpan"><i class="fa fa-check"></i></button>
+            <button type="button" class="btn btn-danger btn-sm btn-batal"><i class="fa fa-times"></i></button>
+          </td>
+        </tr>
+      `);
+      $('#tblKategori tbody').append(newRow);
+      bindAutocompleteKategori(newRow.find('input.kategori-autocomplete'));
+      updateRowNumber();
+    }
+
+    // Event tombol tambah kategori
+    $('#btnTambahKategori').on('click', function() {
+      if (kategoriList.length === 0) {
+        $.when(loadKategori()).done(tambahBarisKategori);
+      } else {
+        tambahBarisKategori();
+      }
+    });
+
+    // Event simpan kategori baru
+    $('#tblKategori').on('click', '.btn-simpan', function() {
+      const row = $(this).closest('tr');
+      const val = row.find('input.kategori-autocomplete').val().trim();
+
+      if (!val) {
+        alert('Kategori tidak boleh kosong!');
+        return;
+      }
+
+      const kategoriId = row.data('kategori-id') || Date.now();
+      row.removeClass('input-kategori').addClass('kategori').attr('data-kategori-id', kategoriId);
+      row.html(`
         <td></td>
-        <td colspan="5"><input type="text" class="form-control kategori-autocomplete" placeholder="Ketik kategori" autocomplete="off" /></td>
-        <td class="text-center">
-          <button type="button" class="btn btn-success btn-sm btn-simpan"><i class="fa fa-check"></i></button>
-          <button type="button" class="btn btn-danger btn-sm btn-batal"><i class="fa fa-times"></i></button>
+        <td>
+          ${val}
+          <button type="button" class="btn btn-outline-secondary btn-sm btn-toggle-pekerjaan ms-2" title="Tampilkan / Sembunyikan Pekerjaan" style="padding: 2px 6px; font-size: 0.75rem;">
+            <i class="fa fa-chevron-up"></i>
+          </button>
         </td>
-      </tr>
-    `);
-    $('#tblKategori tbody').append(newRow);
-    bindAutocompleteKategori(newRow.find('input.kategori-autocomplete'));
-    updateRowNumber();
-  }
+        <td colspan="4"></td>
+        <td class="text-center">
+          <button class="btn btn-primary btn-sm btn-tambah-pekerjaan" title="Tambah Pekerjaan" style="border-radius:50%;padding:6px 9px;">
+            <i class="fa fa-plus"></i>
+          </button>
+          <button class="btn btn-danger btn-sm btn-batal ms-1" title="Hapus Kategori">
+            <i class="fa fa-trash"></i>
+          </button>
+        </td>
+      `);
+      row.addClass('table-primary mt-4');
+      updateRowNumber();
+    });
 
-  // Event tombol tambah kategori
-  $('#btnTambahKategori').on('click', function() {
-    if (kategoriList.length === 0) {
-      $.when(loadKategori()).done(tambahBarisKategori);
-    } else {
-      tambahBarisKategori();
-    }
-  });
+    // Event batal input kategori
+    $('#tblKategori').on('click', '.btn-batal', function() {
+      const row = $(this).closest('tr');
+      row.remove();
 
-  // Event simpan kategori baru
-  $('#tblKategori').on('click', '.btn-simpan', function() {
-    const row = $(this).closest('tr');
-    const val = row.find('input.kategori-autocomplete').val().trim();
+      if ($('#tblKategori tbody tr').length === 0) {
+        $('#tblKategori tbody').append('<tr class="no-data"><td colspan="7" class="text-center">Tidak ada detail pekerjaan</td></tr>');
+      }
 
-    if (!val) {
-      alert('Kategori tidak boleh kosong!');
-      return;
-    }
+      updateRowNumber();
+    });
 
-    const kategoriId = row.data('kategori-id') || Date.now();
-    row.removeClass('input-kategori').addClass('kategori').attr('data-kategori-id', kategoriId);
-    row.html(`
-      <td></td>
-      <td>
-        ${val}
-        <button type="button" class="btn btn-outline-secondary btn-sm btn-toggle-pekerjaan ms-2" title="Tampilkan / Sembunyikan Pekerjaan" style="padding: 2px 6px; font-size: 0.75rem;">
-          <i class="fa fa-chevron-up"></i>
-        </button>
-      </td>
-      <td colspan="4"></td>
-      <td class="text-center">
-        <button class="btn btn-primary btn-sm btn-tambah-pekerjaan" title="Tambah Pekerjaan" style="border-radius:50%;padding:6px 9px;">
-          <i class="fa fa-plus"></i>
-        </button>
-        <button class="btn btn-danger btn-sm btn-batal ms-1" title="Hapus Kategori">
-          <i class="fa fa-trash"></i>
-        </button>
-      </td>
-    `);
-    row.addClass('table-primary mt-4');
-    updateRowNumber();
-  });
+    // Event tambah pekerjaan pada kategori
+    $('#tblKategori').on('click', '.btn-tambah-pekerjaan', function() {
+      const kategoriRow = $(this).closest('tr');
+      const kategoriId = kategoriRow.data('kategori-id');
 
-  // Event batal input kategori
-  $('#tblKategori').on('click', '.btn-batal', function() {
-    const row = $(this).closest('tr');
-    row.remove();
+      let maxNomor = 0;
+      kategoriRow.nextAll('tr.pekerjaan, tr.input-pekerjaan').each(function() {
+        if ($(this).data('parent-kategori-id') === kategoriId) {
+          let nomor = parseInt($(this).find('td:first').text());
+          if (!isNaN(nomor) && nomor > maxNomor) maxNomor = nomor;
+        } else {
+          return false;
+        }
+      });
 
-    if ($('#tblKategori tbody tr').length === 0) {
-      $('#tblKategori tbody').append('<tr class="no-data"><td colspan="7" class="text-center">Tidak ada detail pekerjaan</td></tr>');
-    }
+      if (kategoriRow.next().hasClass('input-pekerjaan')) return;
 
-    updateRowNumber();
-  });
+      const pekerjaanRow = $(`
+        <tr class="input-pekerjaan" data-parent-kategori-id="${kategoriId}">
+          <td>${maxNomor + 1}</td>
+          <td><input type="text" class="form-control uraian-pekerjaan" placeholder="Ketik uraian pekerjaan" autocomplete="off" /></td>
+          <td><input type="text" class="form-control satuan" placeholder="Satuan" readonly /></td>
+          <td><input type="number" class="form-control volume" placeholder="Volume" min="0" /></td>
+          <td><input type="number" class="form-control harga-satuan" placeholder="Harga Satuan" min="0" /></td>
+          <td><input type="text" class="form-control jumlah" placeholder="Jumlah" readonly /></td>
+          <td class="text-center">
+            <button type="button" class="btn btn-success btn-sm btn-simpan-pekerjaan"><i class="fa fa-check"></i></button>
+            <button type="button" class="btn btn-danger btn-sm btn-batal-pekerjaan"><i class="fa fa-times"></i></button>
+          </td>
+        </tr>
+      `);
 
-  // Event tambah pekerjaan pada kategori
-  $('#tblKategori').on('click', '.btn-tambah-pekerjaan', function() {
-    const kategoriRow = $(this).closest('tr');
-    const kategoriId = kategoriRow.data('kategori-id');
+      let lastPekerjaan = null;
+      kategoriRow.nextAll('tr.pekerjaan, tr.input-pekerjaan').each(function() {
+        if ($(this).data('parent-kategori-id') === kategoriId) {
+          lastPekerjaan = $(this);
+        } else {
+          return false;
+        }
+      });
 
-    let maxNomor = 0;
-    kategoriRow.nextAll('tr.pekerjaan, tr.input-pekerjaan').each(function() {
-      if ($(this).data('parent-kategori-id') === kategoriId) {
-        let nomor = parseInt($(this).find('td:first').text());
-        if (!isNaN(nomor) && nomor > maxNomor) maxNomor = nomor;
+      if (lastPekerjaan) lastPekerjaan.after(pekerjaanRow);
+      else kategoriRow.after(pekerjaanRow);
+
+      bindAutocompletePekerjaan(pekerjaanRow.find('input.uraian-pekerjaan'));
+    });
+
+    // Event simpan pekerjaan
+    $('#tblKategori').on('click', '.btn-simpan-pekerjaan', function() {
+      const row = $(this).closest('tr');
+      const uraian = row.find('input.uraian-pekerjaan').val().trim();
+      const satuan = row.find('input.satuan').val().trim();
+      const volume = parseFloat(row.find('input.volume').val());
+      const hargaSatuan = parseFloat(row.find('input.harga-satuan').val());
+
+      if (!uraian) { alert('Uraian pekerjaan tidak boleh kosong!'); return; }
+      if (!satuan) { alert('Satuan tidak boleh kosong!'); return; }
+      if (isNaN(volume) || volume <= 0) { alert('Volume harus lebih dari 0!'); return; }
+      if (isNaN(hargaSatuan) || hargaSatuan <= 0) { alert('Harga satuan harus lebih dari 0!'); return; }
+
+      const total = volume * hargaSatuan;
+      const nomor = row.find('td:first').text();
+
+      row.removeClass('input-pekerjaan').addClass('pekerjaan');
+      row.html(`
+        <td>${nomor}</td>
+        <td>${uraian}</td>
+        <td>${satuan}</td>
+        <td>${volume}</td>
+        <td>Rp ${hargaSatuan.toLocaleString('id-ID')}</td>
+        <td>Rp ${total.toLocaleString('id-ID')}</td>
+        <td class="text-center">
+          <button class="btn btn-danger btn-sm btn-batal-pekerjaan" title="Hapus Pekerjaan">
+            <i class="fa fa-trash"></i>
+          </button>
+        </td>
+      `);
+
+      updateRowNumber();
+    });
+
+    // Event batal pekerjaan
+    $('#tblKategori').on('click', '.btn-batal-pekerjaan', function() {
+      $(this).closest('tr').remove();
+      updateRowNumber();
+    });
+
+    // Toggle pekerjaan show/hide di kategori
+    $('#tblKategori').on('click', '.btn-toggle-pekerjaan', function() {
+      const kategoriRow = $(this).closest('tr.kategori, tr.input-kategori');
+      if (!kategoriRow.length) return;
+      const kategoriId = kategoriRow.data('kategori-id');
+      if (!kategoriId) return;
+
+      const pekerjaanRows = $(`#tblKategori tbody tr.pekerjaan[data-parent-kategori-id='${kategoriId}'], #tblKategori tbody tr.input-pekerjaan[data-parent-kategori-id='${kategoriId}']`);
+
+      if (pekerjaanRows.is(':visible')) {
+        pekerjaanRows.hide();
+        $(this).find('i').removeClass('fa-chevron-up').addClass('fa-chevron-down');
       } else {
-        return false;
+        pekerjaanRows.show();
+        $(this).find('i').removeClass('fa-chevron-down').addClass('fa-chevron-up');
       }
     });
 
-    if (kategoriRow.next().hasClass('input-pekerjaan')) return;
-
-    const pekerjaanRow = $(`
-      <tr class="input-pekerjaan" data-parent-kategori-id="${kategoriId}">
-        <td>${maxNomor + 1}</td>
-        <td><input type="text" class="form-control uraian-pekerjaan" placeholder="Ketik uraian pekerjaan" autocomplete="off" /></td>
-        <td><input type="text" class="form-control satuan" placeholder="Satuan" readonly /></td>
-        <td><input type="number" class="form-control volume" placeholder="Volume" min="0" /></td>
-        <td><input type="number" class="form-control harga-satuan" placeholder="Harga Satuan" min="0" /></td>
-        <td><input type="text" class="form-control jumlah" placeholder="Jumlah" readonly /></td>
-        <td class="text-center">
-          <button type="button" class="btn btn-success btn-sm btn-simpan-pekerjaan"><i class="fa fa-check"></i></button>
-          <button type="button" class="btn btn-danger btn-sm btn-batal-pekerjaan"><i class="fa fa-times"></i></button>
-        </td>
-      </tr>
-    `);
-
-    let lastPekerjaan = null;
-    kategoriRow.nextAll('tr.pekerjaan, tr.input-pekerjaan').each(function() {
-      if ($(this).data('parent-kategori-id') === kategoriId) {
-        lastPekerjaan = $(this);
-      } else {
-        return false;
-      }
+    // Load data kategori & pekerjaan, bind autocomplete, update nomor
+    $.when(loadKategori(), loadPekerjaanSatuan()).done(function() {
+      bindAutocompleteKategori($('input.kategori-autocomplete'));
+      bindAutocompletePekerjaan($('input.uraian-pekerjaan'));
+      updateRowNumber();
     });
 
-    if (lastPekerjaan) lastPekerjaan.after(pekerjaanRow);
-    else kategoriRow.after(pekerjaanRow);
+    // Simpan semua data ke server via AJAX
+    $('#btnSimpanSemua').on('click', function() {
+      const id_rab_upah = <?= json_encode($id_rab_upah) ?>;
 
-    bindAutocompletePekerjaan(pekerjaanRow.find('input.uraian-pekerjaan'));
-    // Jangan updateRowNumber di sini supaya nomor tidak kacau saat input baru
-  });
+      let dataToSend = [];
 
-  // Event simpan pekerjaan
-  $('#tblKategori').on('click', '.btn-simpan-pekerjaan', function() {
-    const row = $(this).closest('tr');
-    const uraian = row.find('input.uraian-pekerjaan').val().trim();
-    const satuan = row.find('input.satuan').val().trim();
-    const volume = parseFloat(row.find('input.volume').val());
-    const hargaSatuan = parseFloat(row.find('input.harga-satuan').val());
+      $('#tblKategori tbody tr.kategori').each(function() {
+        const kategoriId = $(this).data('kategori-id');
+        const kategoriNama = $(this).find('td').eq(1).text().trim();
 
-    if (!uraian) { alert('Uraian pekerjaan tidak boleh kosong!'); return; }
-    if (!satuan) { alert('Satuan tidak boleh kosong!'); return; }
-    if (isNaN(volume) || volume <= 0) { alert('Volume harus lebih dari 0!'); return; }
-    if (isNaN(hargaSatuan) || hargaSatuan <= 0) { alert('Harga satuan harus lebih dari 0!'); return; }
+        $(this).nextAll('tr.pekerjaan').each(function() {
+          if ($(this).data('parent-kategori-id') !== kategoriId) return false;
 
-    const total = volume * hargaSatuan;
-    const nomor = row.find('td:first').text();
+          const uraian = $(this).find('td').eq(1).text().trim();
+          const satuan = $(this).find('td').eq(2).text().trim();
+          const volume = parseInt($(this).find('td').eq(3).text());
+          const harga_satuan_text = $(this).find('td').eq(4).text().replace(/[^\d]/g, '');
+          const harga_satuan = parseInt(harga_satuan_text);
+          const sub_total_text = $(this).find('td').eq(5).text().replace(/[^\d]/g, '');
+          const sub_total = parseInt(sub_total_text);
 
-    row.removeClass('input-pekerjaan').addClass('pekerjaan');
-    row.html(`
-      <td>${nomor}</td>
-      <td>${uraian}</td>
-      <td>${satuan}</td>
-      <td>${volume}</td>
-      <td>Rp ${hargaSatuan.toLocaleString('id-ID')}</td>
-      <td>Rp ${total.toLocaleString('id-ID')}</td>
-      <td class="text-center">
-        <button class="btn btn-danger btn-sm btn-batal-pekerjaan" title="Hapus Pekerjaan">
-          <i class="fa fa-trash"></i>
-        </button>
-      </td>
-    `);
+          const pekerjaanObj = pekerjaanList.find(p => p.uraian_pekerjaan === uraian);
+          const id_pekerjaan = pekerjaanObj ? pekerjaanObj.id_pekerjaan : null;
 
-    updateRowNumber();
-  });
+          const kategoriObj = kategoriList.find(k => k.nama_kategori.trim().toLowerCase() === kategoriNama.trim().toLowerCase());
+          const id_kategori = kategoriObj ? kategoriObj.id_kategori : null;
 
-  // Event batal pekerjaan
-  $('#tblKategori').on('click', '.btn-batal-pekerjaan', function() {
-    $(this).closest('tr').remove();
-    updateRowNumber();
-  });
+          if (!id_pekerjaan || !id_kategori) {
+            console.warn('Data id_pekerjaan atau id_kategori tidak ditemukan:', { id_pekerjaan, id_kategori, uraian, kategoriNama });
+            return;
+          }
 
-  // Event toggle tampilan pekerjaan di kategori
-  $('#tblKategori').on('click', '.btn-toggle-pekerjaan', function() {
-    const kategoriRow = $(this).closest('tr.kategori, tr.input-kategori');
-    if (!kategoriRow.length) return;
-    const kategoriId = kategoriRow.data('kategori-id');
-    if (!kategoriId) return;
-
-    const pekerjaanRows = $(`#tblKategori tbody tr.pekerjaan[data-parent-kategori-id='${kategoriId}'], #tblKategori tbody tr.input-pekerjaan[data-parent-kategori-id='${kategoriId}']`);
-
-    if (pekerjaanRows.is(':visible')) {
-      pekerjaanRows.hide();
-      $(this).find('i').removeClass('fa-chevron-up').addClass('fa-chevron-down');
-    } else {
-      pekerjaanRows.show();
-      $(this).find('i').removeClass('fa-chevron-down').addClass('fa-chevron-up');
-    }
-  });
-
-  // Load data kategori dan pekerjaan, kemudian bind autocomplete
-  $.when(loadKategori(), loadPekerjaanSatuan()).done(function() {
-    bindAutocompleteKategori($('input.kategori-autocomplete'));
-    bindAutocompletePekerjaan($('input.uraian-pekerjaan'));
-    updateRowNumber();
-  });
-});
-
-// Hapus kategori beserta pekerjaannya
-$('#tblKategori').on('click', '.btn-hapus-kategori', function() {
-  const kategoriRow = $(this).closest('tr.kategori');
-  if (!kategoriRow.length) return;
-
-  const kategoriId = kategoriRow.data('kategori-id');
-  $('#tblKategori tbody tr').filter(function() {
-    const $tr = $(this);
-    return $tr.data('parent-kategori-id') === kategoriId
-      || ($tr.hasClass('sub-total') && $tr.prev().data('kategori-id') === kategoriId);
-  }).remove();
-
-  kategoriRow.remove();
-  updateRowNumber();
-});
-
-// Hapus pekerjaan
-$('#tblKategori').on('click', '.btn-hapus-pekerjaan', function() {
-  $(this).closest('tr.pekerjaan').remove();
-  updateRowNumber();
-});
-
-// Simpan semua data RAB ke server
-$('#btnSimpanSemua').on('click', function() {
-  const id_rab_upah = <?= json_encode($id_rab_upah) ?>; // Dapatkan dari PHP
-
-  let dataToSend = [];
-
-  $('#tblKategori tbody tr.kategori').each(function() {
-    const kategoriId = $(this).data('kategori-id');
-    const kategoriNama = $(this).find('td').eq(1).text().trim();
-
-    $(this).nextAll('tr.pekerjaan').each(function() {
-      if ($(this).data('parent-kategori-id') !== kategoriId) return false;
-
-      const uraian = $(this).find('td').eq(1).text().trim();
-      const satuan = $(this).find('td').eq(2).text().trim();
-      const volume = parseInt($(this).find('td').eq(3).text());
-      const harga_satuan_text = $(this).find('td').eq(4).text().replace(/[^\d]/g, '');
-      const harga_satuan = parseInt(harga_satuan_text);
-      const sub_total_text = $(this).find('td').eq(5).text().replace(/[^\d]/g, '');
-      const sub_total = parseInt(sub_total_text);
-
-      const pekerjaanObj = pekerjaanList.find(p => p.uraian_pekerjaan === uraian);
-      const id_pekerjaan = pekerjaanObj ? pekerjaanObj.id_pekerjaan : null;
-
-      const kategoriObj = kategoriList.find(k => k.nama_kategori.trim().toLowerCase() === kategoriNama.trim().toLowerCase());
-      const id_kategori = kategoriObj ? kategoriObj.id_kategori : null;
-
-      console.log({ kategoriNama, id_kategori, uraian, id_pekerjaan });
-
-
-      if (id_pekerjaan && id_kategori) {
-        dataToSend.push({
-          id_kategori: id_kategori,
-          id_pekerjaan: id_pekerjaan,
-          volume: volume,
-          harga_satuan: harga_satuan,
-          sub_total: sub_total
+          dataToSend.push({
+            id_kategori,
+            id_pekerjaan,
+            volume,
+            harga_satuan,
+            sub_total
+          });
         });
+      });
+
+      console.log('Data yang dikirim:', dataToSend);
+
+      if (dataToSend.length === 0) {
+        alert('Tidak ada data yang disimpan. Pastikan Anda telah menambahkan pekerjaan.');
+        return;
       }
+
+      $.ajax({
+        url: 'add_detail_rab_upah.php',
+        method: 'POST',
+        data: {
+          id_rab_upah,
+          detail: JSON.stringify(dataToSend)
+        },
+        success: function(res) {
+          alert(res.message || 'Data berhasil disimpan');
+          // Kalau perlu, reload halaman atau update UI di sini
+        },
+        error: function() {
+          alert('Gagal menyimpan data');
+        }
+      });
     });
-  });
 
-  if (dataToSend.length === 0) {
-    alert('Tidak ada data yang disimpan. Pastikan Anda telah menambahkan pekerjaan.');
-    return;
-  }
-
-  $.ajax({
-    url: 'add_detail_rab_upah.php',
-    method: 'POST',
-    data: {
-      id_rab_upah: id_rab_upah,
-      detail: JSON.stringify(dataToSend)
-    },
-    success: function(res) {
-      alert(res.message || 'Data berhasil disimpan');
-      // Optional: refresh UI atau reload halaman jika perlu
-    },
-    error: function() {
-      alert('Gagal menyimpan data');
-    }
   });
-});
 </script>
-
-
 </body>
 </html>
