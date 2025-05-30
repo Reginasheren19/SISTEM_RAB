@@ -880,5 +880,6 @@ $detail_result = mysqli_query($koneksi, $sql_detail);
 <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
 
 
+
 </body>
 </html>

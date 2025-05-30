@@ -1320,7 +1320,7 @@ $detail_result = mysqli_query($koneksi, $sql_detail);
         },
         success: function(res) {
           alert(res.message || 'Data berhasil disimpan');
-          window.location.href = 'transaksi_rab_upah.php';  // Redirect setelah simpan sukses
+                window.location.href = 'transaksi_rab_upah.php';  // Redirect setelah simpan sukses
           // Kalau perlu, reload halaman atau update UI di sini
         },
         error: function() {
