@@ -1002,6 +1002,11 @@ $(function() {
   }
 
   function updateSubTotalRow(kategoriRow, totalKategori) {
+      // Jika totalKategori 0, hapus baris sub-total kalau ada dan langsung return
+  if (totalKategori === 0) {
+    kategoriRow.nextUntil('tr.kategori').filter('.sub-total').remove();
+    return;
+  }
     let lastRow = kategoriRow.nextUntil('tr.kategori').filter('.sub-total').first();
 
     if (lastRow.length) {
@@ -1016,7 +1021,7 @@ $(function() {
       }
 
       const subTotalRow = $(`
-        <tr class="table-warning sub-total">
+        <tr class="sub-total">
           <td></td>
           <td class="fw-bold">Sub Total</td>
           <td></td>
@@ -1039,13 +1044,21 @@ $(function() {
       totalKeseluruhan += subtotalVal;
     });
 
+  // Hapus dulu baris total lama
+  $('#tblKategori tbody tr.total-keseluruhan').remove();
+
+  if (totalKeseluruhan === 0) {
+    // Kalau total 0, tidak perlu tampilkan baris total
+    return;
+  }
+
     let totalRow = $('#tblKategori tbody tr.total-keseluruhan');
     if (totalRow.length) {
       totalRow.find('td').eq(1).text('Total Keseluruhan');
       totalRow.find('td').eq(5).text('Rp ' + totalKeseluruhan.toLocaleString('id-ID'));
     } else {
       const totalRowHtml = $(`
-        <tr class="table-danger total-keseluruhan">
+        <tr class="table-success total-keseluruhan">
           <td></td>
           <td class="fw-bold">Total Keseluruhan</td>
           <td></td>
@@ -1109,6 +1122,9 @@ $(function() {
         <button class="btn btn-primary btn-sm btn-tambah-pekerjaan" title="Tambah Pekerjaan" style="border-radius:50%;padding:6px 9px;">
           <i class="fa fa-plus"></i>
         </button>
+            <button class="btn btn-danger btn-sm btn-batal ms-1" title="Hapus Kategori">
+      <i class="fa fa-trash"></i>
+    </button>
       </td>
     `);
     row.addClass('table-primary mt-4');
@@ -1199,7 +1215,10 @@ $(function() {
       <td>${volume}</td>
       <td>Rp ${hargaSatuan.toLocaleString('id-ID')}</td>
       <td>Rp ${total.toLocaleString('id-ID')}</td>
-      <td></td>
+      <td class="text-center">
+    <button class="btn btn-danger btn-sm btn-batal-pekerjaan" title="Hapus Pekerjaan">
+      <i class="fa fa-trash"></i>
+    </button></td>
     `);
 
     updateRowNumber();
@@ -1234,6 +1253,31 @@ $(function() {
     updateRowNumber();
   });
 });
+
+// Hapus kategori (beserta pekerjaan di bawahnya)
+$('#tblKategori').on('click', '.btn-hapus-kategori', function() {
+  const kategoriRow = $(this).closest('tr.kategori');
+  if (!kategoriRow.length) return;
+
+  // Hapus semua pekerjaan dan sub-total yang berhubungan
+  const kategoriId = kategoriRow.data('kategori-id');
+  $('#tblKategori tbody tr').filter(function() {
+    const $tr = $(this);
+    return $tr.data('parent-kategori-id') === kategoriId || $tr.hasClass('sub-total') && $tr.prev().data('kategori-id') === kategoriId;
+  }).remove();
+
+  // Hapus baris kategori
+  kategoriRow.remove();
+
+  updateRowNumber();
+});
+
+// Hapus pekerjaan
+$('#tblKategori').on('click', '.btn-hapus-pekerjaan', function() {
+  $(this).closest('tr.pekerjaan').remove();
+  updateRowNumber();
+});
+
 
 </script>
 
