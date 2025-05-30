@@ -1,33 +1,37 @@
 <?php
 include("../config/koneksi_mysql.php");
 
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $id_perumahan = mysqli_real_escape_string($koneksi, $_POST['id_perumahan']);
-    $id_proyek = mysqli_real_escape_string($koneksi, $_POST['id_proyek']);
-    $id_mandor = mysqli_real_escape_string($koneksi, $_POST['id_mandor']);
-    $tanggal_mulai = mysqli_real_escape_string($koneksi, $_POST['tanggal_mulai']);
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $id_rab_upah = $_POST['id_rab_upah'] ?? null;
+    $id_kategori = $_POST['id_kategori'] ?? null;
+    $id_pekerjaan = $_POST['id_pekerjaan'] ?? null;
+    $volume = $_POST['volume'] ?? null;
+    $harga_satuan = $_POST['harga_satuan'] ?? null;
+    $total_rab_upah = $_POST['harga_satuan'] ?? null;
 
-    // Insert the new record
-    $sql = "INSERT INTO rab_upah (id_perumahan, id_proyek, id_mandor, tanggal_mulai) 
-            VALUES ('$id_perumahan', '$id_proyek', '$id_mandor', '$tanggal_mulai')";
 
-    if (mysqli_query($koneksi, $sql)) {
-        // Get the last inserted ID
-        $new_id = mysqli_insert_id($koneksi);
-
-        // Format the ID for display
-        $tahun = date('Y');
-        $bulan = date('m');
-        $id_proyek_3digit = str_pad($id_proyek, 3, '0', STR_PAD_LEFT);
-        $formatted_id = $tahun . $bulan . $id_proyek_3digit;
-
-        // Redirect to detail page with formatted ID
-        header("Location: detail_rab_upah.php?id_rab_upah=" . $formatted_id);
-        exit();
-    } else {
-        echo "Error: " . mysqli_error($koneksi);
+    if (!$id_rab_upah || !$id_kategori || !$id_pekerjaan || !$volume || !$harga_satuan) {
+        echo json_encode(['status' => false, 'message' => 'Data tidak lengkap']);
+        exit;
     }
+
+    $volume = (int)$volume;
+    $harga_satuan = (int)$harga_satuan;
+
+    // Hitung total rab upah
+    $subtotal = $volume * $harga_satuan;
+
+    // Query insert
+    $stmt = $koneksi->prepare("INSERT INTO detail_rab_upah (id_rab_upah, id_kategori, id_pekerjaan, volume, harga_satuan, total_rab_upah) VALUES (?, ?, ?, ?, ?, ?)");
+    $stmt->bind_param("iiiiii", $id_rab_upah, $id_kategori, $id_pekerjaan, $volume, $harga_satuan, $total_rab_upah);
+
+    if ($stmt->execute()) {
+        echo json_encode(['status' => true, 'message' => 'Detail RAB Upah berhasil disimpan']);
+    } else {
+        echo json_encode(['status' => false, 'message' => 'Gagal menyimpan data']);
+    }
+    $stmt->close();
 } else {
-    echo "Metode request tidak valid.";
+    echo json_encode(['status' => false, 'message' => 'Metode request tidak valid']);
 }
 ?>

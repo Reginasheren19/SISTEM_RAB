@@ -826,7 +826,7 @@ if (!$perumahanResult) {
                         mpr.kavling,
                         mm.nama_mandor,
                         tr.tanggal_mulai,
-                        (SELECT SUM(total_rab_upah) FROM detail_rab_upah d WHERE d.id_rab_upah = tr.id_rab_upah) AS total
+                        (SELECT SUM(total_rab_upah) FROM rab_upah d WHERE d.id_rab_upah = tr.id_rab_upah) AS total
                       FROM 
                         rab_upah tr
                       JOIN master_perumahan mpe ON tr.id_perumahan = mpe.id_perumahan
