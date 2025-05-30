@@ -31,10 +31,21 @@ if (!$result || mysqli_num_rows($result) == 0) {
 $data = mysqli_fetch_assoc($result);
 
 // Query ambil detail rab upah (pekerjaan dan biaya)
-$sql_detail = "SELECT d.id_detail_rab_upah, mp.uraian_pekerjaan, d.volume, d.harga_satuan, d.total_rab_upah
+$sql_detail = "SELECT 
+                 d.id_detail_rab_upah, 
+                 d.id_kategori,
+                 d.id_pekerjaan, 
+                 mp.uraian_pekerjaan, 
+                 k.nama_kategori,
+                 ms.nama_satuan,
+                 d.volume, 
+                 d.harga_satuan, 
+                 d.sub_total
                FROM detail_rab_upah d
-               JOIN master_pekerjaan mp ON d.id_pekerjaan = mp.id_pekerjaan
-               WHERE d.id_rab_upah = '$id_rab_upah'";
+               LEFT JOIN master_pekerjaan mp ON d.id_pekerjaan = mp.id_pekerjaan
+               LEFT JOIN master_kategori k ON d.id_kategori = k.id_kategori
+               LEFT JOIN master_satuan ms ON mp.id_satuan = ms.id_satuan
+               WHERE d.id_rab_upah = '$id_rab_upah'";;
 
 $detail_result = mysqli_query($koneksi, $sql_detail);
 
@@ -862,14 +873,14 @@ $detail_result = mysqli_query($koneksi, $sql_detail);
             $no = 1;
             $grand_total = 0;
             while ($row = mysqli_fetch_assoc($detail_result)) {
-                $grand_total += $row['total_rab_upah'];
+                $grand_total += $row['sub_total'];
                 echo "<tr>
                         <td>" . $no++ . "</td>
                         <td>" . htmlspecialchars($row['uraian_pekerjaan']) . "</td>
                         <td>" . htmlspecialchars($row['satuan']) . "</td>
                         <td>" . htmlspecialchars($row['volume']) . "</td>
                         <td>Rp " . number_format($row['harga_satuan'], 0, ',', '.') . "</td>
-                        <td>Rp " . number_format($row['total_rab_upah'], 0, ',', '.') . "</td>  
+                        <td>Rp " . number_format($row['sub_total'], 0, ',', '.') . "</td>  
                                                                       
                         <td class='text-center'>
                         </td>
@@ -1192,14 +1203,15 @@ $(function() {
     });
   }
 
-  function updateTotalKeseluruhan() {
-    let totalKeseluruhan = 0;
-    $('#tblKategori tbody tr.sub-total').each(function() {
-      let subtotalText = $(this).find('td').eq(5).text().trim();
-      subtotalText = subtotalText.replace(/[^0-9]/g, '');
-      let subtotalVal = parseInt(subtotalText) || 0;
-      totalKeseluruhan += subtotalVal;
-    });
+
+  
+function updateTotalKeseluruhan() {
+  let totalKeseluruhan = 0;
+  $('#tblKategori tbody tr.sub-total').each(function() {
+    let subtotalText = $(this).find('td').eq(5).text().trim();
+    let subtotalVal = parseRupiahToInt(subtotalText);
+    totalKeseluruhan += subtotalVal;
+  });
 
     $('#tblKategori tbody tr.total-keseluruhan').remove();
 
@@ -1219,7 +1231,6 @@ $(function() {
   $.when(loadKategori(), loadPekerjaanSatuan()).done(function() {
     bindAutocompleteKategori($('input.kategori-autocomplete'));
     bindAutocompletePekerjaan($('input.uraian-pekerjaan'));
-    updateRowNumber();
   });
 });
 

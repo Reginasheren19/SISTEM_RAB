@@ -14,8 +14,31 @@ $kavlingResult = mysqli_query($koneksi, "SELECT id_proyek, kavling, type_proyek 
 if (!$perumahanResult) {
     die("Query Error (proyek): " . mysqli_error($koneksi));
 }
-?>
+$mandorResult = mysqli_query($koneksi, "SELECT id_mandor, nama_mandor FROM master_mandor ORDER BY nama_mandor ASC");
+if (!$mandorResult) {
+    die("Query Error (mandor): " . mysqli_error($koneksi));
+}
+$sql = "SELECT 
+          tr.id_rab_upah,
+          tr.id_perumahan,
+          tr.id_proyek,
+          tr.id_mandor,
+          mpe.nama_perumahan,
+          mpr.kavling,
+          mm.nama_mandor,
+          tr.tanggal_mulai,
+          tr.total_rab_upah
+        FROM rab_upah tr
+        JOIN master_perumahan mpe ON tr.id_perumahan = mpe.id_perumahan
+        JOIN master_proyek mpr ON tr.id_proyek = mpr.id_proyek
+        JOIN master_mandor mm ON tr.id_mandor = mm.id_mandor
+        ";
 
+$result = mysqli_query($koneksi, $sql);
+if (!$result) {
+    die("Query Error: " . mysqli_error($koneksi));
+}
+?>
 
 <!DOCTYPE html>
 <html lang="en">
@@ -816,57 +839,28 @@ if (!$perumahanResult) {
               </tr>
             </thead>
             <tbody>
-              <?php
-              $sql = "SELECT 
-                        tr.id_rab_upah,
-                        tr.id_perumahan,
-                        tr.id_proyek,
-                        tr.id_mandor,
-                        mpe.nama_perumahan,
-                        mpr.kavling,
-                        mm.nama_mandor,
-                        tr.tanggal_mulai,
-                        (SELECT SUM(total_rab_upah) FROM rab_upah d WHERE d.id_rab_upah = tr.id_rab_upah) AS total
-                      FROM 
-                        rab_upah tr
-                      JOIN master_perumahan mpe ON tr.id_perumahan = mpe.id_perumahan
-                      JOIN master_proyek mpr ON tr.id_proyek = mpr.id_proyek
-                      JOIN master_mandor mm ON tr.id_mandor = mm.id_mandor
-                      ";
-
-              $result = mysqli_query($koneksi, $sql);
-
-              if (!$result) {
-                  die("Query Error: " . mysqli_error($koneksi));
-              }
-
-              while ($row = mysqli_fetch_assoc($result)) {
-                  // Ambil ID asli dari DB (angka) 
-                  
-                  // Buat format custom untuk tampilkan saja
-                  $tahun = date('Y');
-                  $bulan = date('m');
-                  $id_proyek_3digit = str_pad($row['id_proyek'], 3, '0', STR_PAD_LEFT); // contoh ambil id_proyek juga kalau perlu
-
-                  // Format tampilannya
-                  $formatted_id = 'RABP' . $tahun . $bulan . $id_proyek_3digit;
-                     echo "<tr>
-                      <td>" . htmlspecialchars($formatted_id) . "</td>
-                      <td>" . htmlspecialchars($row['nama_perumahan']) . "</td>
-                      <td>" . htmlspecialchars($row['kavling']) . "</td>
-                      <td>" . htmlspecialchars($row['nama_mandor']) . "</td>
-                      <td>" . htmlspecialchars($row['tanggal_mulai']) . "</td>
-                      <td>" . (isset($row['total']) ? number_format($row['total'], 0, ',', '.') : '0') . "</td>
-                      <td>
-                      <a href='detail_rab_upah.php?id_rab_upah=" . urlencode($row['id_rab_upah']) . "' 
-                        class='btn btn-info btn-sm'>
-                        Detail
-                      </a>
-                        <button class='btn btn-danger btn-sm delete-btn' data-id_rab_upah='" . htmlspecialchars($row['id_rab_upah']) . "'>Delete</button>
-                      </td>
-                    </tr>";
-              }
-              ?>
+                <?php while ($row = mysqli_fetch_assoc($result)): ?>
+            <?php
+              $tahun = date('Y');
+              $bulan = date('m');
+              $id_proyek_3digit = str_pad($row['id_proyek'], 3, '0', STR_PAD_LEFT);
+              $formatted_id = 'RABP' . $tahun . $bulan . $id_proyek_3digit;
+              $tanggalFormatted = date('d-m-Y', strtotime($row['tanggal_mulai']));
+              $totalFormatted = number_format($row['total_rab_upah'], 0, ',', '.');
+            ?>
+            <tr>
+              <td><?= htmlspecialchars($formatted_id) ?></td>
+              <td><?= htmlspecialchars($row['nama_perumahan']) ?></td>
+              <td><?= htmlspecialchars($row['kavling']) ?></td>
+              <td><?= htmlspecialchars($row['nama_mandor']) ?></td>
+              <td><?= htmlspecialchars($tanggalFormatted) ?></td>
+              <td><?= $totalFormatted ?></td>
+              <td>
+                <a href="detail_rab_upah.php?id_rab_upah=<?= urlencode($row['id_rab_upah']) ?>" class="btn btn-info btn-sm">Detail</a>
+                <button class="btn btn-danger btn-sm delete-btn" data-id_rab_upah="<?= htmlspecialchars($row['id_rab_upah']) ?>">Delete</button>
+              </td>
+            </tr>
+          <?php endwhile; ?>
 
             </tbody>
           </table>
