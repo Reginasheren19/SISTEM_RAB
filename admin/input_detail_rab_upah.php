@@ -842,19 +842,21 @@ $detail_result = mysqli_query($koneksi, $sql_detail);
                 </div>
 
     <div class="card">
-      <div class="card-header d-flex align-items-center">
+      <div class="card-header">
         <h4 class="card-title">Detail RAB</h4>
       </div>
 
       <!-- Tambahkan div card-body di sini -->
-      <div class="card-body p-3"> 
+      <div class="card-body"> 
+
         <button
           id="btnTambahKategori"
-          class="btn btn-primary btn-round ms-auto">
+          class="btn btn-primary btn-round ms-auto mb-3">
           <i class="fa fa-plus"></i> Tambah Kategori
         </button>
+        
   <div class="table-responsive">
-    <table class="table table-striped table-bordered mt-3" id="tblKategori">
+    <table class="table table-bordered" id="tblKategori">
       <thead>
         <tr>
           <th scope="col" style="width:5%;">No</th>
@@ -941,7 +943,7 @@ $(function() {
     return $.ajax({
       url: 'get_pekerjaan.php',
       dataType: 'json',
-      success: function(data) { pekerjaanList = data; },
+      success: function(data) { pekerjaanList = data; } ,
       error: function() { pekerjaanList = []; }
     });
   }
@@ -1277,7 +1279,73 @@ $('#tblKategori').on('click', '.btn-hapus-pekerjaan', function() {
   $(this).closest('tr.pekerjaan').remove();
   updateRowNumber();
 });
+</script>
 
+
+<script>
+$('#btnSimpanSemua').on('click', function() {
+  const id_rab_upah = <?= json_encode($id_rab_upah) ?>; // ambil dari PHP
+
+  let dataToSend = [];
+
+  // Iterasi kategori dan pekerjaan di tabel
+  $('#tblKategori tbody tr.kategori').each(function() {
+    const kategoriId = $(this).data('kategori-id');
+    const kategoriNama = $(this).find('td').eq(1).text().trim();
+
+    $(this).nextAll('tr.pekerjaan').each(function() {
+      if ($(this).data('parent-kategori-id') !== kategoriId) return false;
+
+      const uraian = $(this).find('td').eq(1).text().trim();
+      const satuan = $(this).find('td').eq(2).text().trim();
+      const volume = parseInt($(this).find('td').eq(3).text());
+      const harga_satuan_text = $(this).find('td').eq(4).text().replace(/[^\d]/g, '');
+      const harga_satuan = parseInt(harga_satuan_text);
+      const sub_total_text = $(this).find('td').eq(5).text().replace(/[^\d]/g, '');
+      const sub_total = parseInt(sub_total_text);
+
+      // Cari id_pekerjaan dari pekerjaanList yang sudah dimuat (atau kirimkan dari server)
+      const pekerjaanObj = pekerjaanList.find(p => p.uraian_pekerjaan === uraian);
+      const id_pekerjaan = pekerjaanObj ? pekerjaanObj.id_pekerjaan : null;
+
+      // Cari id_kategori dari kategoriList yang sudah dimuat (atau kirimkan dari server)
+      const kategoriObj = kategoriList.find(k => k.nama_kategori === kategoriNama);
+      const id_kategori = kategoriObj ? kategoriObj.id_kategori : null;
+
+      if (id_pekerjaan && id_kategori) {
+        dataToSend.push({
+          id_kategori: id_kategori,
+          id_pekerjaan: id_pekerjaan,
+          volume: volume,
+          harga_satuan: harga_satuan,
+          sub_total: sub_total
+        });
+      }
+    });
+  });
+
+  // Check if dataToSend is empty
+  if (dataToSend.length === 0) {
+    alert('Tidak ada data yang disimpan. Pastikan Anda telah menambahkan pekerjaan.');
+    return;
+  }
+
+  $.ajax({
+    url: 'add_detail_rab_upah.php',
+    method: 'POST',
+    data: {
+      id_rab_upah: id_rab_upah,
+      detail: JSON.stringify(dataToSend)
+    },
+    success: function(res) {
+      alert(res.message || 'Data berhasil disimpan');
+      // opsional: reload halaman atau update UI
+    },
+    error: function() {
+      alert('Gagal menyimpan data');
+    }
+  });
+});
 
 </script>
 
