@@ -841,12 +841,10 @@ $detail_result = mysqli_query($koneksi, $sql_detail);
                   </div>
                 </div>
 
-    <div class="card">
-      <div class="card-header">
-        <h4 class="card-title">Detail RAB</h4>
-      </div>
-
-      <!-- Tambahkan div card-body di sini -->
+<div class="card">
+  <div class="card-header">
+    Detail RAB
+  </div>
       <div class="card-body"> 
 
         <button
@@ -879,7 +877,7 @@ $detail_result = mysqli_query($koneksi, $sql_detail);
                 echo "<tr>
                         <td>" . $no++ . "</td>
                         <td>" . htmlspecialchars($row['uraian_pekerjaan']) . "</td>
-                        <td>" . htmlspecialchars($row['satuan']) . "</td>
+                        <td>" . htmlspecialchars($row['nama_satuan']) . "</td>
                         <td>" . htmlspecialchars($row['volume']) . "</td>
                         <td>Rp " . number_format($row['harga_satuan'], 0, ',', '.') . "</td>
                         <td>Rp " . number_format($row['sub_total'], 0, ',', '.') . "</td>  
@@ -911,6 +909,7 @@ $detail_result = mysqli_query($koneksi, $sql_detail);
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
 <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
+  <script src="/SISTEM_RAB/assets/js/bootstrap.bundle.min.js"></script>
 
 
 <script>

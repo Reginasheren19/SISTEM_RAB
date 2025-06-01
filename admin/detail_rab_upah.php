@@ -31,22 +31,23 @@ if (!$result || mysqli_num_rows($result) == 0) {
 $data = mysqli_fetch_assoc($result);
 
 // Query detail RAB harus include kategori nama
-$sql_detail = "
-    SELECT 
-        d.id_detail_rab_upah,
-        k.nama_kategori,
-        mp.uraian_pekerjaan,
-        ms.nama_satuan AS satuan,
-        d.volume,
-        d.harga_satuan,
-        d.sub_total
-    FROM detail_rab_upah d
-    JOIN master_pekerjaan mp ON d.id_pekerjaan = mp.id_pekerjaan
-    JOIN master_kategori k ON d.id_kategori = k.id_kategori
-            JOIN master_satuan ms ON mp.id_satuan = ms.id_satuan
-    WHERE d.id_rab_upah = '$id_rab_upah'
-    ORDER BY k.nama_kategori, mp.uraian_pekerjaan
-";
+$sql_detail = "SELECT 
+                 d.id_detail_rab_upah, 
+                 d.id_kategori,
+                 d.id_pekerjaan, 
+                 mp.uraian_pekerjaan, 
+                 k.nama_kategori,
+                 ms.nama_satuan,
+                 d.volume, 
+                 d.harga_satuan, 
+                 d.sub_total
+               FROM detail_rab_upah d
+               LEFT JOIN master_pekerjaan mp ON d.id_pekerjaan = mp.id_pekerjaan
+               LEFT JOIN master_kategori k ON d.id_kategori = k.id_kategori
+               LEFT JOIN master_satuan ms ON mp.id_satuan = ms.id_satuan
+               WHERE d.id_rab_upah = '$id_rab_upah'
+               ORDER BY k.id_kategori, mp.uraian_pekerjaan";
+
 $detail_result = mysqli_query($koneksi, $sql_detail);
 ?>
 
@@ -839,14 +840,14 @@ $detail_result = mysqli_query($koneksi, $sql_detail);
           </div>
 
 
-<div class="card shadow-sm mb-4">
-  <div class="card-header fw-bold">
+<div class="card">
+  <div class="card-header">
     Detail RAB
   </div>
   <div class="card-body">
     <div class="table-responsive">
-      <table class="table table-bordered table-striped" id="tblDetailRAB">
-        <thead class="table-primary">
+      <table class="table table-bordered" id="tblDetailRAB">
+        <thead>
           <tr>
             <th style="width:5%;">No</th>
             <th>Uraian Pekerjaan</th>
@@ -856,31 +857,79 @@ $detail_result = mysqli_query($koneksi, $sql_detail);
             <th style="width:15%;">Jumlah</th>
           </tr>
         </thead>
-        <tbody>
-          <?php
-          if ($detail_result && mysqli_num_rows($detail_result) > 0) {
-              $no = 1;
-              $grand_total = 0;
-              while ($row = mysqli_fetch_assoc($detail_result)) {
-                  $grand_total += $row['sub_total'];
-                  echo "<tr>
-                          <td>" . $no++ . "</td>
-                          <td>" . htmlspecialchars($row['uraian_pekerjaan']) . "</td>
-                          <td>" . htmlspecialchars($row['satuan']) . "</td>
-                          <td>" . htmlspecialchars($row['volume']) . "</td>
-                          <td>Rp " . number_format($row['harga_satuan'], 0, ',', '.') . "</td>
-                          <td>Rp " . number_format($row['sub_total'], 0, ',', '.') . "</td>
-                        </tr>";
-              }
-              echo "<tr class='table-success fw-bold'>
-                      <td colspan='5' class='text-end'>Total</td>
-                      <td>Rp " . number_format($grand_total, 0, ',', '.') . "</td>
-                    </tr>";
-          } else {
-              echo "<tr><td colspan='6' class='text-center'>Tidak ada detail pekerjaan</td></tr>";
-          }
-          ?>
-        </tbody>
+<tbody>
+<?php
+function toRoman($num) {
+    $map = [
+        'M' => 1000, 'CM' => 900, 'D' => 500, 'CD' => 400,
+        'C' => 100, 'XC' => 90, 'L' => 50, 'XL' => 40,
+        'X' => 10, 'IX' => 9, 'V' => 5, 'IV' => 4, 'I' => 1
+    ];
+    $result = '';
+    foreach ($map as $roman => $value) {
+        while ($num >= $value) {
+            $result .= $roman;
+            $num -= $value;
+        }
+    }
+    return $result;
+}
+
+if ($detail_result && mysqli_num_rows($detail_result) > 0) {
+    $prevKategori = null;
+    $subTotalKategori = 0;
+    $grandTotal = 0;
+    $noKategori = 0;
+    $noPekerjaan = 1;
+
+    while ($row = mysqli_fetch_assoc($detail_result)) {
+        if ($prevKategori !== $row['nama_kategori']) {
+            if ($prevKategori !== null) {
+                echo "<tr class='table-secondary fw-bold'>
+                        <td colspan='5' class='text-end'>Sub Total</td>
+                        <td>Rp " . number_format($subTotalKategori, 0, ',', '.') . "</td>
+                      </tr>";
+            }
+            $noKategori++;
+            echo "<tr class='table-primary fw-bold'>
+                    <td>" . toRoman($noKategori) . "</td>
+                    <td colspan='5'>" . htmlspecialchars($row['nama_kategori']) . "</td>
+                  </tr>";
+            $prevKategori = $row['nama_kategori'];
+            $subTotalKategori = 0;
+            $noPekerjaan = 1;
+        }
+
+        echo "<tr>
+                <td>" . $noPekerjaan++ . "</td>
+                <td>" . htmlspecialchars($row['uraian_pekerjaan']) . "</td>
+                <td>" . htmlspecialchars($row['nama_satuan']) . "</td>
+                <td>" . htmlspecialchars($row['volume']) . "</td>
+                <td>Rp " . number_format($row['harga_satuan'], 0, ',', '.') . "</td>
+                <td>Rp " . number_format($row['sub_total'], 0, ',', '.') . "</td>
+              </tr>";
+
+        $subTotalKategori += $row['sub_total'];
+        $grandTotal += $row['sub_total'];
+    }
+    // Subtotal kategori terakhir
+    if ($prevKategori !== null) {
+        echo "<tr class='table-secondary fw-bold'>
+                <td colspan='5' class='text-end'>Sub Total</td>
+                <td>Rp " . number_format($subTotalKategori, 0, ',', '.') . "</td>
+              </tr>";
+    }
+    // Total keseluruhan
+    echo "<tr class='table-success fw-bold'>
+            <td colspan='5' class='text-end'>Total Keseluruhan</td>
+            <td>Rp " . number_format($grandTotal, 0, ',', '.') . "</td>
+          </tr>";
+} else {
+    echo "<tr><td colspan='6' class='text-center'>Tidak ada detail pekerjaan</td></tr>";
+}
+?>
+</tbody>
+
       </table>
     </div>
   </div>
