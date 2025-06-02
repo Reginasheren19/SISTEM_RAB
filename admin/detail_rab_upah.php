@@ -846,7 +846,7 @@ $detail_result = mysqli_query($koneksi, $sql_detail);
   </div>
   <div class="card-body">
     <div class="table-responsive">
-      <table class="table table-bordered" id="tblDetailRAB">
+     <table class="table table-bordered" id="tblDetailRAB">
         <thead>
           <tr>
             <th style="width:5%;">No</th>
@@ -857,7 +857,7 @@ $detail_result = mysqli_query($koneksi, $sql_detail);
             <th style="width:15%;">Jumlah</th>
           </tr>
         </thead>
-<tbody>
+        <tbody>
 <?php
 function toRoman($num) {
     $map = [
@@ -884,14 +884,15 @@ if ($detail_result && mysqli_num_rows($detail_result) > 0) {
 
     while ($row = mysqli_fetch_assoc($detail_result)) {
         if ($prevKategori !== $row['nama_kategori']) {
+            // Output kategori sebelumnya subtotal dulu (jika ada)
             if ($prevKategori !== null) {
-                echo "<tr class='table-secondary fw-bold'>
-                        <td colspan='5' class='text-end'>Sub Total</td>
+                echo "<tr class='no-sort fw-bold text-end bg-light'>
+                        <td colspan='5'>Sub Total</td>
                         <td>Rp " . number_format($subTotalKategori, 0, ',', '.') . "</td>
                       </tr>";
             }
             $noKategori++;
-            echo "<tr class='table-primary fw-bold'>
+            echo "<tr class='no-sort fw-bold bg-primary text-white'>
                     <td>" . toRoman($noKategori) . "</td>
                     <td colspan='5'>" . htmlspecialchars($row['nama_kategori']) . "</td>
                   </tr>";
@@ -900,88 +901,76 @@ if ($detail_result && mysqli_num_rows($detail_result) > 0) {
             $noPekerjaan = 1;
         }
 
-echo "<tr>
-        <td>" . $noPekerjaan++ . "</td>
-        <td>" . htmlspecialchars($row['uraian_pekerjaan']) . "</td>
-        <td>" . htmlspecialchars($row['nama_satuan']) . "</td>
-        <td>" . htmlspecialchars($row['volume']) . "</td>
-        <td>Rp " . number_format($row['harga_satuan'], 0, ',', '.') . "</td>
-        <td>Rp " . number_format($row['sub_total'], 0, ',', '.') . "</td>
-      </tr>";
-
+        echo "<tr>
+                <td>" . $noPekerjaan++ . "</td>
+                <td>" . htmlspecialchars($row['uraian_pekerjaan']) . "</td>
+                <td>" . htmlspecialchars($row['nama_satuan']) . "</td>
+                <td>" . htmlspecialchars($row['volume']) . "</td>
+                <td>Rp " . number_format($row['harga_satuan'], 0, ',', '.') . "</td>
+                <td>Rp " . number_format($row['sub_total'], 0, ',', '.') . "</td>
+              </tr>";
 
         $subTotalKategori += $row['sub_total'];
         $grandTotal += $row['sub_total'];
     }
-    // Subtotal kategori terakhir
-    if ($prevKategori !== null) {
-        echo "<tr class='table-secondary fw-bold'>
-                <td colspan='5' class='text-end'>Sub Total</td>
-                <td>Rp " . number_format($subTotalKategori, 0, ',', '.') . "</td>
-              </tr>";
-    }
-    // Total keseluruhan
-    echo "<tr class='table-success fw-bold'>
-            <td colspan='5' class='text-end'>Total Keseluruhan</td>
+
+    // Subtotal terakhir
+    echo "<tr class='no-sort fw-bold text-end bg-light'>
+            <td colspan='5'>Sub Total</td>
+            <td>Rp " . number_format($subTotalKategori, 0, ',', '.') . "</td>
+          </tr>";
+
+    // Grand total
+    echo "<tr class='no-sort fw-bold text-end bg-success text-white'>
+            <td colspan='5'>Total Keseluruhan</td>
             <td>Rp " . number_format($grandTotal, 0, ',', '.') . "</td>
           </tr>";
 } else {
     echo "<tr><td colspan='6' class='text-center'>Tidak ada detail pekerjaan</td></tr>";
 }
 ?>
-</tbody>
-
+        </tbody>
       </table>
     </div>
   </div>
 </div>
 
-<link rel="stylesheet" href="https://cdn.datatables.net/rowgroup/1.3.1/css/rowGroup.dataTables.min.css" />
-<script src="https://cdn.datatables.net/rowgroup/1.3.1/js/dataTables.rowGroup.min.js"></script>
+<!-- Library JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
 
+<!-- DataTables Config -->
 <script>
 $(document).ready(function() {
-  var table = $('#tblDetailRAB').DataTable({
-    columnDefs: [
-      { targets: 6, visible: false } // sembunyikan kolom kategori dari tampilan
-    ],
-    order: [[6, 'asc']],
-    rowGroup: {
-      dataSrc: 6,
-      startRender: function(rows, group) {
-        var total = rows
-          .data()
-          .pluck(5)  // kolom "Jumlah"
-          .reduce(function(a, b) {
-            return a + parseInt(b.replace(/[\Rp\s.]/g, '')) || 0;
-          }, 0);
-        return $('<tr/>')
-          .append('<td colspan="5" class="fw-bold bg-primary text-white">' + group + '</td>')
-          .append('<td class="fw-bold bg-primary text-white">Rp ' + total.toLocaleString('id-ID') + '</td>');
+  const table = $('#tblDetailRAB').DataTable({
+    paging: true,
+    searching: true,
+    ordering: true,
+    lengthChange: false,
+    language: {
+      search: "Cari:",
+      zeroRecords: "Data tidak ditemukan",
+      info: "Menampilkan _START_ sampai _END_ dari _TOTAL_ data",
+      infoEmpty: "Tidak ada data",
+      paginate: {
+        previous: "Sebelumnya",
+        next: "Berikutnya"
       }
     },
-    footerCallback: function(row, data, start, end, display) {
-      var api = this.api();
-
-      // Total keseluruhan pada kolom 5
-      var totalKeseluruhan = api
-        .column(5, { search: 'applied' })
-        .data()
-        .reduce(function(a, b) {
-          return a + parseInt(b.replace(/[\Rp\s.]/g, '')) || 0;
-        }, 0);
-
-      $(api.column(5).footer()).html(
-        'Rp ' + totalKeseluruhan.toLocaleString('id-ID')
-      );
+    rowCallback: function(row, data, index){
+      if ($(row).hasClass('no-sort')) {
+        // Hapus class zebra dari baris kategori/subtotal agar tidak konflik
+        $(row).removeClass('odd even');
+      }
     }
   });
+
+  // Hilangkan baris no-sort dari pencarian/sorting jika perlu
+  $('#tblDetailRAB tbody tr.no-sort').each(function(){
+    table.row(this).invalidate().draw(false);
+  });
 });
-
 </script>
-
 </body>
 </html>

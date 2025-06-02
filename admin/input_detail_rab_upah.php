@@ -845,55 +845,121 @@ $detail_result = mysqli_query($koneksi, $sql_detail);
   <div class="card-header">
     Detail RAB
   </div>
-      <div class="card-body"> 
+  <div class="card-body">
+    <div class="table-responsive">
+      <table class="table table-bordered" id="tblDetailRAB">
+        <thead>
+          <tr>
+            <th style="width:5%;">No</th>
+            <th>Uraian Pekerjaan</th>
+            <th style="width:10%;">Satuan</th>
+            <th style="width:10%;">Volume</th>
+            <th style="width:15%;">Harga Satuan</th>
+            <th style="width:15%;">Jumlah</th>
+          </tr>
+        </thead>
+        <tbody>
+          <?php
+          function toRoman($num) {
+              $map = [
+                  'M' => 1000, 'CM' => 900, 'D' => 500, 'CD' => 400,
+                  'C' => 100, 'XC' => 90, 'L' => 50, 'XL' => 40,
+                  'X' => 10, 'IX' => 9, 'V' => 5, 'IV' => 4, 'I' => 1
+              ];
+              $result = '';
+              foreach ($map as $roman => $value) {
+                  while ($num >= $value) {
+                      $result .= $roman;
+                      $num -= $value;
+                  }
+              }
+              return $result;
+          }
 
-        <button
-          id="btnTambahKategori"
-          class="btn btn-primary btn-round ms-auto mb-3">
-          <i class="fa fa-plus"></i> Tambah Kategori
-        </button>
-        
-  <div class="table-responsive">
-    <table class="table table-bordered" id="tblKategori">
-      <thead>
-        <tr>
-          <th scope="col" style="width:5%;">No</th>
-          <th scope="col">Uraian Pekerjaan</th>
-          <th scope="col" style="width:10%;">Satuan</th>
-          <th scope="col" style="width:10%;">Volume</th>
-          <th scope="col" style="width:15%;">Harga Satuan</th>
-          <th scope="col" style="width:15%;">Jumlah</th>
-          <th scope="col" style="width:15%;">Aksi</th>
-        </tr>
-      </thead>
-      
-      <tbody>
-        <?php
-        if ($detail_result && mysqli_num_rows($detail_result) > 0) {
-            $no = 1;
-            $grand_total = 0;
-            while ($row = mysqli_fetch_assoc($detail_result)) {
-                $grand_total += $row['sub_total'];
-                echo "<tr>
-                        <td>" . $no++ . "</td>
-                        <td>" . htmlspecialchars($row['uraian_pekerjaan']) . "</td>
-                        <td>" . htmlspecialchars($row['nama_satuan']) . "</td>
-                        <td>" . htmlspecialchars($row['volume']) . "</td>
-                        <td>Rp " . number_format($row['harga_satuan'], 0, ',', '.') . "</td>
-                        <td>Rp " . number_format($row['sub_total'], 0, ',', '.') . "</td>  
-                                                                      
-                        <td class='text-center'>
-                        </td>
-                      </tr>";
-            }
-            echo "<tr>
-                    <td colspan='5' class='text-end fw-bold'>Total</td>
-                    <td class='fw-bold'>Rp " . number_format($grand_total, 0, ',', '.') . "</td>
-                  </tr>";
-        } 
-        ?>
+          if ($detail_result && mysqli_num_rows($detail_result) > 0) {
+              $prevKategori = null;
+              $subTotalKategori = 0;
+              $grandTotal = 0;
+              $noKategori = 0;
+              $noPekerjaan = 1;
+
+              while ($row = mysqli_fetch_assoc($detail_result)) {
+                  if ($prevKategori !== $row['nama_kategori']) {
+                      if ($prevKategori !== null) {
+                          echo "<tr class='table-secondary fw-bold'>
+                                  <td colspan='5' class='text-end'>Sub Total</td>
+                                  <td>Rp " . number_format($subTotalKategori, 0, ',', '.') . "</td>
+                                </tr>";
+                      }
+                      $noKategori++;
+                      echo "<tr class='table-primary fw-bold'>
+                              <td>" . toRoman($noKategori) . "</td>
+                              <td colspan='5'>" . htmlspecialchars($row['nama_kategori']) . "</td>
+                            </tr>";
+                      $prevKategori = $row['nama_kategori'];
+                      $subTotalKategori = 0;
+                      $noPekerjaan = 1;
+                  }
+
+                  echo "<tr>
+                          <td>" . $noPekerjaan++ . "</td>
+                          <td>" . htmlspecialchars($row['uraian_pekerjaan']) . "</td>
+                          <td>" . htmlspecialchars($row['nama_satuan']) . "</td>
+                          <td>" . htmlspecialchars($row['volume']) . "</td>
+                          <td>Rp " . number_format($row['harga_satuan'], 0, ',', '.') . "</td>
+                          <td>Rp " . number_format($row['sub_total'], 0, ',', '.') . "</td>
+                        </tr>";
+
+                  $subTotalKategori += $row['sub_total'];
+                  $grandTotal += $row['sub_total'];
+              }
+
+              // Subtotal kategori terakhir
+              echo "<tr class='table-secondary fw-bold'>
+                      <td colspan='5' class='text-end'>Sub Total</td>
+                      <td>Rp " . number_format($subTotalKategori, 0, ',', '.') . "</td>
+                    </tr>";
+
+              // Total keseluruhan
+              echo "<tr class='table-success fw-bold'>
+                      <td colspan='5' class='text-end'>Total Keseluruhan</td>
+                      <td>Rp " . number_format($grandTotal, 0, ',', '.') . "</td>
+                    </tr>";
+          } else {
+              echo "<tr><td colspan='6' class='text-center'>Tidak ada detail pekerjaan</td></tr>";
+          }
+          ?>
         </tbody>
       </table>
+    </div>
+  </div>
+</div>
+
+<!-- Script -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+
+<script>
+  $(document).ready(function () {
+    $('#tblDetailRAB').DataTable({
+      paging: true,
+      searching: true,
+      ordering: true,
+      lengthChange: false,
+      language: {
+        search: "Cari:",
+        zeroRecords: "Data tidak ditemukan",
+        info: "Menampilkan _START_ sampai _END_ dari _TOTAL_ data",
+        infoEmpty: "Tidak ada data",
+        paginate: {
+          previous: "Sebelumnya",
+          next: "Berikutnya"
+        }
+      }
+    });
+  });
+</script>
       
     </div>
     <div class="mt-3 text-end">
