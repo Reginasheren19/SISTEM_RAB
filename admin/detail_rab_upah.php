@@ -900,14 +900,15 @@ if ($detail_result && mysqli_num_rows($detail_result) > 0) {
             $noPekerjaan = 1;
         }
 
-        echo "<tr>
-                <td>" . $noPekerjaan++ . "</td>
-                <td>" . htmlspecialchars($row['uraian_pekerjaan']) . "</td>
-                <td>" . htmlspecialchars($row['nama_satuan']) . "</td>
-                <td>" . htmlspecialchars($row['volume']) . "</td>
-                <td>Rp " . number_format($row['harga_satuan'], 0, ',', '.') . "</td>
-                <td>Rp " . number_format($row['sub_total'], 0, ',', '.') . "</td>
-              </tr>";
+echo "<tr>
+        <td>" . $noPekerjaan++ . "</td>
+        <td>" . htmlspecialchars($row['uraian_pekerjaan']) . "</td>
+        <td>" . htmlspecialchars($row['nama_satuan']) . "</td>
+        <td>" . htmlspecialchars($row['volume']) . "</td>
+        <td>Rp " . number_format($row['harga_satuan'], 0, ',', '.') . "</td>
+        <td>Rp " . number_format($row['sub_total'], 0, ',', '.') . "</td>
+      </tr>";
+
 
         $subTotalKategori += $row['sub_total'];
         $grandTotal += $row['sub_total'];
@@ -935,29 +936,51 @@ if ($detail_result && mysqli_num_rows($detail_result) > 0) {
   </div>
 </div>
 
+<link rel="stylesheet" href="https://cdn.datatables.net/rowgroup/1.3.1/css/rowGroup.dataTables.min.css" />
+<script src="https://cdn.datatables.net/rowgroup/1.3.1/js/dataTables.rowGroup.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
 
 <script>
 $(document).ready(function() {
-    $('#tblDetailRAB').DataTable({
-        paging: true,
-        searching: true,
-        ordering: true,
-        lengthChange: false,
-        language: {
-            search: "Cari:",
-            zeroRecords: "Data tidak ditemukan",
-            info: "Menampilkan _START_ sampai _END_ dari _TOTAL_ data",
-            infoEmpty: "Tidak ada data",
-            paginate: {
-                previous: "Sebelumnya",
-                next: "Berikutnya"
-            }
-        }
-    });
+  var table = $('#tblDetailRAB').DataTable({
+    columnDefs: [
+      { targets: 6, visible: false } // sembunyikan kolom kategori dari tampilan
+    ],
+    order: [[6, 'asc']],
+    rowGroup: {
+      dataSrc: 6,
+      startRender: function(rows, group) {
+        var total = rows
+          .data()
+          .pluck(5)  // kolom "Jumlah"
+          .reduce(function(a, b) {
+            return a + parseInt(b.replace(/[\Rp\s.]/g, '')) || 0;
+          }, 0);
+        return $('<tr/>')
+          .append('<td colspan="5" class="fw-bold bg-primary text-white">' + group + '</td>')
+          .append('<td class="fw-bold bg-primary text-white">Rp ' + total.toLocaleString('id-ID') + '</td>');
+      }
+    },
+    footerCallback: function(row, data, start, end, display) {
+      var api = this.api();
+
+      // Total keseluruhan pada kolom 5
+      var totalKeseluruhan = api
+        .column(5, { search: 'applied' })
+        .data()
+        .reduce(function(a, b) {
+          return a + parseInt(b.replace(/[\Rp\s.]/g, '')) || 0;
+        }, 0);
+
+      $(api.column(5).footer()).html(
+        'Rp ' + totalKeseluruhan.toLocaleString('id-ID')
+      );
+    }
+  });
 });
+
 </script>
 
 </body>
