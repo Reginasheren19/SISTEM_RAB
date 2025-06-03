@@ -840,13 +840,17 @@ $detail_result = mysqli_query($koneksi, $sql_detail);
           </div>
 
 
+<?php
+// Ganti bagian table body Anda dengan kode ini:
+?>
+
 <div class="card">
   <div class="card-header">
     Detail RAB
   </div>
   <div class="card-body">
     <div class="table-responsive">
-     <table class="table table-bordered" id="tblDetailRAB">
+      <table class="table table-bordered" id="tblDetailRAB">
         <thead>
           <tr>
             <th style="width:5%;">No</th>
@@ -857,148 +861,166 @@ $detail_result = mysqli_query($koneksi, $sql_detail);
             <th style="width:15%;">Jumlah</th>
           </tr>
         </thead>
-<tbody>
+        <tbody>
 <?php
+function toRoman($num) {
+    $map = [
+        'M' => 1000, 'CM' => 900, 'D' => 500, 'CD' => 400,
+        'C' => 100, 'XC' => 90, 'L' => 50, 'XL' => 40,
+        'X' => 10, 'IX' => 9, 'V' => 5, 'IV' => 4, 'I' => 1
+    ];
+    $result = '';
+    foreach ($map as $roman => $value) {
+        while ($num >= $value) {
+            $result .= $roman;
+            $num -= $value;
+        }
+    }
+    return $result;
+}
+
 if ($detail_result && mysqli_num_rows($detail_result) > 0) {
-
-    $kategoriData = [];
-    while ($row = mysqli_fetch_assoc($detail_result)) {
-        $kategoriData[$row['nama_kategori']][] = $row;
-    }
-
-    function toRoman($num) {
-        $map = [
-            'M' => 1000, 'CM' => 900, 'D' => 500, 'CD' => 400,
-            'C' => 100, 'XC' => 90, 'L' => 50, 'XL' => 40,
-            'X' => 10, 'IX' => 9, 'V' => 5, 'IV' => 4, 'I' => 1
-        ];
-        $result = '';
-        foreach ($map as $roman => $value) {
-            while ($num >= $value) {
-                $result .= $roman;
-                $num -= $value;
-            }
-        }
-        return $result;
-    }
-
-    $noKategori = 0;
+    $prevKategori = null;
     $grandTotal = 0;
-
-    foreach ($kategoriData as $kategoriNama => $pekerjaanList) {
-        $noKategori++;
-        // Tampilkan baris kategori
-        echo "<tr class='table-primary fw-bold kategori no-sort' data-kategori-id='$noKategori'>
-                <td>" . toRoman($noKategori) . "</td>
-                <td>
-                  " . htmlspecialchars($kategoriNama) . "
-                  <button type='button' class='btn btn-outline-secondary btn-sm btn-toggle-pekerjaan ms-2' title='Tampilkan / Sembunyikan Pekerjaan' style='padding: 2px 6px; font-size: 0.75rem;'>
-                    <i class='fa fa-chevron-up'></i>
-                  </button>
-                </td>
-                <td></td><td></td><td></td><td></td>
-              </tr>";
-
-        $subTotalKategori = 0;
-        $noPekerjaan = 1;
-
-        // Tampilkan pekerjaan sesuai kategori
-        foreach ($pekerjaanList as $row) {
-            echo "<tr class='pekerjaan' data-parent-kategori-id='$noKategori'>
-                    <td>" . $noPekerjaan++ . "</td>
-                    <td>" . htmlspecialchars($row['uraian_pekerjaan']) . "</td>
-                    <td>" . htmlspecialchars($row['nama_satuan']) . "</td>
-                    <td>" . htmlspecialchars($row['volume']) . "</td>
-                    <td>Rp " . number_format($row['harga_satuan'], 0, ',', '.') . "</td>
-                    <td>Rp " . number_format($row['sub_total'], 0, ',', '.') . "</td>
+    $subTotalKategori = 0;
+    $noKategori = 0;
+    $noPekerjaan = 1;
+    
+    while ($row = mysqli_fetch_assoc($detail_result)) {
+        // Jika kategori berubah
+        if ($prevKategori !== $row['nama_kategori']) {
+            // Tampilkan subtotal kategori sebelumnya (jika ada)
+            if ($prevKategori !== null) {
+                echo "<tr class='table-secondary fw-bold subtotal-row'>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td class='text-end'>Sub Total</td>
+                        <td class='text-end'>Rp " . number_format($subTotalKategori, 0, ',', '.') . "</td>
+                      </tr>";
+            }
+            
+            // Header kategori baru
+            $noKategori++;
+            echo "<tr class='table-primary fw-bold category-header'>
+                    <td>" . toRoman($noKategori) . "</td>
+                    <td>" . htmlspecialchars($row['nama_kategori']) . "</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
                   </tr>";
-            $subTotalKategori += $row['sub_total'];
-            $grandTotal += $row['sub_total'];
+            
+            $prevKategori = $row['nama_kategori'];
+            $subTotalKategori = 0;
+            $noPekerjaan = 1;
         }
-
-        // Baris subtotal kategori
-        echo "<tr class='table-secondary fw-bold sub-total no-sort' data-parent-kategori-id='$noKategori'>
+        
+        // Tampilkan detail pekerjaan
+        echo "<tr class='category-item'>
+                <td>" . $noPekerjaan++ . "</td>
+                <td>&nbsp;&nbsp;&nbsp;&nbsp;" . htmlspecialchars($row['uraian_pekerjaan']) . "</td>
+                <td class='text-center'>" . htmlspecialchars($row['nama_satuan']) . "</td>
+                <td class='text-end'>" . number_format($row['volume'], 2, ',', '.') . "</td>
+                <td class='text-end'>Rp " . number_format($row['harga_satuan'], 0, ',', '.') . "</td>
+                <td class='text-end'>Rp " . number_format($row['sub_total'], 0, ',', '.') . "</td>
+              </tr>";
+        
+        $subTotalKategori += $row['sub_total'];
+        $grandTotal += $row['sub_total'];
+    }
+    
+    // Subtotal kategori terakhir
+    if ($prevKategori !== null) {
+        echo "<tr class='table-secondary fw-bold subtotal-row'>
+                <td></td>
+                <td></td>
+                <td></td>
                 <td></td>
                 <td class='text-end'>Sub Total</td>
-                <td></td><td></td><td></td>
-                <td>Rp " . number_format($subTotalKategori, 0, ',', '.') . "</td>
+                <td class='text-end'>Rp " . number_format($subTotalKategori, 0, ',', '.') . "</td>
               </tr>";
     }
-
-    // Baris total keseluruhan
-    echo "<tr class='table-success fw-bold no-sort'>
-            <td></td>
-            <td class='text-end'>Total Keseluruhan</td>
-            <td></td><td></td><td></td>
-            <td>Rp " . number_format($grandTotal, 0, ',', '.') . "</td>
-          </tr>";
-
+    
 } else {
     echo "<tr><td colspan='6' class='text-center'>Tidak ada detail pekerjaan</td></tr>";
 }
 ?>
-</tbody>
-
-
+        </tbody>
+        <tfoot>
+          <tr class='table-success fw-bold'>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td class='text-end'>TOTAL KESELURUHAN</td>
+            <td class='text-end'>Rp <?= number_format($grandTotal ?? 0, 0, ',', '.') ?></td>
+          </tr>
+        </tfoot>
       </table>
     </div>
   </div>
 </div>
 
-<!-- Library JS -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
-
-<!-- DataTables Config -->
 <script>
-  $(document).ready(function() {
-  const table = $('#tblDetailRAB').DataTable({
-    paging: true,
-    searching: true,
-    ordering: true,
-    lengthChange: false,
-    columnDefs: [
-      { orderable: false, targets: 'no-sort' } // Nonaktifkan sorting pada baris dengan class no-sort
-    ],
-    language: {
-      search: "Cari:",
-      zeroRecords: "Data tidak ditemukan",
-      info: "Menampilkan _START_ sampai _END_ dari _TOTAL_ data",
-      infoEmpty: "Tidak ada data",
-      paginate: {
-        previous: "Sebelumnya",
-        next: "Berikutnya"
-      }
-    },
-    rowCallback: function(row, data, index){
-      // Hilangkan efek zebra striping pada baris kategori dan subtotal
-      if ($(row).hasClass('no-sort')) {
-        $(row).removeClass('odd even');
-      }
-    }
-  });
-
-  // Event toggle pekerjaan per kategori
-  $('#tblDetailRAB').on('click', '.btn-toggle-pekerjaan', function() {
-    const kategoriRow = $(this).closest('tr.kategori');
-    if (!kategoriRow.length) return;
-    const kategoriId = kategoriRow.data('kategori-id');
-    if (!kategoriId) return;
-
-    // Cari semua baris pekerjaan dan subtotal sesuai kategori
-    const relatedRows = $(`#tblDetailRAB tbody tr.pekerjaan[data-parent-kategori-id='${kategoriId}'], #tblDetailRAB tbody tr.sub-total[data-parent-kategori-id='${kategoriId}']`);
-
-    if (relatedRows.is(':visible')) {
-      relatedRows.hide();
-      $(this).find('i').removeClass('fa-chevron-up').addClass('fa-chevron-down');
-    } else {
-      relatedRows.show();
-      $(this).find('i').removeClass('fa-chevron-down').addClass('fa-chevron-up');
-    }
-  });
+$(document).ready(function() {
+    $('#tblDetailRAB').DataTable({
+        paging: true,
+        searching: true,
+        ordering: true,
+        lengthChange: true,
+        pageLength: 25,
+        lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "Semua"]],
+        columnDefs: [
+            { 
+                targets: [0, 2, 3, 4, 5], 
+                className: 'text-center' 
+            },
+            { 
+                targets: 1, 
+                className: 'text-left' 
+            },
+            {
+                // Disable sorting pada baris kategori dan subtotal
+                targets: '_all',
+                createdCell: function(td, cellData, rowData, row, col) {
+                    var $row = $(td).closest('tr');
+                    if ($row.hasClass('category-header') || $row.hasClass('subtotal-row')) {
+                        $row.addClass('no-sort');
+                    }
+                }
+            }
+        ],
+        order: [[0, 'asc']],
+        language: {
+            search: "Cari:",
+            lengthMenu: "Tampilkan _MENU_ data per halaman",
+            zeroRecords: "Data tidak ditemukan",
+            info: "Menampilkan _START_ sampai _END_ dari _TOTAL_ data",
+            infoEmpty: "Tidak ada data tersedia",
+            infoFiltered: "(difilter dari _MAX_ total data)",
+            paginate: {
+                previous: "Sebelumnya",
+                next: "Berikutnya",
+                first: "Pertama",
+                last: "Terakhir"
+            }
+        },
+        // Callback setelah tabel digambar
+        drawCallback: function(settings) {
+            // Styling khusus untuk baris kategori dan subtotal
+            $('#tblDetailRAB tbody tr.category-header').css({
+                'background-color': '#e3f2fd',
+                'font-weight': 'bold'
+            });
+            $('#tblDetailRAB tbody tr.subtotal-row').css({
+                'background-color': '#f5f5f5',
+                'font-weight': 'bold'
+            });
+        }
+    });
 });
-
 </script>
 </body>
 </html>
