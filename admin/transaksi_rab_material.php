@@ -14,6 +14,7 @@ $kavlingResult = mysqli_query($koneksi, "SELECT id_proyek, kavling, type_proyek 
 if (!$perumahanResult) {
     die("Query Error (proyek): " . mysqli_error($koneksi));
 }
+
 ?>
 
 
@@ -828,7 +829,7 @@ if (!$perumahanResult) {
                         mm.nama_mandor,
                         tr.tanggal_mulai_mt,
                         tr.tanggal_selesai_mt,
-                        (SELECT SUM(total_rab_material) FROM detail_rab_material d WHERE d.id_rab_material = tr.id_rab_material) AS total
+                        tr.total_rab_material AS total
                       FROM 
                         rab_material tr
                       JOIN master_perumahan mpe ON tr.id_perumahan = mpe.id_perumahan

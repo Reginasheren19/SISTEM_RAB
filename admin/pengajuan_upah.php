@@ -1,54 +1,44 @@
 <?php
 include("../config/koneksi_mysql.php");
 
-// Query mengambil data pengajuan lengkap dengan mandor, proyek, kontrak (total_rab_upah)
-$sql = "
-SELECT
-  p.id_pengajuan,
-  p.id_proyek,
-  m.nama_mandor,
-  CONCAT(mp.nama_perumahan, ' - ', pr.kavling) AS proyek,
-  rab.total_kontrak,
-  COALESCE(SUM(CASE WHEN p2.status = 'paid' THEN p2.nominal_pengajuan ELSE 0 END), 0) AS pencairan,
-  rab.total_kontrak - COALESCE(SUM(CASE WHEN p2.status = 'paid' THEN p2.nominal_pengajuan ELSE 0 END), 0) AS sisa,
-  p.tanggal_pengajuan,
-  p.status
-FROM pengajuan_upah p
-JOIN master_mandor m ON p.id_mandor = m.id_mandor
-JOIN master_proyek pr ON p.id_proyek = pr.id_proyek
-JOIN master_perumahan mp ON pr.id_perumahan = mp.id_perumahan
-JOIN (
-    SELECT
-      id_rab_upah,
-      SUM(total_rab_upah) AS total_kontrak
-    FROM detail_rab_upah
-    GROUP BY id_rab_upah
-) rab ON p.id_rab_upah = rab.id_rab_upah
-LEFT JOIN pengajuan_upah p2 ON p2.id_proyek = p.id_proyek AND p2.status = 'paid'
-GROUP BY
-  p.id_pengajuan,
-  p.id_proyek,
-  m.nama_mandor,
-  proyek,
-  rab.total_kontrak,
-  p.tanggal_pengajuan,
-  p.status
-ORDER BY p.tanggal_pengajuan DESC;
-
-";
+// Mengatur error reporting
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+// Mengambil data user dari database
+$result = mysqli_query($koneksi, "SELECT * FROM rab_upah");
+$perumahanResult = mysqli_query($koneksi, "SELECT id_perumahan, nama_perumahan, lokasi FROM master_perumahan ORDER BY nama_perumahan ASC");
+if (!$perumahanResult) {
+    die("Query Error (perumahan): " . mysqli_error($koneksi));
+}
+$kavlingResult = mysqli_query($koneksi, "SELECT id_proyek, kavling, type_proyek FROM master_proyek ORDER BY type_proyek ASC");
+if (!$perumahanResult) {
+    die("Query Error (proyek): " . mysqli_error($koneksi));
+}
+$mandorResult = mysqli_query($koneksi, "SELECT id_mandor, nama_mandor FROM master_mandor ORDER BY nama_mandor ASC");
+if (!$mandorResult) {
+    die("Query Error (mandor): " . mysqli_error($koneksi));
+}
+$sql = "SELECT 
+          tr.id_rab_upah,
+          tr.id_perumahan,
+          tr.id_proyek,
+          tr.id_mandor,
+          mpe.nama_perumahan,
+          mpr.kavling,
+          mm.nama_mandor,
+          tr.tanggal_mulai,
+          tr.total_rab_upah
+        FROM rab_upah tr
+        JOIN master_perumahan mpe ON tr.id_perumahan = mpe.id_perumahan
+        JOIN master_proyek mpr ON tr.id_proyek = mpr.id_proyek
+        JOIN master_mandor mm ON tr.id_mandor = mm.id_mandor
+        ";
 
 $result = mysqli_query($koneksi, $sql);
 if (!$result) {
     die("Query Error: " . mysqli_error($koneksi));
 }
-
-// Ambil data mandor untuk dropdown
-$mandorResult = mysqli_query($koneksi, "SELECT id_mandor, nama_mandor FROM master_mandor ORDER BY nama_mandor ASC");
-if (!$mandorResult) {
-    die("Query Error (mandor): " . mysqli_error($koneksi));
-}
 ?>
-
 
 <!DOCTYPE html>
 <html lang="en">
@@ -64,7 +54,6 @@ if (!$mandorResult) {
       href="assets/img/kaiadmin/favicon.ico"
       type="image/x-icon"
     />
-    <link href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css" rel="stylesheet" />
 
     <!-- Fonts and icons -->
     <script src="assets/js/plugin/webfont/webfont.min.js"></script>
@@ -212,19 +201,19 @@ if (!$mandorResult) {
               <li class="nav-item">
                 <a data-bs-toggle="collapse" href="#sidebarLayouts">
                   <i class="fas fa-th-list"></i>
-                  <p>Sidebar Layouts</p>
+                  <p>Rancang RAB</p>
                   <span class="caret"></span>
                 </a>
                 <div class="collapse" id="sidebarLayouts">
                   <ul class="nav nav-collapse">
                     <li>
                       <a href="sidebar-style-2.html">
-                        <span class="sub-item">Sidebar Style 2</span>
+                        <span class="sub-item">RAB Upah</span>
                       </a>
                     </li>
                     <li>
                       <a href="icon-menu.html">
-                        <span class="sub-item">Icon Menu</span>
+                        <span class="sub-item">RAB Material</span>
                       </a>
                     </li>
                   </ul>
@@ -387,7 +376,7 @@ if (!$mandorResult) {
           <div class="main-header-logo">
             <!-- Logo Header -->
             <div class="logo-header" data-background-color="dark">
-              <a href="../index.html" class="logo">
+              <a href="index.html" class="logo">
                 <img
                   src="assets/img/kaiadmin/logo_light.svg"
                   alt="navbar brand"
@@ -768,7 +757,7 @@ if (!$mandorResult) {
         <div class="container">
           <div class="page-inner">
             <div class="page-header">
-              <h3 class="fw-bold mb-3">Mastering</h3>
+              <h3 class="fw-bold mb-3">Rancang RAB</h3>
               <ul class="breadcrumbs mb-3">
                 <li class="nav-home">
                   <a href="dashboard.php">
@@ -779,13 +768,13 @@ if (!$mandorResult) {
                   <i class="icon-arrow-right"></i>
                 </li>
                 <li class="nav-item">
-                  <a href="#">Mastering</a>
+                  <a href="#">Rancang RAB</a>
                 </li>
                 <li class="separator">
                   <i class="icon-arrow-right"></i>
                 </li>
                 <li class="nav-item">
-                  <a href="#">Master Proyek</a>
+                  <a href="#">RAB Upah</a>
                 </li>
               </ul>
             </div>
@@ -794,13 +783,13 @@ if (!$mandorResult) {
   <div class="col-md-12">
     <div class="card">
       <div class="card-header d-flex align-items-center">
-        <h4 class="card-title">Pengajuan Upah</h4>
+        <h4 class="card-title">RAB Upah</h4>
         <button
           class="btn btn-primary btn-round ms-auto"
           data-bs-toggle="modal"
-          data-bs-target="#addPengajuanModal"
+          data-bs-target="#addRABUpahModal"
         >
-          <i class="fa fa-plus"></i> Tambah Pengajuan
+          <i class="fa fa-plus"></i> Tambah Data
         </button>
       </div>
 
@@ -833,113 +822,128 @@ if (!$mandorResult) {
       </script>
 
       <div class="card-body">
-									<ul class="nav nav-pills nav-secondary mb-4" id="pills-tab" role="tablist">
-										<li class="nav-item">
-											<a class="nav-link active" id="pills-home-tab" data-bs-toggle="pill" href="#pills-home" role="tab" aria-controls="pills-home" aria-selected="true">Semua</a>
-										</li>
-										<li class="nav-item">
-											<a class="nav-link" id="pills-profile-tab" data-bs-toggle="pill" href="#pills-profile" role="tab" aria-controls="pills-profile" aria-selected="false">Perlu Dicairkan</a>
-										</li>
-										<li class="nav-item">
-											<a class="nav-link" id="pills-contact-tab" data-bs-toggle="pill" href="#pills-contact" role="tab" aria-controls="pills-contact" aria-selected="false">Sudah Dicairkan</a>
-										</li>
-									</ul>
+        <div class="table-responsive">
+          <table
+            id="basic-datatables"
+            class="display table table-striped table-hover"
+          >
+            <thead>
+              <tr>
+                <th>ID RAB</th>
+                <th>Perumahan</th>
+                <th>Kavling</th>
+                <th>Mandor</th>
+                <th>Tanggal</th>
+                <th>Total</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+                <?php while ($row = mysqli_fetch_assoc($result)): ?>
+            <?php
+              $tahun = date('Y');
+              $bulan = date('m');
+              $id_proyek_3digit = str_pad($row['id_proyek'], 3, '0', STR_PAD_LEFT);
+              $formatted_id = 'RABP' . $tahun . $bulan . $id_proyek_3digit;
+              $tanggalFormatted = date('d-m-Y', strtotime($row['tanggal_mulai']));
+              $totalFormatted = number_format($row['total_rab_upah'], 0, ',', '.');
+            ?>
+            <tr>
+              <td><?= htmlspecialchars($formatted_id) ?></td>
+              <td><?= htmlspecialchars($row['nama_perumahan']) ?></td>
+              <td><?= htmlspecialchars($row['kavling']) ?></td>
+              <td><?= htmlspecialchars($row['nama_mandor']) ?></td>
+              <td><?= htmlspecialchars($tanggalFormatted) ?></td>
+              <td><?= $totalFormatted ?></td>
+              <td>
+                <a href="detail_rab_upah.php?id_rab_upah=<?= urlencode($row['id_rab_upah']) ?>" class="btn btn-info btn-sm">Detail</a>
+                <button class="btn btn-danger btn-sm delete-btn" data-id_rab_upah="<?= htmlspecialchars($row['id_rab_upah']) ?>">Delete</button>
+              </td>
+            </tr>
+          <?php endwhile; ?>
 
-<!-- Tabel -->
-<div class="table-responsive">
-  <table id="basic-datatables" class="display table table-striped table-hover nowrap" style="width:100%">
-    <thead>
-      <tr>
-        <th>ID Pengajuan</th>
-        <th>Mandor</th>
-        <th>Proyek</th>
-        <th>Kontrak (Rp)</th>
-        <th>Pencairan (Rp)</th>
-        <th>Sisa (Rp)</th>
-        <th>Progress</th>
-        <th>Status</th>
-        <th>Aksi</th>
-      </tr>
-    </thead>
-    <tbody>
-      <?php
-      while ($row = mysqli_fetch_assoc($result)) {
-          // Progress sementara default 0 karena tidak ada kolom progress
-          $progress = 0;
-          echo "<tr>
-                  <td>" . htmlspecialchars($row['id_pengajuan']) . "</td>
-                  <td>" . htmlspecialchars($row['nama_mandor']) . "</td>
-                  <td>" . htmlspecialchars($row['proyek']) . "</td>
-                  <td>" . number_format($row['total_kontrak'], 0, ',', '.') . "</td>
-                  <td>" . number_format($row['pencairan'], 0, ',', '.') . "</td>
-                  <td>" . number_format($row['sisa'], 0, ',', '.') . "</td>
-                  <td>
-                    <div class='progress' style='height:20px;'>
-                      <div class='progress-bar' role='progressbar' style='width: {$progress}%;' aria-valuenow='{$progress}' aria-valuemin='0' aria-valuemax='100'>{$progress}%</div>
-                    </div>
-                  </td>
-                  <td>" . htmlspecialchars(ucfirst($row['status'])) . "</td>
-                </tr>";
-      }
-      ?>
-    </tbody>
-  </table>
-</div>
-
-
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- Modal Tambah Data Pengajuan -->
-<div class="modal fade" id="addPengajuanModal" tabindex="-1" aria-labelledby="addPengajuanModalLabel" aria-hidden="true">
+<!-- Modal Tambah Data RAB Upah -->
+<div class="modal fade" id="addRABUpahModal" tabindex="-1" aria-labelledby="addRABUpahModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
-      <form method="POST" action="add_pengajuan.php" id="formTambahPengajuan">
+      <form method="POST" action="add_rab_upah.php">
+        <input type="hidden" name="action" value="add" />
         <div class="modal-header">
-          <h5 class="modal-title" id="addPengajuanModalLabel">Tambah Data Pengajuan Pencairan</h5>
+          <h5 class="modal-title" id="addRABUpahModalLabel">Tambah Data RAB Upah</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
 
-          <!-- Dropdown Mandor -->
+          <!-- Dropdown Nama Perumahan -->
           <div class="mb-3">
-            <label for="id_mandor" class="form-label">Nama Mandor</label>
-            <select class="form-select" id="id_mandor" name="id_mandor" required>
-              <option value="" disabled selected>Pilih Nama Mandor</option>
-              <?php
-              mysqli_data_seek($mandorResult, 0); // reset pointer
-              while ($mandor = mysqli_fetch_assoc($mandorResult)) : ?>
-                <option value="<?= htmlspecialchars($mandor['id_mandor']) ?>">
-                  <?= htmlspecialchars($mandor['nama_mandor']) ?>
+            <label for="id_perumahan" class="form-label">Nama Perumahan</label>
+            <select class="form-select" id="id_perumahan" name="id_perumahan" required>
+              <option value="" disabled selected>Pilih Nama Perumahan</option>
+              <?php while ($perumahan = mysqli_fetch_assoc($perumahanResult)): ?>
+                <option 
+                  value="<?= htmlspecialchars($perumahan['id_perumahan']) ?>" 
+                  data-lokasi="<?= htmlspecialchars($perumahan['lokasi']) ?>"
+                >
+                  <?= htmlspecialchars($perumahan['nama_perumahan']) ?>
                 </option>
               <?php endwhile; ?>
             </select>
           </div>
 
-          <!-- Dropdown Proyek (disabled awalnya, akan diisi JS berdasarkan mandor) -->
+          <!-- Dropdown Kavling (Master Proyek) -->
           <div class="mb-3">
-            <label for="id_proyek" class="form-label">Proyek (Perumahan - Kavling)</label>
-            <select class="form-select" id="id_proyek" name="id_proyek" required disabled>
-              <option value="" disabled selected>Pilih Proyek</option>
-              <!-- Options akan diisi otomatis via JS -->
+            <label for="id_proyek" class="form-label">Kavling</label>
+            <select class="form-select" id="id_proyek" name="id_proyek" required>
+              <option value="" disabled selected>Pilih Kavling</option>
+              <?php while ($proyek = mysqli_fetch_assoc($kavlingResult)): ?>
+                <option 
+                  value="<?= htmlspecialchars($proyek['id_proyek']) ?>" 
+                  data-type_proyek="<?= htmlspecialchars($proyek['type_proyek']) ?>"
+                >
+                  <?= htmlspecialchars($proyek['kavling']) ?>
+                </option>
+              <?php endwhile; ?>            
             </select>
           </div>
 
-          <!-- Lokasi (readonly, otomatis dari proyek yang dipilih) -->
           <div class="mb-3">
-            <label for="lokasi" class="form-label">Lokasi</label>
-            <input type="text" class="form-control" id="lokasi" name="lokasi" readonly placeholder="Lokasi akan muncul otomatis" />
+            <label for="type_proyek" class="form-label">Tipe Proyek</label>
+            <input type="text" class="form-control" id="type_proyek" name="type_proyek" readonly />
           </div>
 
-          <!-- Tanggal Pengajuan -->
+                    <!-- Dropdown Mandor -->
           <div class="mb-3">
-            <label for="tanggal_pengajuan" class="form-label">Tanggal Pengajuan</label>
-            <input type="date" class="form-control" id="tanggal_pengajuan" name="tanggal_pengajuan" required />
+            <label for="id_mandor" class="form-label">Mandor</label>
+            <select class="form-select" id="id_mandor" name="id_mandor" required>
+              <option value="" disabled selected>Pilih Mandor</option>
+              <?php
+              $mandorResult = mysqli_query($koneksi, "SELECT id_mandor, nama_mandor FROM master_mandor ORDER BY nama_mandor ASC");
+              while ($mandor = mysqli_fetch_assoc($mandorResult)) {
+                  echo '<option value="' . htmlspecialchars($mandor['id_mandor']) . '">' . htmlspecialchars($mandor['nama_mandor']) . '</option>';
+              }
+              ?>
+            </select>
           </div>
 
-        </div>
+          <!-- Input Tanggal Mulai -->
+          <div class="mb-3">
+            <label for="tanggal_mulai" class="form-label">Tanggal Mulai</label>
+            <input type="date" class="form-control" id="tanggal_mulai" name="tanggal_mulai" required />
+          </div>
+
+          <div class="mb-3">
+            <label for="update_lokasi" class="form-label">Lokasi</label>
+            <input type="text" class="form-control" id="update_lokasi" name="lokasi" readonly value="<?= htmlspecialchars($row['lokasi'] ?? '') ?>" />
+          </div>
+
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
           <button type="submit" class="btn btn-primary">Lanjut</button>
@@ -948,7 +952,7 @@ if (!$mandorResult) {
     </div>
   </div>
 </div>
-
+</div>
 
   <!-- Modal Delete Confirmation -->
   <div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteModalLabel" aria-hidden="true">
@@ -975,74 +979,119 @@ if (!$mandorResult) {
 
 <script>
   $(document).ready(function() {
+    $('#basic-datatables').DataTable();
+  });
+</script>
+
+<script>
+  $(document).ready(function() {
     // Ketika dropdown nama perumahan berubah
     $('#id_perumahan').on('change', function() {
       // Ambil data-lokasi dari option yang dipilih
       const lokasi = $(this).find(':selected').data('lokasi') || '';
       // Set lokasi ke input lokasi
-      $('#lokasi').val(lokasi);
+      $('#update_lokasi').val(lokasi);
     });
   });
 </script>
 
 <script>
   $(document).ready(function() {
-    $('#basic-datatables').DataTable();
+    // Ketika dropdown nama perumahan berubah
+    $('#id_proyek').on('change', function() {
+      // Ambil data-lokasi dari option yang dipilih
+      const type_proyek = $(this).find(':selected').data('type_proyek') || '';
+      // Set lokasi ke input lokasi
+      $('#update_type_proyek').val(type_proyek);
+    });
   });
 </script>
 
+  <script>
+    // Konfirmasi penghapusan data upah 
+    document.querySelectorAll('.delete-btn').forEach(button => {
+      button.addEventListener('click', function() {
+        const idRabUpah = this.dataset.id_rab_upah;  // ambil data-id_rab_upah
+        const deleteLink = document.getElementById('confirmDeleteLink');
+        deleteLink.href = 'delete_rab_upah.php?id_rab_upah=' + idRabUpah;
+        const deleteModal = new bootstrap.Modal(document.getElementById('confirmDeleteModal'));
+        deleteModal.show();
+      });
+    });
+  </script>
 
 <script>
-  document.addEventListener('DOMContentLoaded', function () {
-    const mandorSelect = document.getElementById('id_mandor');
-    const proyekSelect = document.getElementById('id_proyek');
-    const lokasiInput = document.getElementById('lokasi');
+$('#id_perumahan').on('change', function() {
+  const idPerumahan = $(this).val();
 
-    mandorSelect.addEventListener('change', function () {
-      const mandorId = this.value;
-      if (!mandorId) {
-        proyekSelect.innerHTML = '<option value="" disabled selected>Pilih Proyek</option>';
-        proyekSelect.disabled = true;
-        lokasiInput.value = '';
-        return;
-      }
+  if (!idPerumahan) {
+    $('#id_proyek').html('<option value="" disabled selected>Pilih Kavling</option>');
+    $('#type_proyek').val('');
+    return;
+  }
 
-      fetch('get_proyek_by_mandor.php?id_mandor=' + mandorId)
-        .then(response => response.json())
-        .then(data => {
-          proyekSelect.innerHTML = '<option value="" disabled selected>Pilih Proyek</option>';
-          data.forEach(proyek => {
-            const option = document.createElement('option');
-            option.value = proyek.id_proyek;
-            option.textContent = proyek.nama_perumahan + ' - ' + proyek.kavling;
-            option.dataset.lokasi = proyek.lokasi;
-            proyekSelect.appendChild(option);
-          });
-          proyekSelect.disabled = false;
-          lokasiInput.value = '';
-        })
-        .catch(() => {
-          proyekSelect.innerHTML = '<option value="" disabled selected>Pilih Proyek</option>';
-          proyekSelect.disabled = true;
-          lokasiInput.value = '';
+  $.ajax({
+    url: 'get_kavling.php',
+    method: 'POST',
+    data: { id_perumahan: idPerumahan },
+    dataType: 'json',
+    success: function(response) {
+      let options = '<option value="" disabled selected>Pilih Kavling</option>';
+      if (response.length > 0) {
+        response.forEach(function(proyek) {
+          options += `<option value="${proyek.id_proyek}" data-type_proyek="${proyek.type_proyek}">${proyek.kavling}</option>`;
         });
-    });
-
-    proyekSelect.addEventListener('change', function () {
-      const selectedOption = this.options[this.selectedIndex];
-      lokasiInput.value = selectedOption.dataset.lokasi || '';
-    });
+      } else {
+        options += '<option value="" disabled>Tidak ada kavling</option>';
+      }
+      $('#id_proyek').html(options);
+      $('#type_proyek').val(''); // clear tipe proyek kalau sebelumnya terisi
+    },
+    error: function(xhr, status, error) {
+      alert('Gagal mengambil data kavling: ' + error);
+    }
   });
+});
+
+$('#id_proyek').on('change', function () {
+  const typeProyek = $(this).find(':selected').data('type_proyek') || '';
+  $('#type_proyek').val(typeProyek);
+});
 </script>
 
-<!-- DataTables JS dan Bootstrap JS -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
 <script>
-  $(document).ready(function() {
-    $('#basic-datatables').DataTable();
+  document.querySelectorAll('.btn-detail').forEach(button => {
+    button.addEventListener('click', function() {
+      const idRabUpah = this.dataset.id_rab_upah;
+      if(idRabUpah) {
+        window.location.href = 'detail_rab_upah.php?id_rab_upah=' + encodeURIComponent(idRabUpah);
+      }
+    });
   });
+
+  newRow.find('.kategori').autocomplete({
+  source: function(request, response) {
+    $.ajax({
+      url: 'get_kategori.php',
+      dataType: 'json',
+      data: {
+        term: request.term
+      },
+      success: function(data) {
+        response(data);
+      },
+      error: function() {
+        response([]);
+      }
+    });
+  },
+  minLength: 1,
+  select: function(event, ui) {
+    $(this).val(ui.item.value); // gunakan ui.item.value agar sesuai dengan 'value'
+    return false;
+  }
+});
+
 </script>
 
 
