@@ -5,7 +5,7 @@ include("../config/koneksi_mysql.php");
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 // Mengambil data user dari database
-$result = mysqli_query($koneksi, "SELECT * FROM transaksi_rab_material");
+$result = mysqli_query($koneksi, "SELECT * FROM rab_material");
 $perumahanResult = mysqli_query($koneksi, "SELECT id_perumahan, nama_perumahan, lokasi FROM master_perumahan ORDER BY nama_perumahan ASC");
 if (!$perumahanResult) {
     die("Query Error (perumahan): " . mysqli_error($koneksi));
@@ -16,18 +16,19 @@ if (!$perumahanResult) {
 }
 ?>
 
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <title>Admin Transaksi RAB Material</title>
+    <title>RAB Material</title>
     <meta
       content="width=device-width, initial-scale=1.0, shrink-to-fit=no"
       name="viewport"
     />
     <link
       rel="icon"
-      href="assets/img/kaiadmin/favicon.ico"
+      href="assets/img/logo/LOGO PT.jpg"
       type="image/x-icon"
     />
 
@@ -66,10 +67,10 @@ if (!$perumahanResult) {
         <div class="sidebar-logo">
           <!-- Logo Header -->
           <div class="logo-header" data-background-color="dark">
-            <a href="index.html" class="logo">
+            <a href="" class="logo">
               <img
-                src="assets/img/kaiadmin/logo_light.svg"
-                alt="navbar brand"
+                src="assets/img/logo/LOGO PT.jpg"
+                alt="Logo PT"
                 class="navbar-brand"
                 height="20"
               />
@@ -354,11 +355,11 @@ if (!$perumahanResult) {
             <div class="logo-header" data-background-color="dark">
               <a href="index.html" class="logo">
                 <img
-                  src="assets/img/kaiadmin/logo_light.svg"
-                  alt="navbar brand"
+                  src="assets/img/logo/LOGO PT.jpg"
+                  alt="Logo PT"
                   class="navbar-brand"
                   height="20"
-                />
+              />
               </a>
               <div class="nav-toggle">
                 <button class="btn btn-toggle toggle-sidebar">
@@ -733,7 +734,7 @@ if (!$perumahanResult) {
         <div class="container">
           <div class="page-inner">
             <div class="page-header">
-              <h3 class="fw-bold mb-3">Rancang RAB Material</h3>
+              <h3 class="fw-bold mb-3">Rancang RAB</h3>
               <ul class="breadcrumbs mb-3">
                 <li class="nav-home">
                   <a href="dashboard.php">
@@ -744,13 +745,13 @@ if (!$perumahanResult) {
                   <i class="icon-arrow-right"></i>
                 </li>
                 <li class="nav-item">
-                  <a href="#">Rancang RAB Material</a>
+                  <a href="#">Rancang RAB</a>
                 </li>
                 <li class="separator">
                   <i class="icon-arrow-right"></i>
                 </li>
                 <li class="nav-item">
-                  <a href="#"> Daftar RAB Material</a>
+                  <a href="">RAB Material</a>
                 </li>
               </ul>
             </div>
@@ -759,7 +760,7 @@ if (!$perumahanResult) {
   <div class="col-md-12">
     <div class="card">
       <div class="card-header d-flex align-items-center">
-        <h4 class="card-title">Daftar RAB Material</h4>
+        <h4 class="card-title">RAB Material</h4>
         <button
           class="btn btn-primary btn-round ms-auto"
           data-bs-toggle="modal"
@@ -809,7 +810,8 @@ if (!$perumahanResult) {
                 <th>Perumahan</th>
                 <th>Kavling</th>
                 <th>Mandor</th>
-                <th>Tanggal</th>
+                <th>Tanggal Mulai</th>
+                <th>Tanggal Selesai</th>
                 <th>Total</th>
                 <th>Action</th>
               </tr>
@@ -824,10 +826,11 @@ if (!$perumahanResult) {
                         mpe.nama_perumahan,
                         mpr.kavling,
                         mm.nama_mandor,
-                        tr.tanggal,
+                        tr.tanggal_mulai_mt,
+                        tr.tanggal_selesai_mt,
                         (SELECT SUM(total_rab_material) FROM detail_rab_material d WHERE d.id_rab_material = tr.id_rab_material) AS total
                       FROM 
-                        transaksi_rab_material tr
+                        rab_material tr
                       JOIN master_perumahan mpe ON tr.id_perumahan = mpe.id_perumahan
                       JOIN master_proyek mpr ON tr.id_proyek = mpr.id_proyek
                       JOIN master_mandor mm ON tr.id_mandor = mm.id_mandor
@@ -849,13 +852,17 @@ if (!$perumahanResult) {
                       <td>" . htmlspecialchars($row['nama_perumahan']) . "</td>
                       <td>" . htmlspecialchars($row['kavling']) . "</td>
                       <td>" . htmlspecialchars($row['nama_mandor']) . "</td>
-                      <td>" . htmlspecialchars($row['tanggal']) . "</td>
+                      <td>" . htmlspecialchars($row['tanggal_mulai_mt']) . "</td>
+                      <td>" . htmlspecialchars($row['tanggal_selesai_mt']) . "</td>                      
                       <td>" . (isset($row['total']) ? number_format($row['total'], 0, ',', '.') : '0') . "</td>
                       <td>
-                          <a href='detail_rab_material.php?id_rab_material=" . urlencode($id_rab) . "' class='btn btn-info btn-sm'>Detail</a>
-                          <button class='btn btn-danger btn-sm delete-btn' data-id_rab_material='" . htmlspecialchars($id_rab) . "'>Delete</button>
+                      <a href='detail_rab_material.php?id_rab_material=" . urlencode($row['id_rab_material']) . "' 
+                        class='btn btn-info btn-sm'>
+                        Detail
+                      </a>
+                        <button class='btn btn-danger btn-sm delete-btn' data-id_rab_material='" . htmlspecialchars($row['id_rab_material']) . "'>Delete</button>
                       </td>
-                  </tr>";
+                    </tr>";
               }
               ?>
 
@@ -874,7 +881,7 @@ if (!$perumahanResult) {
       <form method="POST" action="add_rab_material.php">
         <input type="hidden" name="action" value="add" />
         <div class="modal-header">
-          <h5 class="modal-title" id="addRABUMaterialModalLabel">Tambah Data RAB Material</h5>
+          <h5 class="modal-title" id="addRABMaterialModalLabel">Tambah Data RAB Material</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
@@ -932,16 +939,18 @@ if (!$perumahanResult) {
 
           <!-- Input Tanggal Mulai -->
           <div class="mb-3">
-            <label for="tanggal" class="form-label">Tanggal Mulai</label>
-            <input type="date" class="form-control" id="tanggal" name="tanggal" required />
+            <label for="tanggal_mulai_mt" class="form-label">Tanggal Mulai</label>
+            <input type="date" class="form-control" id="tanggal_mulai_mt" name="tanggal_mulai_mt" required />
+          </div>
+          <div class="mb-3">
+            <label for="tanggal_selesai_mt" class="form-label">Tanggal Selesai</label>
+            <input type="date" class="form-control" id="tanggal_selesai_mt" name="tanggal_selesai_mt" required />
           </div>
 
           <div class="mb-3">
             <label for="update_lokasi" class="form-label">Lokasi</label>
             <input type="text" class="form-control" id="update_lokasi" name="lokasi" readonly value="<?= htmlspecialchars($row['lokasi'] ?? '') ?>" />
           </div>
-
-          <!-- Total tidak diinput -->
 
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
@@ -962,7 +971,7 @@ if (!$perumahanResult) {
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
-          <p>Are you sure you want to delete this rab?</p>
+          <p>Are you sure you want to delete this user?</p>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -1007,12 +1016,12 @@ if (!$perumahanResult) {
 </script>
 
   <script>
-    // Konfirmasi penghapusan data upah 
+    // Konfirmasi penghapusan data material 
     document.querySelectorAll('.delete-btn').forEach(button => {
       button.addEventListener('click', function() {
-        const idRabUpah = this.dataset.id_rab_upah;  // ambil data-id_rab_upah
+        const idRabMaterial = this.dataset.id_rab_material;  // ambil data-id_rab_material
         const deleteLink = document.getElementById('confirmDeleteLink');
-        deleteLink.href = 'delete_rab_upah.php?id_rab_upah=' + idRabUpah;
+        deleteLink.href = 'delete_rab_material.php?id_rab_material=' + idRabMaterial;
         const deleteModal = new bootstrap.Modal(document.getElementById('confirmDeleteModal'));
         deleteModal.show();
       });
@@ -1067,6 +1076,8 @@ $('#id_proyek').on('change', function () {
       }
     });
   });
+
+  
 </script>
 
 
