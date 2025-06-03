@@ -27,6 +27,7 @@ $sql = "SELECT
           mpr.kavling,
           mm.nama_mandor,
           tr.tanggal_mulai,
+          tr.tanggal_selesai,
           tr.total_rab_upah
         FROM rab_upah tr
         JOIN master_perumahan mpe ON tr.id_perumahan = mpe.id_perumahan
@@ -833,7 +834,8 @@ if (!$result) {
                 <th>Perumahan</th>
                 <th>Kavling</th>
                 <th>Mandor</th>
-                <th>Tanggal</th>
+                <th>Tanggal Mulai</th>
+                <th>Tanggal Selesai</th>
                 <th>Total</th>
                 <th>Action</th>
               </tr>
@@ -845,7 +847,8 @@ if (!$result) {
               $bulan = date('m');
               $id_proyek_3digit = str_pad($row['id_proyek'], 3, '0', STR_PAD_LEFT);
               $formatted_id = 'RABP' . $tahun . $bulan . $id_proyek_3digit;
-              $tanggalFormatted = date('d-m-Y', strtotime($row['tanggal_mulai']));
+              $tanggalMulaiFormatted = date('d-m-Y', strtotime($row['tanggal_mulai']));
+              $tanggalSelesaiFormatted = date('d-m-Y', strtotime($row['tanggal_selesai']));              
               $totalFormatted = number_format($row['total_rab_upah'], 0, ',', '.');
             ?>
             <tr>
@@ -853,7 +856,8 @@ if (!$result) {
               <td><?= htmlspecialchars($row['nama_perumahan']) ?></td>
               <td><?= htmlspecialchars($row['kavling']) ?></td>
               <td><?= htmlspecialchars($row['nama_mandor']) ?></td>
-              <td><?= htmlspecialchars($tanggalFormatted) ?></td>
+              <td><?= htmlspecialchars($tanggalMulaiFormatted) ?></td>
+              <td><?= htmlspecialchars($tanggalSelesaiFormatted) ?></td>              
               <td><?= $totalFormatted ?></td>
               <td>
                 <a href="detail_rab_upah.php?id_rab_upah=<?= urlencode($row['id_rab_upah']) ?>" class="btn btn-info btn-sm">Detail</a>
@@ -937,6 +941,12 @@ if (!$result) {
           <div class="mb-3">
             <label for="tanggal_mulai" class="form-label">Tanggal Mulai</label>
             <input type="date" class="form-control" id="tanggal_mulai" name="tanggal_mulai" required />
+          </div>
+
+                    <!-- Input Tanggal Mulai -->
+          <div class="mb-3">
+            <label for="tanggal_selesai" class="form-label">Tanggal Selesai</label>
+            <input type="date" class="form-control" id="tanggal_selesai" name="tanggal_selesai" required />
           </div>
 
           <div class="mb-3">
