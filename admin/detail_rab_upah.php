@@ -807,7 +807,7 @@ $detail_result = mysqli_query($koneksi, $sql_detail);
                 </div>
                 <div class="col">
                   <div class="d-flex">
-                    <span class="fw-semibold me-2" style="min-width: 120px;">Pekerjaan</span>
+                    <span class="fw-semibold me-2" style="min-width: 120px;">Proyek</span>
                     <span>: <?= htmlspecialchars($data['pekerjaan']) ?></span>
                   </div>
                 </div>
