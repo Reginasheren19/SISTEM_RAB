@@ -1,51 +1,57 @@
 <?php
+// Include file koneksi
 include("../config/koneksi_mysql.php");
 
-// Mengatur error reporting
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-
-// Mengambil data rab_upah yang bergabung dengan master_perumahan, master_proyek, dan master_mandor
-$sql = "SELECT 
-    pu.id_pengajuan_upah,
-    pu.tanggal_pengajuan,
-    pu.total_pengajuan,
-    pu.status_pengajuan,
-    pu.keterangan,
-    ru.id_rab_upah,
-    mpe.nama_perumahan,
-    mpr.kavling,
-    mm.nama_mandor  -- Pastikan nama_mandor ada di sini
-FROM pengajuan_upah pu
-JOIN rab_upah ru ON pu.id_rab_upah = ru.id_rab_upah
-JOIN master_perumahan mpe ON ru.id_perumahan = mpe.id_perumahan
-JOIN master_proyek mpr ON ru.id_proyek = mpr.id_proyek
-JOIN master_mandor mm ON ru.id_mandor = mm.id_mandor
-";
-
-
-
-$pengajuanresult = mysqli_query($koneksi, $sql);
-if (!$pengajuanresult) {
-    die("Query Error: " . mysqli_error($koneksi));
+// Pastikan ID Pengajuan Upah ada
+if (!isset($_GET['id_pengajuan_upah'])) {
+    echo "ID Pengajuan Upah tidak diberikan.";
+    exit;
 }
+$id_pengajuan_upah = mysqli_real_escape_string($koneksi, $_GET['id_pengajuan_upah']);
 
-// Jika membutuhkan data master perumahan, proyek, atau mandor, bisa dipanggil secara terpisah (jika ada kebutuhan lebih lanjut)
-$perumahanResult = mysqli_query($koneksi, "SELECT id_perumahan, nama_perumahan, lokasi FROM master_perumahan ORDER BY nama_perumahan ASC");
-if (!$perumahanResult) {
-    die("Query Error (perumahan): " . mysqli_error($koneksi));
+// Query utama untuk mengambil data RAB
+$sql_rab = "SELECT 
+            tr.id_rab_upah,
+            CONCAT(mpe.nama_perumahan, ' - ', mpr.kavling) AS pekerjaan,
+            mpr.type_proyek,
+            mpe.lokasi,
+            YEAR(tr.tanggal_mulai) AS tahun,
+            mm.nama_mandor
+        FROM rab_upah tr
+        JOIN master_perumahan mpe ON tr.id_perumahan = mpe.id_perumahan
+        JOIN master_proyek mpr ON tr.id_proyek = mpr.id_proyek
+        JOIN master_mandor mm ON tr.id_mandor = mm.id_mandor
+        WHERE tr.id_rab_upah = (
+            SELECT id_rab_upah FROM pengajuan_upah WHERE id_pengajuan_upah = '$id_pengajuan_upah'
+        )";
+$rab_result = mysqli_query($koneksi, $sql_rab);
+if (!$rab_result || mysqli_num_rows($rab_result) == 0) {
+    echo "Data RAB Upah tidak ditemukan.";
+    exit;
 }
+$rab_info = mysqli_fetch_assoc($rab_result);
 
-$kavlingResult = mysqli_query($koneksi, "SELECT id_proyek, kavling, type_proyek FROM master_proyek ORDER BY type_proyek ASC");
-if (!$kavlingResult) {
-    die("Query Error (proyek): " . mysqli_error($koneksi));
-}
+// Query detail RAB berdasarkan ID Pengajuan Upah
+$sql_detail = "SELECT dp.id_detail_pengajuan, dp.id_detail_rab_upah, dp.progress_pekerjaan, dp.nilai_upah_diajukan, 
+                      k.nama_kategori, mp.uraian_pekerjaan, d.sub_total 
+               FROM detail_pengajuan dp 
+               LEFT JOIN detail_rab_upah d ON dp.id_detail_rab_upah = d.id_detail_rab_upah
+               LEFT JOIN master_pekerjaan mp ON d.id_pekerjaan = mp.id_pekerjaan 
+               LEFT JOIN master_kategori k ON d.id_kategori = k.id_kategori 
+               WHERE dp.id_pengajuan_upah = '$id_pengajuan_upah'
+               ORDER BY k.id_kategori, mp.uraian_pekerjaan";
+$detail_result = mysqli_query($koneksi, $sql_detail);
 
-$mandorResult = mysqli_query($koneksi, "SELECT id_mandor, nama_mandor FROM master_mandor ORDER BY nama_mandor ASC");
-if (!$mandorResult) {
-    die("Query Error (mandor): " . mysqli_error($koneksi));
+// Fungsi untuk mengubah angka menjadi Angka Romawi
+function toRoman($num) {
+    $map = ['M' => 1000, 'CM' => 900, 'D' => 500, 'CD' => 400, 'C' => 100, 'XC' => 90, 'L' => 50, 'XL' => 40, 'X' => 10, 'IX' => 9, 'V' => 5, 'IV' => 4, 'I' => 1];
+    $result = '';
+    foreach ($map as $roman => $value) { while ($num >= $value) { $result .= $roman; $num -= $value; } }
+    return $result;
 }
 ?>
+
+
 
 
 <!DOCTYPE html>
@@ -765,260 +771,81 @@ if (!$mandorResult) {
         <div class="container">
           <div class="page-inner">
             <div class="page-header">
-              <h3 class="fw-bold mb-3">Pengajuan Upah RAB</h3>
-              <ul class="breadcrumbs mb-3">
-                <li class="nav-home">
-                  <a href="dashboard.php">
-                    <i class="icon-home"></i>
-                  </a>
-                </li>
-                <li class="separator">
-                  <i class="icon-arrow-right"></i>
-                </li>
-                <li class="nav-item">
-                  <a href="#">Pengajuan Upah RAB</a>
-                </li>
-              </ul>
+              <h3 class="fw-bold mb-3">Form Detail Pengajuan RAB Upah</h3>
             </div>
 
-<div class="row">
-  <div class="col-md-12">
-    <div class="card">
-      <div class="card-header d-flex align-items-center">
-        <h4 class="card-title">Pengajuan Upah RAB</h4>
-        <button
-          class="btn btn-primary btn-round ms-auto"
-          data-bs-toggle="modal"
-          data-bs-target="#selectProyekModal"
-        >
-          <i class="fa fa-plus"></i> Buat Pengajuan Baru
-        </button>
-      </div>
+          <div class="container mt-4">
 
-            <?php if (isset($_GET['msg'])): ?>
-        <div class="mb-3">
-          <div class="alert alert-success fade show" role="alert">
-            <?= htmlspecialchars($_GET['msg']) ?>
-          </div>
+          <div class="card shadow-sm mb-4">
+            <div class="card-header">
+                <h4>Detail dan Pengajuan Progress RAB</h4>
+            </div>
+<div class="card-body">
+    <div class="container mt-4">
+        <h2 class="text-center">Detail Pengajuan RAB Upah</h2>
+        
+        <!-- Tampilkan Informasi RAB -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <label class="fw-bold">ID RAB:</label>
+                <p><?= htmlspecialchars($rab_info['id_rab_upah']) ?></p>
+            </div>
+            <div class="col-md-6">
+                <label class="fw-bold">Pekerjaan:</label>
+                <p><?= htmlspecialchars($rab_info['pekerjaan']) ?></p>
+            </div>
+            <div class="col-md-6">
+                <label class="fw-bold">Tipe Proyek:</label>
+                <p><?= htmlspecialchars($rab_info['type_proyek']) ?></p>
+            </div>
+            <div class="col-md-6">
+                <label class="fw-bold">Lokasi:</label>
+                <p><?= htmlspecialchars($rab_info['lokasi']) ?></p>
+            </div>
+            <div class="col-md-6">
+                <label class="fw-bold">Tanggal Mulai:</label>
+                <p><?= htmlspecialchars($rab_info['tahun']) ?></p>
+            </div>
+            <div class="col-md-6">
+                <label class="fw-bold">Mandor:</label>
+                <p><?= htmlspecialchars($rab_info['nama_mandor']) ?></p>
+            </div>
         </div>
-      <?php endif; ?>
 
-      <script>
-      window.setTimeout(function() {
-        const alert = document.querySelector('.alert');
-        if (alert) {
-          alert.classList.add('fade');
-          alert.classList.remove('show');
-          setTimeout(() => alert.remove(), 350);
-        }
-      }, 3000);
 
-        // Hapus parameter 'msg' dari URL agar tidak muncul lagi saat reload
-      if (window.history.replaceState) {
-        const url = new URL(window.location);
-        if (url.searchParams.has('msg')) {
-          url.searchParams.delete('msg');
-          window.history.replaceState({}, document.title, url.pathname);
-        }
-      }
-      </script>
-
-      <div class="card-body">
-        <div class="table-responsive">
-          <table
-            id="basic-datatables"
-            class="display table table-striped table-hover"
-          >
-            <thead>
-              <tr>
-                <th>ID Pengajuan</th>
-                <th>Proyek</th>
-                <th>Mandor</th>
-                <th>Tanggal Pengajuan</th>
-                <th>Total Pengajuan</th>
-                <th>Status</th>
-                <th>Keterangan</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-                <?php while ($row = mysqli_fetch_assoc($pengajuanresult)): ?>
-            <?php
-            $tanggalFormatted = date('d-m-Y', strtotime($row['tanggal_pengajuan']));
-            $totalFormatted = number_format($row['total_pengajuan'], 0, ',', '.');
-        // Tentukan kelas badge berdasarkan status pengajuan
-            $statusPengajuan = $row['status_pengajuan'];
-
-        switch ($statusPengajuan) {
-            case 'diajukan':
-                $badgeClass = 'badge-black';
-                $statusLabel = 'Diajukan';
-                break;
-            case 'disetujui':
-                $badgeClass = 'badge-primary';
-                $statusLabel = 'Disetujui';
-                break;
-            case 'ditolak':
-                $badgeClass = 'badge-danger';
-                $statusLabel = 'Ditolak';
-                break;
-            case 'dibayar':
-                $badgeClass = 'badge-succes';
-                $statusLabel = 'Dibayar';
-                break;
-        }
-        ?>    <tr>
-      <td><?= htmlspecialchars($row['id_pengajuan_upah']) ?></td>
-      <td><?= htmlspecialchars($row['nama_perumahan']) . ' - ' . htmlspecialchars($row['kavling']) ?></td> <!-- Display formatted Proyek -->
-      <td><?= htmlspecialchars($row['nama_mandor']) ?></td>
-      <td><?= $tanggalFormatted ?></td>
-      <td><?= $totalFormatted ?></td>
-            <td>
-                <!-- Dynamically display the badge based on the status -->
-                <span class="badge <?= $badgeClass ?>"><?= $statusLabel ?></span>
-            </td>
-      <td><?= htmlspecialchars($row['keterangan']) ?></td>
-      <td>
-                <a href="get_pengajuan_upah.php?id_pengajuan_upah=<?= urlencode($row['id_pengajuan_upah']) ?>" class="btn btn-info btn-sm">Detail</a>
-        <button class="btn btn-danger btn-sm delete-btn" data-id_pengajuan_upah="<?= htmlspecialchars($row['id_pengajuan_upah']) ?>">Delete</button>
-              </td>
+     <!-- Table for Displaying Pengajuan Upah Details -->
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>No</th>
+                <th>Uraian Pekerjaan</th>
+                <th>Jumlah (Rp)</th>
+                <th>Progress Lalu (%)</th>
+                <th>Progress Saat Ini (%)</th>
+                <th>Nilai Pengajuan (Rp)</th>
             </tr>
-          <?php endwhile; ?>
+        </thead>
+        <tbody>
+            <?php
+            $no = 1;
+            while ($row = mysqli_fetch_assoc($detail_result)) {
+                $idDetail = $row['id_detail_rab_upah'];
+                $progressLalu = $row['progress_pekerjaan'];
+                $nilaiPengajuan = ($progressLalu / 100) * $row['sub_total']; // Calculate the nilai pengajuan based on progress
+                ?>
 
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Modal for selecting Proyek RAB -->
-<div class="modal fade" id="selectProyekModal" tabindex="-1" aria-labelledby="selectProyekModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <form method="POST" action="add_pengajuan_upah.php">
-        <input type="hidden" name="action" value="add" />
-        <div class="modal-header">
-          <h5 class="modal-title" id="selectProyekModalLabel">Pilih Proyek RAB</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-
-          <!-- Table for RAB Projects -->
-          <div class="table-responsive">
-            <table class="table table-striped">
-              <thead>
                 <tr>
-                  <th>ID RAB</th>
-                  <th>Nama Perumahan</th>
-                  <th>Kavling</th>
-                  <th>Mandor</th>
-                  <th>Aksi</th>
+                    <td><?= $no++ ?></td>
+                    <td><?= htmlspecialchars($row['uraian_pekerjaan']) ?></td>
+                    <td class="text-end"><?= number_format($row['sub_total'], 0, ',', '.') ?></td>
+                    <td class="text-center"><?= number_format($progressLalu, 2, ',', '.') ?>%</td>
+                    <td class="text-center"><?= number_format($progressLalu, 2, ',', '.') ?>%</td>
+                    <td class="text-end"><?= number_format($nilaiPengajuan, 0, ',', '.') ?></td>
                 </tr>
-              </thead>
-              <tbody>
-                <?php
-                // Query to get existing RAB projects
-                $rabUpahResult = mysqli_query($koneksi, "SELECT 
-                    ru.id_rab_upah, 
-                    ru.id_proyek, 
-                    mpe.nama_perumahan, 
-                    mpr.kavling, 
-                    mm.nama_mandor 
-                  FROM rab_upah ru
-                  JOIN master_perumahan mpe ON ru.id_perumahan = mpe.id_perumahan
-                  JOIN master_proyek mpr ON ru.id_proyek = mpr.id_proyek
-                  JOIN master_mandor mm ON ru.id_mandor = mm.id_mandor");
 
-                // Format the ID
-                $tahun = date('Y');
-                $bulan = date('m');
-                while ($rab = mysqli_fetch_assoc($rabUpahResult)) {
-                  // Format the ID to match the 'RABPYYYYMMXXX' format
-                $tahun_2digit = substr($tahun, -2);
-                $id_proyek = $rab['id_proyek'];
-                $id_rab_upah = $rab['id_rab_upah'];
-
-                  $formatted_id = 'RABP' . $tahun_2digit . $bulan . $id_proyek . $id_rab_upah;
-                ?>
-                  <tr>
-                    <td><?= htmlspecialchars($formatted_id) ?></td> <!-- Display formatted ID -->
-                    <td><?= htmlspecialchars($rab['nama_perumahan']) ?></td>
-                    <td><?= htmlspecialchars($rab['kavling']) ?></td>
-                    <td><?= htmlspecialchars($rab['nama_mandor']) ?></td>
-                    <td>
-                      <!-- Button to select this project -->
-                      <button type="button" class="btn btn-success btn-sm selectProyekBtn" data-id="<?= htmlspecialchars($rab['id_rab_upah']) ?>" data-nama_perumahan="<?= htmlspecialchars($rab['nama_perumahan']) ?>" data-kavling="<?= htmlspecialchars($rab['kavling']) ?>">
-                        Pilih
-                      </button>
-                    </td>
-                  </tr>
-                <?php
-                } // End of while loop
-                ?>
-              </tbody>
-            </table>
-          </div>
-
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-        </div>
-      </form>
-    </div>
-  </div>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
-
-<script>
-  $(document).ready(function() {
-    $('#basic-datatables').DataTable();
-  });
-</script>
-
-<script>
-// Ketika tombol 'Pilih' di dalam modal diklik
-document.querySelectorAll('.selectProyekBtn').forEach(button => {
-    button.addEventListener('click', function () {
-        // Ambil ID RAB Upah yang dipilih dari atribut data
-        const idRabUpah = this.getAttribute('data-id');
-
-        // Jika ID valid, arahkan pengguna ke halaman pengajuan
-        if (idRabUpah) {
-            // Arahkan ke halaman add_pengajuan_upah.php sambil membawa ID RAB yang dipilih
-            window.location.href = 'detail_pengajuan_upah.php?id_rab_upah=' + idRabUpah;
-        }
-    });
-});
-
-// Anda bisa menyimpan skrip ini jika masih diperlukan untuk halaman lain
-// Konfirmasi penghapusan data
-document.querySelectorAll('.delete-btn').forEach(button => {
-    button.addEventListener('click', function() {
-        // Logika untuk menampilkan modal konfirmasi hapus
-        // ...
-    });
-});
-</script>
-
-
-  <script>
-    // Konfirmasi penghapusan data upah 
-    document.querySelectorAll('.delete-btn').forEach(button => {
-      button.addEventListener('click', function() {
-        const idRabUpah = this.dataset.id_rab_upah;  // ambil data-id_rab_upah
-        const deleteLink = document.getElementById('confirmDeleteLink');
-        deleteLink.href = 'delete_rab_upah.php?id_rab_upah=' + idRabUpah;
-        const deleteModal = new bootstrap.Modal(document.getElementById('confirmDeleteModal'));
-        deleteModal.show();
-      });
-    });
-  </script>
-
+            <?php } ?>
+        </tbody>
+    </table>
 
 </body>
 </html>
