@@ -783,146 +783,172 @@ function toRoman($num) {
           <div class="container mt-4">
 
           <div class="card shadow-sm mb-4">
-            <div class="card-header fw-bold">
-              Form Detail Pengajuan RAB Upah
+            <div class="card-header">
+                <h4>Detail dan Pengajuan Progress RAB</h4>
             </div>
-            <div class="card-body">
-              <div class="row row-cols-1 row-cols-md-2 g-3">
-                <div class="col">
-                  <div class="d-flex">
+<div class="card-body">
+    <form method="POST" action="add_pengajuan.php">
+        <div class="row row-cols-1 row-cols-md-2 g-3">
+            <!-- ID RAB -->
+            <div class="col">
+                <div class="d-flex">
                     <span class="fw-semibold me-2" style="min-width: 120px;">ID RAB</span>
                     <span>: <?= htmlspecialchars($rab_info['id_rab_upah']) ?></span>
-                  </div>
                 </div>
-                <div class="col">
-                  <div class="d-flex">
+            </div>
+
+            <!-- Pekerjaan -->
+            <div class="col">
+                <div class="d-flex">
                     <span class="fw-semibold me-2" style="min-width: 120px;">Pekerjaan</span>
                     <span>: <?= htmlspecialchars($rab_info['pekerjaan']) ?></span>
-                  </div>
                 </div>
-                <div class="col">
-                  <div class="d-flex">
+            </div>
+
+            <!-- Type Proyek -->
+            <div class="col">
+                <div class="d-flex">
                     <span class="fw-semibold me-2" style="min-width: 120px;">Type Proyek</span>
                     <span>: <?= htmlspecialchars($rab_info['type_proyek']) ?></span>
-                  </div>
                 </div>
-                <div class="col">
-                  <div class="d-flex">
+            </div>
+
+            <!-- Lokasi -->
+            <div class="col">
+                <div class="d-flex">
                     <span class="fw-semibold me-2" style="min-width: 120px;">Lokasi</span>
                     <span>: <?= htmlspecialchars($rab_info['lokasi']) ?></span>
-                  </div>
                 </div>
-                <div class="col">
-                  <div class="d-flex">
-                    <span class="fw-semibold me-2" style="min-width: 120px;">Tahun</span>
-                    <span>: <?= htmlspecialchars($rab_info['tahun']) ?></span>
-                  </div>
+            </div>
+
+            <!-- Tanggal Pengajuan -->
+            <div class="col">
+                <div class="form-group">
+                    <label for="tanggal_pengajuan" class="fw-semibold">Tanggal Pengajuan</label>
+                    <input type="date" id="tanggal_pengajuan" name="tanggal_pengajuan" class="form-control" required>
                 </div>
-                <div class="col">
-                  <div class="d-flex">
+            </div>
+
+            <!-- Mandor -->
+            <div class="col">
+                <div class="d-flex">
                     <span class="fw-semibold me-2" style="min-width: 120px;">Mandor</span>
                     <span>: <?= htmlspecialchars($rab_info['nama_mandor']) ?></span>
-                  </div>
                 </div>
-              </div>
             </div>
-          </div>
-
-
-<?php
-// Ganti bagian table body Anda dengan kode ini:
-?>
-
-<div class="card">
-<div class="card-header">
-    <h4>Detail dan Pengajuan Progress RAB</h4>
-</div>
-  <div class="card-body">
-    <div class="table-responsive">
-      <table class="table table-bordered" id="tblDetailRAB">
-        <thead>
-          <tr>
-            <th style="width:5%;">No</th>
-            <th>Uraian Pekerjaan</th>
-            <th style="width:12%;">Jumlah (Rp)</th>
-            <th style="width:12%;">Progress Lalu (%)</th>
-            <th style="width:10%;">Progress Saat Ini (%)</th>
-            <th style="width:12%;">Nilai Pengajuan (Rp)</th>
-          </tr>
-        </thead>
-        <tbody>
-                            <?php
-                            $grandTotal = 0;
-                            if ($detail_result && mysqli_num_rows($detail_result) > 0) {
-                                $prevKategori = null;
-                                $noKategori = 0;
-                                $noPekerjaan = 1;
-
-                                while ($row = mysqli_fetch_assoc($detail_result)) {
-                                    if ($prevKategori !== $row['nama_kategori']) {
-                                        $noKategori++;
-                                        echo "<tr class='table-primary fw-bold'><td class='text-center'>" . toRoman($noKategori) . "</td><td colspan='5'>" . htmlspecialchars($row['nama_kategori']) . "</td></tr>";
-                                        $prevKategori = $row['nama_kategori'];
-                                        $noPekerjaan = 1;
-                                    }
-                                    
-                                    $idDetail = $row['id_detail_rab_upah'];
-                                    $progressLalu = getProgressLaluPersen($koneksi, $idDetail);
-                                    $sisaProgress = 100 - $progressLalu;
-                                    $isLunas = $sisaProgress <= 0.001; // Toleransi kecil untuk floating point
-                                    
-                                    echo "<tr>
-                                            <td class='text-center'>" . $noPekerjaan++ . "</td>
-                                            <td><span class='ms-3'>" . htmlspecialchars($row['uraian_pekerjaan']) . "</span></td>
-                                            <td class='text-end'>" . number_format($row['sub_total'], 0, ',', '.') . "</td>
-                                            <td class='text-center'>" . number_format($progressLalu, 2, ',', '.') . "%</td>
-                                            <td class='text-center'>
-                                                <input type='number' class='form-control form-control-sm progress-input mx-auto'
-                                                       data-subtotal='{$row['sub_total']}'
-                                                       data-id='{$idDetail}'
-                                                       name='progress[{$idDetail}]'
-                                                       min='0' max='" . number_format($sisaProgress, 2, '.', '') . "' step='0.01'
-                                                       " . ($isLunas ? 'disabled placeholder="Lunas"' : 'placeholder="0.00"') . ">
-                                            </td>
-                                            <td class='text-end fw-bold nilai-pengajuan' data-id='{$idDetail}'>Rp 0</td>
-                                          </tr>";
-                                    
-                                    $grandTotal += $row['sub_total'];
-                                }
-                            }
-                            ?>
-        </tbody>
-        <tfoot>
-<tr class='table-success fw-bold'>
-    <td colspan="5" class='text-end'>TOTAL KESELURUHAN</td>
-    <td id="total-keseluruhan" class='text-end'>Rp <?= number_format($grandTotal ?? 0, 0, ',', '.') ?></td>
-</tr>
-<tr class='table-info fw-bold'>
-    <td colspan="5" class='text-end'>TOTAL PENGAJUAN SAAT INI</td>
-    <td id="total-pengajuan-saat-ini" class='text-end'>Rp 0</td>
-</tr>
-
-        </tfoot>
-      </table>
-    </div>
-                <div class="row justify-content-end mt-4">
-                    <div class="col-md-4">
-                        <label for="nominal-pengajuan" class="form-label fw-bold">Nominal Final yang Diajukan</label>
-                        <input type="number" class="form-control form-control-lg text-end" id="nominal-pengajuan" name="nominal_pengajuan_final" placeholder="0">
-                        <div id="error-nominal" class="form-text text-danger d-none">Nominal tidak boleh melebihi Total Pengajuan Saat Ini.</div>
-                    </div>
-                </div>
-
-                <!-- Tombol Aksi -->
-                <div class="d-flex justify-content-end mt-4">
-                    <a href="Pengajuan_upah.php" class="btn btn-secondary me-2">Kembali</a>
-                    <button type="submit" id="btn-submit" class="btn btn-primary" disabled>
-                        <i class="fa fa-paper-plane"></i> Kirim Pengajuan
-                    </button>
-                </div>
-            </form>
         </div>
-    </div>
+
+        <!-- Tabel Detail Pengajuan -->
+<div class="card-body">
+    <!-- Form utama dimulai di sini, membungkus semua input dan tombol submit -->
+    <form method="POST" action="add_pengajuan.php">
+        
+        <!-- PENTING: Menambahkan input tersembunyi untuk mengirim id_rab_upah -->
+        <input type="hidden" name="id_rab_upah" value="<?= htmlspecialchars($id_rab_upah) ?>">
+
+        <!-- Bagian informasi RAB (diasumsikan sudah ada di atasnya) -->
+        <div class="row row-cols-1 row-cols-md-2 g-3">
+            <!-- ... Kolom informasi seperti ID RAB, Pekerjaan, Type, Lokasi, dll. ... -->
+        </div>
+
+        <!-- Tabel Detail Pengajuan -->
+        <div class="table-responsive mt-4">
+            <table class="table table-bordered" id="tblDetailRAB">
+                <!-- ... Isi tabel (thead, tbody, tfoot) tetap sama ... -->
+                <thead>
+                    <tr>
+                        <th style="width:5%;">No</th>
+                        <th>Uraian Pekerjaan</th>
+                        <th style="width:12%;">Jumlah (Rp)</th>
+                        <th style="width:12%;">Progress Lalu (%)</th>
+                        <th style="width:10%;">Progress Saat Ini (%)</th>
+                        <th style="width:12%;">Nilai Pengajuan (Rp)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- PHP loop untuk menampilkan baris data -->
+                    <?php
+                    $grandTotal = 0;
+                    if ($detail_result && mysqli_num_rows($detail_result) > 0) {
+                        $prevKategori = null;
+                        $noKategori = 0;
+                        $noPekerjaan = 1;
+
+                        while ($row = mysqli_fetch_assoc($detail_result)) {
+                            if ($prevKategori !== $row['nama_kategori']) {
+                                $noKategori++;
+                                echo "<tr class='table-primary fw-bold'><td class='text-center'>" . toRoman($noKategori) . "</td><td colspan='5'>" . htmlspecialchars($row['nama_kategori']) . "</td></tr>";
+                                $prevKategori = $row['nama_kategori'];
+                                $noPekerjaan = 1;
+                            }
+
+                            $idDetail = $row['id_detail_rab_upah'];
+                            $progressLalu = getProgressLaluPersen($koneksi, $idDetail);
+                            $sisaProgress = 100 - $progressLalu;
+                            $isLunas = $sisaProgress <= 0.001;
+
+                            echo "<tr>
+                                    <td class='text-center'>" . $noPekerjaan++ . "</td>
+                                    <td><span class='ms-3'>" . htmlspecialchars($row['uraian_pekerjaan']) . "</span></td>
+                                    <td class='text-end'>" . number_format($row['sub_total'], 0, ',', '.') . "</td>
+                                    <td class='text-center'>" . number_format($progressLalu, 2, ',', '.') . "%</td>
+                                    <td class='text-center'>
+                                        <input type='number' class='form-control form-control-sm progress-input mx-auto'
+                                               data-subtotal='{$row['sub_total']}'
+                                               data-id='{$idDetail}'
+                                               name='progress[{$idDetail}]'
+                                               min='0' max='" . number_format($sisaProgress, 2, '.', '') . "' step='0.01'
+                                               " . ($isLunas ? 'disabled placeholder="Lunas"' : 'placeholder="0.00"') . ">
+                                    </td>
+                                    <td class='text-end fw-bold nilai-pengajuan' data-id='{$idDetail}'>Rp 0</td>
+                                  </tr>";
+
+                            $grandTotal += $row['sub_total'];
+                        }
+                    }
+                    ?>
+                </tbody>
+                 <tfoot>
+                    <tr class='table-success fw-bold'>
+                        <td colspan="5" class='text-end'>TOTAL KESELURUHAN</td>
+                        <td id="total-keseluruhan" class='text-end'>Rp <?= number_format($grandTotal ?? 0, 0, ',', '.') ?></td>
+                    </tr>
+                    <tr class='table-info fw-bold'>
+                        <td colspan="5" class='text-end'>TOTAL PENGAJUAN SAAT INI</td>
+                        <td id="total-pengajuan-saat-ini" class='text-end'>Rp 0</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <!-- Input Nominal & Keterangan -->
+        <div class="row justify-content-end mt-4">
+             <div class="col-md-4">
+                <label for="keterangan" class="form-label">Keterangan (Opsional)</label>
+                <textarea class="form-control" id="keterangan" name="keterangan" rows="2"></textarea>
+            </div>
+            <div class="col-md-4">
+                <label for="nominal-pengajuan" class="form-label fw-bold">Nominal Final yang Diajukan</label>
+                <input type="number" class="form-control form-control-lg text-end" id="nominal-pengajuan" name="nominal_pengajuan_final" placeholder="0">
+                <div id="error-nominal" class="form-text text-danger d-none">Nominal tidak boleh melebihi Total Pengajuan Saat Ini.</div>
+            </div>
+        </div>
+
+        <!-- Tombol Aksi (sekarang berada di dalam form utama) -->
+        <div class="d-flex justify-content-end mt-4">
+            <a href="pengajuan_upah.php" class="btn btn-secondary me-2">Kembali</a>
+            <!-- Tombol submit ini sekarang menjadi bagian dari form utama -->
+            <button type="submit" id="btn-submit" class="btn btn-primary" disabled>
+                <i class="fa fa-paper-plane"></i> Kirim Pengajuan
+            </button>
+        </div>
+
+    </form> 
+
+                </div>
+            </div>
+        </div>
+    </form>
 </div>
 
 <script>
@@ -949,16 +975,15 @@ document.addEventListener("DOMContentLoaded", function() {
             let progressDiajukan = parseFloat(input.value) || 0;
             const maxProgress = parseFloat(input.max);
 
-            // Validasi agar tidak melebihi sisa progress
             if (progressDiajukan > maxProgress) {
                 progressDiajukan = maxProgress;
                 input.value = maxProgress.toFixed(2);
             }
-             if (progressDiajukan < 0) {
+            if (progressDiajukan < 0) {
                 progressDiajukan = 0;
                 input.value = '0.00';
             }
-            
+
             const nilaiPengajuan = (progressDiajukan / 100) * subtotal;
             const nilaiCell = document.querySelector(`.nilai-pengajuan[data-id='${id}']`);
             if (nilaiCell) {
@@ -966,20 +991,19 @@ document.addEventListener("DOMContentLoaded", function() {
             }
             totalPengajuan += nilaiPengajuan;
         });
-        
+
         totalPengajuanEl.textContent = formatRupiah(totalPengajuan);
         nominalPengajuanInput.value = Math.round(totalPengajuan);
-        
+
         validateNominal();
     }
-    
+
     function validateNominal() {
-        // Mengambil nilai dari teks yang sudah diformat, lalu membersihkannya
         const totalPengajuanText = totalPengajuanEl.textContent || 'Rp 0';
         const totalPengajuan = parseFloat(totalPengajuanText.replace(/[^0-9,-]/g, '').replace(',', '.')) || 0;
         const nominalFinal = parseFloat(nominalPengajuanInput.value) || 0;
 
-        if (nominalFinal > Math.ceil(totalPengajuan)) { // Pembulatan ke atas untuk mengatasi float issue
+        if (nominalFinal > Math.ceil(totalPengajuan)) {
             errorNominalEl.classList.remove('d-none');
             btnSubmit.disabled = true;
         } else {
@@ -993,13 +1017,13 @@ document.addEventListener("DOMContentLoaded", function() {
             calculateTotals();
         }
     });
-    
+
     nominalPengajuanInput.addEventListener('input', validateNominal);
 
-    // Panggil sekali saat load untuk memastikan status tombol submit benar
     calculateTotals();
 });
 </script>
+
 
 </body>
 </html>
