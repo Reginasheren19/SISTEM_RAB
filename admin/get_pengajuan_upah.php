@@ -4,55 +4,80 @@ include("../config/koneksi_mysql.php");
 
 // Pastikan ID Pengajuan Upah ada
 if (!isset($_GET['id_pengajuan_upah'])) {
-    echo "ID Pengajuan Upah tidak diberikan.";
-    exit;
+    die("ID Pengajuan Upah tidak diberikan."); // Gunakan die() untuk menghentikan eksekusi
 }
-$id_pengajuan_upah = mysqli_real_escape_string($koneksi, $_GET['id_pengajuan_upah']);
+$id_pengajuan_upah = (int)$_GET['id_pengajuan_upah']; // Casting ke integer untuk keamanan
 
-// Query utama untuk mengambil data RAB
-$sql_rab = "SELECT 
-            tr.id_rab_upah,
-            CONCAT(mpe.nama_perumahan, ' - ', mpr.kavling) AS pekerjaan,
-            mpr.type_proyek,
-            mpe.lokasi,
-            YEAR(tr.tanggal_mulai) AS tahun,
-            mm.nama_mandor
-        FROM rab_upah tr
-        JOIN master_perumahan mpe ON tr.id_perumahan = mpe.id_perumahan
-        JOIN master_proyek mpr ON tr.id_proyek = mpr.id_proyek
-        JOIN master_mandor mm ON tr.id_mandor = mm.id_mandor
-        WHERE tr.id_rab_upah = (
-            SELECT id_rab_upah FROM pengajuan_upah WHERE id_pengajuan_upah = '$id_pengajuan_upah'
-        )";
-$rab_result = mysqli_query($koneksi, $sql_rab);
-if (!$rab_result || mysqli_num_rows($rab_result) == 0) {
-    echo "Data RAB Upah tidak ditemukan.";
-    exit;
+// Query utama untuk mengambil data pengajuan dan info RAB terkait
+$sql_pengajuan_info = "SELECT 
+                    pu.tanggal_pengajuan,
+                    pu.total_pengajuan,
+                    pu.status_pengajuan,
+                    pu.keterangan,
+                    tr.id_rab_upah,
+                    CONCAT(mpe.nama_perumahan, ' - ', mpr.kavling) AS pekerjaan,
+                    mpr.type_proyek,
+                    mpe.lokasi,
+                    YEAR(tr.tanggal_mulai) AS tahun,
+                    mm.nama_mandor
+                FROM pengajuan_upah pu
+                JOIN rab_upah tr ON pu.id_rab_upah = tr.id_rab_upah
+                JOIN master_perumahan mpe ON tr.id_perumahan = mpe.id_perumahan
+                JOIN master_proyek mpr ON tr.id_proyek = mpr.id_proyek
+                JOIN master_mandor mm ON tr.id_mandor = mm.id_mandor
+                WHERE pu.id_pengajuan_upah = '$id_pengajuan_upah'";
+
+$pengajuan_result = mysqli_query($koneksi, $sql_pengajuan_info);
+// Periksa jika query info pengajuan gagal
+if (!$pengajuan_result) {
+    die("Error query data pengajuan: " . mysqli_error($koneksi));
 }
-$rab_info = mysqli_fetch_assoc($rab_result);
+if (mysqli_num_rows($pengajuan_result) == 0) {
+    die("Data Pengajuan Upah tidak ditemukan.");
+}
+$pengajuan_info = mysqli_fetch_assoc($pengajuan_result);
 
-// Query detail RAB berdasarkan ID Pengajuan Upah
-$sql_detail = "SELECT dp.id_detail_pengajuan, dp.id_detail_rab_upah, dp.progress_pekerjaan, dp.nilai_upah_diajukan, 
-                      k.nama_kategori, mp.uraian_pekerjaan, d.sub_total 
-               FROM detail_pengajuan dp 
-               LEFT JOIN detail_rab_upah d ON dp.id_detail_rab_upah = d.id_detail_rab_upah
-               LEFT JOIN master_pekerjaan mp ON d.id_pekerjaan = mp.id_pekerjaan 
-               LEFT JOIN master_kategori k ON d.id_kategori = k.id_kategori 
-               WHERE dp.id_pengajuan_upah = '$id_pengajuan_upah'
-               ORDER BY k.id_kategori, mp.uraian_pekerjaan";
+
+// Query detail pengajuan upah
+// =================================== KESALAHAN DI SINI ===================================
+// Nama tabel yang benar adalah 'detail_pengajuan_upah', bukan 'detail_pengajuan'
+$sql_detail = "SELECT
+                    dp.id_detail_rab_upah,
+                    dp.progress_pekerjaan, 
+                    dp.nilai_upah_diajukan, 
+                    k.nama_kategori, 
+                    mp.uraian_pekerjaan, 
+                    d.sub_total 
+                FROM detail_pengajuan_upah dp 
+                LEFT JOIN detail_rab_upah d ON dp.id_detail_rab_upah = d.id_detail_rab_upah
+                LEFT JOIN master_pekerjaan mp ON d.id_pekerjaan = mp.id_pekerjaan 
+                LEFT JOIN master_kategori k ON d.id_kategori = k.id_kategori 
+                WHERE dp.id_pengajuan_upah = '$id_pengajuan_upah'
+                ORDER BY k.id_kategori, mp.uraian_pekerjaan";
+// =========================================================================================
+
 $detail_result = mysqli_query($koneksi, $sql_detail);
+// Tambahkan pengecekan error SETELAH query dijalankan
+if (!$detail_result) {
+    // Jika query gagal, hentikan eksekusi dan tampilkan pesan error dari MySQL
+    die("Error query detail pengajuan: " . mysqli_error($koneksi));
+}
+
+
 
 // Fungsi untuk mengubah angka menjadi Angka Romawi
 function toRoman($num) {
     $map = ['M' => 1000, 'CM' => 900, 'D' => 500, 'CD' => 400, 'C' => 100, 'XC' => 90, 'L' => 50, 'XL' => 40, 'X' => 10, 'IX' => 9, 'V' => 5, 'IV' => 4, 'I' => 1];
     $result = '';
-    foreach ($map as $roman => $value) { while ($num >= $value) { $result .= $roman; $num -= $value; } }
+    foreach ($map as $roman => $value) {
+        while ($num >= $value) {
+            $result .= $roman;
+            $num -= $value;
+        }
+    }
     return $result;
 }
 ?>
-
-
-
 
 <!DOCTYPE html>
 <html lang="en">
@@ -781,71 +806,97 @@ function toRoman($num) {
                 <h4>Detail dan Pengajuan Progress RAB</h4>
             </div>
 <div class="card-body">
-    <div class="container mt-4">
-        <h2 class="text-center">Detail Pengajuan RAB Upah</h2>
-        
+    <div class="container mt-4">        
         <!-- Tampilkan Informasi RAB -->
         <div class="row mb-4">
             <div class="col-md-6">
                 <label class="fw-bold">ID RAB:</label>
-                <p><?= htmlspecialchars($rab_info['id_rab_upah']) ?></p>
+                <p><?= htmlspecialchars($pengajuan_info['id_rab_upah']) ?></p>
             </div>
             <div class="col-md-6">
                 <label class="fw-bold">Pekerjaan:</label>
-                <p><?= htmlspecialchars($rab_info['pekerjaan']) ?></p>
+                <p><?= htmlspecialchars($pengajuan_info['pekerjaan']) ?></p>
             </div>
             <div class="col-md-6">
                 <label class="fw-bold">Tipe Proyek:</label>
-                <p><?= htmlspecialchars($rab_info['type_proyek']) ?></p>
+                <p><?= htmlspecialchars($pengajuan_info['type_proyek']) ?></p>
             </div>
             <div class="col-md-6">
                 <label class="fw-bold">Lokasi:</label>
-                <p><?= htmlspecialchars($rab_info['lokasi']) ?></p>
+                <p><?= htmlspecialchars($pengajuan_info['lokasi']) ?></p>
             </div>
             <div class="col-md-6">
-                <label class="fw-bold">Tanggal Mulai:</label>
-                <p><?= htmlspecialchars($rab_info['tahun']) ?></p>
+                <label class="fw-bold">Tanggal Pengajuan:</label>
+                <p><?= htmlspecialchars($pengajuan_info['tanggal_pengajuan']) ?></p>
             </div>
             <div class="col-md-6">
                 <label class="fw-bold">Mandor:</label>
-                <p><?= htmlspecialchars($rab_info['nama_mandor']) ?></p>
+                <p><?= htmlspecialchars($pengajuan_info['nama_mandor']) ?></p>
             </div>
         </div>
 
 
      <!-- Table for Displaying Pengajuan Upah Details -->
     <table class="table table-bordered">
-        <thead>
-            <tr>
-                <th>No</th>
-                <th>Uraian Pekerjaan</th>
-                <th>Jumlah (Rp)</th>
-                <th>Progress Lalu (%)</th>
-                <th>Progress Saat Ini (%)</th>
-                <th>Nilai Pengajuan (Rp)</th>
-            </tr>
-        </thead>
-        <tbody>
-            <?php
-            $no = 1;
-            while ($row = mysqli_fetch_assoc($detail_result)) {
-                $idDetail = $row['id_detail_rab_upah'];
-                $progressLalu = $row['progress_pekerjaan'];
-                $nilaiPengajuan = ($progressLalu / 100) * $row['sub_total']; // Calculate the nilai pengajuan based on progress
-                ?>
+<thead>
+    <tr>
+        <th style="text-align: center;">No</th>
+        <th style="text-align: center;">Uraian Pekerjaan</th>
+        <th style="text-align: center;">Jumlah (Rp)</th>
+        <th style="text-align: center;">Progress(%)</th>
+        <th style="text-align: center;">Nilai Pengajuan (Rp)</th>
+    </tr>
+</thead>
+    <tbody>
+        <?php
+        $grandTotal = 0;
+        $prevKategori = null;
+        $noKategori = 0;
+        $noPekerjaan = 1;
 
-                <tr>
-                    <td><?= $no++ ?></td>
-                    <td><?= htmlspecialchars($row['uraian_pekerjaan']) ?></td>
-                    <td class="text-end"><?= number_format($row['sub_total'], 0, ',', '.') ?></td>
-                    <td class="text-center"><?= number_format($progressLalu, 2, ',', '.') ?>%</td>
-                    <td class="text-center"><?= number_format($progressLalu, 2, ',', '.') ?>%</td>
-                    <td class="text-end"><?= number_format($nilaiPengajuan, 0, ',', '.') ?></td>
-                </tr>
+        while ($row = mysqli_fetch_assoc($detail_result)) {
+            // Displaying category row
+            if ($prevKategori !== $row['nama_kategori']) {
+                $noKategori++;
+                echo "<tr class='table-primary fw-bold'><td class='text-center'>" . toRoman($noKategori) . "</td><td colspan='4'>" . htmlspecialchars($row['nama_kategori']) . "</td></tr>";
+                $prevKategori = $row['nama_kategori'];
+                $noPekerjaan = 1;  // Reset pekerjaan number
+            }
 
-            <?php } ?>
-        </tbody>
-    </table>
+            $idDetail = $row['id_detail_rab_upah'];
+            $subtotal = $row['sub_total'];
+            // Assume progressLalu and nilaiPengajuan are already set
+            // Get the progress and nilaiPengajuan values from database or calculations
+            $progressLalu = $row['progress_pekerjaan'];  // Assuming this comes from the query or calculations
+            $nilaiPengajuan = ($progressLalu / 100) * $subtotal;  // Calculate nilai pengajuan based on progress
 
+            // Displaying pekerjaan (job task)
+            echo "<tr>
+                    <td class='text-center'>" . $noPekerjaan++ . "</td>
+                    <td><span class='ms-3'>" . htmlspecialchars($row['uraian_pekerjaan']) . "</span></td>
+                    <td class='text-end'>" . number_format($subtotal, 0, ',', '.') . "</td>
+                    <td class='text-center'>" . number_format($progressLalu, 2, ',', '.') . "%</td>
+                    <td class='text-end fw-bold'>" . number_format($nilaiPengajuan, 0, ',', '.') . "</td>
+                </tr>";
+
+            $grandTotal += $nilaiPengajuan;  // Sum up the total nilai pengajuan
+        }
+        ?>
+    </tbody>
+    <tfoot>
+        <tr class='table-success fw-bold'>
+            <td colspan="4" class='text-end'>TOTAL KESELURUHAN</td>
+            <td id="total-keseluruhan" class='text-end'>Rp <?= number_format($grandTotal ?? 0, 0, ',', '.') ?></td>
+        </tr>
+        <tr class='table-info fw-bold'>
+            <td colspan="4" class='text-end'>TOTAL PENGAJUAN</td>
+            <td id="total-pengajuan-saat-ini" class='text-end'>Rp <?= number_format($pengajuan_info['total_pengajuan'], 0, ',', '.') ?></td>
+        </tr>
+    </tfoot>
+</table>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
 </body>
 </html>

@@ -2,26 +2,27 @@
 // Include file koneksi Anda
 include("../config/koneksi_mysql.php");
 
-// Pastikan ID RAB Upah ada
+// Pastikan ID RAB Upah ada dan aman
 if (!isset($_GET['id_rab_upah'])) {
     echo "ID RAB Upah tidak diberikan.";
     exit;
 }
 $id_rab_upah = mysqli_real_escape_string($koneksi, $_GET['id_rab_upah']);
 
-// Query utama RAB
+// Query utama untuk mendapatkan informasi header RAB
 $sql_rab = "SELECT 
-            tr.id_rab_upah,
-            CONCAT(mpe.nama_perumahan, ' - ', mpr.kavling) AS pekerjaan,
-            mpr.type_proyek,
-            mpe.lokasi,
-            YEAR(tr.tanggal_mulai) AS tahun,
-            mm.nama_mandor
-        FROM rab_upah tr
-        JOIN master_perumahan mpe ON tr.id_perumahan = mpe.id_perumahan
-        JOIN master_proyek mpr ON tr.id_proyek = mpr.id_proyek
-        JOIN master_mandor mm ON tr.id_mandor = mm.id_mandor
-        WHERE tr.id_rab_upah = '$id_rab_upah'";
+                tr.id_rab_upah,
+                CONCAT(mpe.nama_perumahan, ' - ', mpr.kavling) AS pekerjaan,
+                mpr.type_proyek,
+                mpe.lokasi,
+                YEAR(tr.tanggal_mulai) AS tahun,
+                mm.nama_mandor
+            FROM rab_upah tr
+            JOIN master_perumahan mpe ON tr.id_perumahan = mpe.id_perumahan
+            JOIN master_proyek mpr ON tr.id_proyek = mpr.id_proyek
+            JOIN master_mandor mm ON tr.id_mandor = mm.id_mandor
+            WHERE tr.id_rab_upah = '$id_rab_upah'";
+
 $rab_result = mysqli_query($koneksi, $sql_rab);
 if (!$rab_result || mysqli_num_rows($rab_result) == 0) {
     echo "Data RAB Upah tidak ditemukan.";
@@ -29,32 +30,46 @@ if (!$rab_result || mysqli_num_rows($rab_result) == 0) {
 }
 $rab_info = mysqli_fetch_assoc($rab_result);
 
-// Query detail RAB
-$sql_detail = "SELECT d.id_detail_rab_upah, k.nama_kategori, mp.uraian_pekerjaan, d.sub_total 
-               FROM detail_rab_upah d 
-               LEFT JOIN master_pekerjaan mp ON d.id_pekerjaan = mp.id_pekerjaan 
-               LEFT JOIN master_kategori k ON d.id_kategori = k.id_kategori 
-               WHERE d.id_rab_upah = '$id_rab_upah' 
-               ORDER BY k.id_kategori, mp.uraian_pekerjaan";
+// Query detail item pekerjaan pada RAB
+$sql_detail = "SELECT 
+                    d.id_detail_rab_upah, 
+                    k.nama_kategori, 
+                    mp.uraian_pekerjaan, 
+                    d.sub_total 
+                FROM detail_rab_upah d 
+                LEFT JOIN master_pekerjaan mp ON d.id_pekerjaan = mp.id_pekerjaan 
+                LEFT JOIN master_kategori k ON d.id_kategori = k.id_kategori 
+                WHERE d.id_rab_upah = '$id_rab_upah' 
+                ORDER BY k.id_kategori, mp.uraian_pekerjaan";
 $detail_result = mysqli_query($koneksi, $sql_detail);
 
-// Fungsi untuk mengambil progress terakhir (tertinggi) dari database.
+/**
+ * [PERBAIKAN] Fungsi untuk mengambil total akumulasi progress dari pengajuan sebelumnya.
+ * Menggunakan SUM() untuk menjumlahkan semua progress yang pernah tercatat.
+ */
 function getProgressLaluPersen($koneksi, $id_detail_rab_upah) {
     $id_detail_rab_upah = (int)$id_detail_rab_upah;
-    $query = "SELECT MAX(progress_pekerjaan) AS progress_terakhir FROM detail_pengajuan WHERE id_detail_rab_upah = $id_detail_rab_upah";
+    // Menggunakan SUM() untuk mengakumulasi semua progress_pekerjaan yang pernah diajukan
+    $query = "SELECT SUM(progress_pekerjaan) AS total_progress FROM detail_pengajuan WHERE id_detail_rab_upah = $id_detail_rab_upah";
     $result = mysqli_query($koneksi, $query);
     if ($result && mysqli_num_rows($result) > 0) {
         $data = mysqli_fetch_assoc($result);
-        return (float)($data['progress_terakhir'] ?? 0);
+        // Mengembalikan total progress, jika null maka 0
+        return (float)($data['total_progress'] ?? 0);
     }
-    return 0;
+    return 0; // Jika belum pernah ada pengajuan, progress lalu adalah 0
 }
 
 // Fungsi untuk mengubah angka menjadi Angka Romawi
 function toRoman($num) {
     $map = ['M' => 1000, 'CM' => 900, 'D' => 500, 'CD' => 400, 'C' => 100, 'XC' => 90, 'L' => 50, 'XL' => 40, 'X' => 10, 'IX' => 9, 'V' => 5, 'IV' => 4, 'I' => 1];
     $result = '';
-    foreach ($map as $roman => $value) { while ($num >= $value) { $result .= $roman; $num -= $value; } }
+    foreach ($map as $roman => $value) {
+        while ($num >= $value) {
+            $result .= $roman;
+            $num -= $value;
+        }
+    }
     return $result;
 }
 ?>
@@ -951,6 +966,8 @@ function toRoman($num) {
     </form>
 </div>
 
+
+
 <script>
 document.addEventListener("DOMContentLoaded", function() {
 
@@ -975,15 +992,16 @@ document.addEventListener("DOMContentLoaded", function() {
             let progressDiajukan = parseFloat(input.value) || 0;
             const maxProgress = parseFloat(input.max);
 
+            // Validasi agar tidak melebihi sisa progress
             if (progressDiajukan > maxProgress) {
                 progressDiajukan = maxProgress;
                 input.value = maxProgress.toFixed(2);
             }
-            if (progressDiajukan < 0) {
+                     if (progressDiajukan < 0) {
                 progressDiajukan = 0;
                 input.value = '0.00';
-            }
-
+            } 
+                        
             const nilaiPengajuan = (progressDiajukan / 100) * subtotal;
             const nilaiCell = document.querySelector(`.nilai-pengajuan[data-id='${id}']`);
             if (nilaiCell) {
@@ -991,19 +1009,20 @@ document.addEventListener("DOMContentLoaded", function() {
             }
             totalPengajuan += nilaiPengajuan;
         });
-
+        
         totalPengajuanEl.textContent = formatRupiah(totalPengajuan);
         nominalPengajuanInput.value = Math.round(totalPengajuan);
-
+        
         validateNominal();
     }
-
+    
     function validateNominal() {
+        // Mengambil nilai dari teks yang sudah diformat, lalu membersihkannya
         const totalPengajuanText = totalPengajuanEl.textContent || 'Rp 0';
         const totalPengajuan = parseFloat(totalPengajuanText.replace(/[^0-9,-]/g, '').replace(',', '.')) || 0;
         const nominalFinal = parseFloat(nominalPengajuanInput.value) || 0;
 
-        if (nominalFinal > Math.ceil(totalPengajuan)) {
+        if (nominalFinal > Math.ceil(totalPengajuan)) { // Pembulatan ke atas untuk mengatasi float issue
             errorNominalEl.classList.remove('d-none');
             btnSubmit.disabled = true;
         } else {
@@ -1017,12 +1036,16 @@ document.addEventListener("DOMContentLoaded", function() {
             calculateTotals();
         }
     });
-
+    
     nominalPengajuanInput.addEventListener('input', validateNominal);
 
+    // Panggil sekali saat load untuk memastikan status tombol submit benar
     calculateTotals();
 });
+</script>  
 </script>
+
+
 
 
 </body>

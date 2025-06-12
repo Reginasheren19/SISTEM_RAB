@@ -873,10 +873,14 @@ if (!$mandorResult) {
       <td><?= htmlspecialchars($row['nama_mandor']) ?></td>
       <td><?= $tanggalFormatted ?></td>
       <td><?= $totalFormatted ?></td>
-            <td>
-                <!-- Dynamically display the badge based on the status -->
-                <span class="badge <?= $badgeClass ?>"><?= $statusLabel ?></span>
-            </td>
+<td>
+    <select class="form-select status-select" data-id="<?= htmlspecialchars($row['id_pengajuan_upah']) ?>">
+        <option value="diajukan" <?= ($row['status_pengajuan'] == 'diajukan') ? 'selected' : '' ?>>Diajukan</option>
+        <option value="disetujui" <?= ($row['status_pengajuan'] == 'disetujui') ? 'selected' : '' ?>>Disetujui</option>
+        <option value="ditolak" <?= ($row['status_pengajuan'] == 'ditolak') ? 'selected' : '' ?>>Ditolak</option>
+        <option value="dibayar" <?= ($row['status_pengajuan'] == 'dibayar') ? 'selected' : '' ?>>Dibayar</option>
+    </select>
+</td>
       <td><?= htmlspecialchars($row['keterangan']) ?></td>
       <td>
                 <a href="get_pengajuan_upah.php?id_pengajuan_upah=<?= urlencode($row['id_pengajuan_upah']) ?>" class="btn btn-info btn-sm">Detail</a>
@@ -1018,7 +1022,58 @@ document.querySelectorAll('.delete-btn').forEach(button => {
       });
     });
   </script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
+<script>
+$(document).ready(function() {
+    // Menambahkan event listener pada setiap dropdown dengan kelas '.status-select'
+    $('.status-select').on('change', function() {
+        // Ambil ID pengajuan dari atribut data-id
+        var id_pengajuan = $(this).data('id');
+        // Ambil status baru yang dipilih
+        var new_status = $(this).val();
+
+        // Tampilkan konfirmasi kepada user
+        if (!confirm('Anda yakin ingin mengubah status pengajuan ini menjadi "' + new_status + '"?')) {
+            // Jika user membatalkan, kembalikan dropdown ke posisi semula
+            // (Ini memerlukan sedikit trik, cara termudah adalah me-reload halaman)
+            location.reload(); 
+            return;
+        }
+
+        // Kirim data menggunakan AJAX ke server
+        $.ajax({
+            url: 'update_status_pengajuan.php', // Arahkan ke file backend kita
+            type: 'POST',
+            data: {
+                id_pengajuan_upah: id_pengajuan,
+                new_status: new_status
+            },
+            dataType: 'json', // Harapkan response dalam format JSON
+            success: function(response) {
+                // Fungsi ini dijalankan jika request berhasil
+                if (response.success) {
+                    // Beri notifikasi sukses
+                    alert('Sukses! ' + response.message);
+                    // Refresh halaman untuk melihat perubahan badge (jika masih menggunakan badge di tempat lain)
+                    // Atau bisa juga update tampilan secara dinamis tanpa refresh
+                    location.reload(); // Cara paling mudah
+                } else {
+                    // Beri notifikasi gagal
+                    alert('Error! ' + response.message);
+                    location.reload(); // Reload untuk mengembalikan state
+                }
+            },
+            error: function(xhr, status, error) {
+                // Fungsi ini dijalankan jika ada error pada request AJAX
+                alert('Terjadi kesalahan pada server. Silakan coba lagi.');
+                console.error("AJAX Error: ", status, error, xhr.responseText);
+                location.reload(); // Reload untuk mengembalikan state
+            }
+        });
+    });
+});
+</script>
 
 </body>
 </html>
