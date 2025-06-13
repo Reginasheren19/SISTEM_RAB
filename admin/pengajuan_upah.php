@@ -1,4 +1,5 @@
 <?php
+
 include("../config/koneksi_mysql.php");
 
 // Mengatur error reporting
@@ -823,79 +824,83 @@ if (!$mandorResult) {
       }
       </script>
 
-      <div class="card-body">
-        <div class="table-responsive">
-          <table
-            id="basic-datatables"
-            class="display table table-striped table-hover"
-          >
-            <thead>
-              <tr>
-                <th>ID Pengajuan</th>
-                <th>Proyek</th>
-                <th>Mandor</th>
-                <th>Tanggal Pengajuan</th>
-                <th>Total Pengajuan</th>
-                <th>Status</th>
-                <th>Keterangan</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-                <?php while ($row = mysqli_fetch_assoc($pengajuanresult)): ?>
-            <?php
+<div class="card-body">
+  <div class="table-responsive">
+    <table id="basic-datatables" class="display table table-striped table-hover">
+      <thead>
+        <tr>
+          <th>ID Pengajuan</th>
+          <th>Proyek</th>
+          <th>Mandor</th>
+          <th>Tanggal Pengajuan</th>
+          <th>Total Pengajuan</th>
+          <th>Status</th>
+          <th>Keterangan</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <?php while ($row = mysqli_fetch_assoc($pengajuanresult)): ?>
+          <?php
+            // Format Tanggal dan Total Pengajuan
             $tanggalFormatted = date('d-m-Y', strtotime($row['tanggal_pengajuan']));
             $totalFormatted = number_format($row['total_pengajuan'], 0, ',', '.');
-        // Tentukan kelas badge berdasarkan status pengajuan
-            $statusPengajuan = $row['status_pengajuan'];
 
-        switch ($statusPengajuan) {
-            case 'diajukan':
+            // Tentukan kelas badge berdasarkan status pengajuan
+            $statusPengajuan = $row['status_pengajuan'];
+            switch ($statusPengajuan) {
+              case 'diajukan':
                 $badgeClass = 'badge-black';
                 $statusLabel = 'Diajukan';
                 break;
-            case 'disetujui':
+              case 'disetujui':
                 $badgeClass = 'badge-primary';
                 $statusLabel = 'Disetujui';
                 break;
-            case 'ditolak':
+              case 'ditolak':
                 $badgeClass = 'badge-danger';
                 $statusLabel = 'Ditolak';
                 break;
-            case 'dibayar':
-                $badgeClass = 'badge-succes';
+              case 'dibayar':
+                $badgeClass = 'badge-success';
                 $statusLabel = 'Dibayar';
                 break;
-        }
-        ?>    <tr>
-      <td><?= htmlspecialchars($row['id_pengajuan_upah']) ?></td>
-      <td><?= htmlspecialchars($row['nama_perumahan']) . ' - ' . htmlspecialchars($row['kavling']) ?></td> <!-- Display formatted Proyek -->
-      <td><?= htmlspecialchars($row['nama_mandor']) ?></td>
-      <td><?= $tanggalFormatted ?></td>
-      <td><?= $totalFormatted ?></td>
-<td>
-    <select class="form-select status-select" data-id="<?= htmlspecialchars($row['id_pengajuan_upah']) ?>">
-        <option value="diajukan" <?= ($row['status_pengajuan'] == 'diajukan') ? 'selected' : '' ?>>Diajukan</option>
-        <option value="disetujui" <?= ($row['status_pengajuan'] == 'disetujui') ? 'selected' : '' ?>>Disetujui</option>
-        <option value="ditolak" <?= ($row['status_pengajuan'] == 'ditolak') ? 'selected' : '' ?>>Ditolak</option>
-        <option value="dibayar" <?= ($row['status_pengajuan'] == 'dibayar') ? 'selected' : '' ?>>Dibayar</option>
-    </select>
-</td>
-      <td><?= htmlspecialchars($row['keterangan']) ?></td>
-      <td>
-                <a href="get_pengajuan_upah.php?id_pengajuan_upah=<?= urlencode($row['id_pengajuan_upah']) ?>" class="btn btn-info btn-sm">Detail</a>
-        <button class="btn btn-danger btn-sm delete-btn" data-id_pengajuan_upah="<?= htmlspecialchars($row['id_pengajuan_upah']) ?>">Delete</button>
-              </td>
-            </tr>
-          <?php endwhile; ?>
+            }
+          ?>
+          <tr>
+            <td><?= htmlspecialchars($row['id_pengajuan_upah']) ?></td>
+            <td><?= htmlspecialchars($row['nama_perumahan']) . ' - ' . htmlspecialchars($row['kavling']) ?></td> <!-- Display formatted Proyek -->
+            <td><?= htmlspecialchars($row['nama_mandor']) ?></td>
+            <td><?= $tanggalFormatted ?></td>
+            <td><?= $totalFormatted ?></td>
+            <td>
+              <select class="form-select status-select" data-id="<?= htmlspecialchars($row['id_pengajuan_upah']) ?>">
+                <option value="diajukan" <?= ($row['status_pengajuan'] == 'diajukan') ? 'selected' : '' ?>>Diajukan</option>
+                <option value="disetujui" <?= ($row['status_pengajuan'] == 'disetujui') ? 'selected' : '' ?>>Disetujui</option>
+                <option value="ditolak" <?= ($row['status_pengajuan'] == 'ditolak') ? 'selected' : '' ?>>Ditolak</option>
+                <option value="dibayar" <?= ($row['status_pengajuan'] == 'dibayar') ? 'selected' : '' ?>>Dibayar</option>
+              </select>
+            </td>
+            <td><?= htmlspecialchars($row['keterangan']) ?></td>
+            <td>
+              <!-- Tombol Detail -->
+              <a href="get_pengajuan_upah.php?id_pengajuan_upah=<?= urlencode($row['id_pengajuan_upah']) ?>" class="btn btn-info btn-sm">Detail</a>
 
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
+              <!-- Tombol Update hanya jika statusnya 'Diajukan' atau 'Ditolak' -->
+              <?php if ($row['status_pengajuan'] == 'diajukan' || $row['status_pengajuan'] == 'ditolak'): ?>
+                <a href="update_pengajuan_upah.php?id_pengajuan_upah=<?= urlencode($row['id_pengajuan_upah']) ?>" class="btn btn-warning btn-sm">Update</a>
+              <?php endif; ?>
+
+              <!-- Tombol Delete -->
+              <button class="btn btn-danger btn-sm delete-btn" data-id_rab_upah="<?= htmlspecialchars($row['id_rab_upah']) ?>">Delete</button>
+            </td>
+          </tr>
+        <?php endwhile; ?>
+      </tbody>
+    </table>
   </div>
 </div>
+
 
 <!-- Modal for selecting Proyek RAB -->
 <div class="modal fade" id="selectProyekModal" tabindex="-1" aria-labelledby="selectProyekModalLabel" aria-hidden="true">
@@ -974,6 +979,26 @@ if (!$mandorResult) {
   </div>
 </div>
 
+<!-- Modal to confirm deletion -->
+<div class="modal" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="confirmDeleteModalLabel">Confirm Deletion</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to delete this record?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <a id="confirmDeleteLink" href="#" class="btn btn-danger">Confirm Delete</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
@@ -1008,21 +1033,6 @@ document.querySelectorAll('.delete-btn').forEach(button => {
     });
 });
 </script>
-
-
-  <script>
-    // Konfirmasi penghapusan data upah 
-    document.querySelectorAll('.delete-btn').forEach(button => {
-      button.addEventListener('click', function() {
-        const idRabUpah = this.dataset.id_rab_upah;  // ambil data-id_rab_upah
-        const deleteLink = document.getElementById('confirmDeleteLink');
-        deleteLink.href = 'delete_rab_upah.php?id_rab_upah=' + idRabUpah;
-        const deleteModal = new bootstrap.Modal(document.getElementById('confirmDeleteModal'));
-        deleteModal.show();
-      });
-    });
-  </script>
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
 <script>
 $(document).ready(function() {
@@ -1069,6 +1079,31 @@ $(document).ready(function() {
                 alert('Terjadi kesalahan pada server. Silakan coba lagi.');
                 console.error("AJAX Error: ", status, error, xhr.responseText);
                 location.reload(); // Reload untuk mengembalikan state
+            }
+        });
+    });
+});
+</script>
+
+  <script>
+    // Konfirmasi penghapusan data upah 
+document.addEventListener("DOMContentLoaded", function() {
+    // Add event listener to delete buttons
+    document.querySelectorAll('.delete-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const idRabUpah = this.getAttribute('data-id_rab_upah'); // Correctly access the data-id_rab_upah attribute
+
+            if (idRabUpah) {
+                const deleteLink = document.getElementById('confirmDeleteLink');
+                if (deleteLink) {
+                    deleteLink.href = 'delete_rab_upah.php?id_rab_upah=' + idRabUpah; // Pass the correct ID to the delete URL
+                    const deleteModal = new bootstrap.Modal(document.getElementById('confirmDeleteModal'));
+                    deleteModal.show(); // Show the modal
+                } else {
+                    console.error('Error: confirmDeleteLink not found.');
+                }
+            } else {
+                console.error('Error: ID RAB Upah is undefined or missing.');
             }
         });
     });
