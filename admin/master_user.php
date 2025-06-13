@@ -5,7 +5,7 @@ include("../config/koneksi_mysql.php");
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 // Mengambil data user dari database
-$result = mysqli_query($koneksi, "SELECT * FROM users");
+$result = mysqli_query($koneksi, "SELECT * FROM master_user");
 ?>
 
 
@@ -765,6 +765,7 @@ $result = mysqli_query($koneksi, "SELECT * FROM users");
             <thead>
               <tr>
                 <th>ID User</th>
+                <th>Nama Lengkap</th>
                 <th>Username</th>
                 <th>Email</th>
                 <th>Role
@@ -773,10 +774,11 @@ $result = mysqli_query($koneksi, "SELECT * FROM users");
             </thead>
             <tbody>
               <?php
-              $result = mysqli_query($koneksi, "SELECT * FROM users");
+              $result = mysqli_query($koneksi, "SELECT * FROM master_user");
               while ($row = mysqli_fetch_assoc($result)) {
                 echo "<tr>
                     <td>" . htmlspecialchars($row['id_users']) . "</td>
+                    <td>" . htmlspecialchars($row['nama_Lengkap']) . "</td>
                     <td>" . htmlspecialchars($row['username']) . "</td>
                     <td>" . htmlspecialchars($row['email']) . "</td>
                     <td>" . htmlspecialchars($row['role']) . "</td>
@@ -806,18 +808,18 @@ $result = mysqli_query($koneksi, "SELECT * FROM users");
         </div>
         <div class="modal-body">
 
-          <!-- Avatar Preview -->
-          <div class="card-body mb-3 text-center">
-										<div class="avatar avatar-xxl">
-											<img src="assets/img/jm_denis.jpg" alt="..." class="avatar-img rounded-circle">
-										</div>
-          </div>
+<!-- Avatar Preview -->
+<div class="card-body mb-3 text-center">
+                            <div class="avatar avatar-xxl">
+                                <img id="avatarPreview" src="assets/img/jm_denis.jpg" alt="..." class="avatar-img rounded-circle">
+                            </div>
+</div>
 
           <!-- Input untuk foto profil -->
-          <div class="mb-3">
-            <label for="profilePic" class="form-label">Foto Profil (Optional)</label>
-            <input type="file" class="form-control" id="profilePic" name="profile_pic" accept="image/*" onchange="previewAvatar(event)" />
-          </div>
+                        <div class="mb-3">
+                            <label for="profilePic" class="form-label">Foto Profil (Opsional)</label>
+                            <input type="file" class="form-control" id="profilePic" name="profile_pic" accept="image/*" onchange="previewAvatar(event)">
+                        </div>
 
           <div class="mb-3">
             <label for="username" class="form-label">Username</label>
@@ -836,13 +838,16 @@ $result = mysqli_query($koneksi, "SELECT * FROM users");
 
           <div class="form-group mb-3">
             <label for="role" class="form-label">Role</label>
-            <select class="form-select form-control" id="role" name="role" required>
-              <option value="" disabled selected>Pilih Role</option>
-              <option value="admin">Admin</option>
-              <option value="direktur">Direktur</option>
-              <option value="pj_proyek">PJ Proyek</option>
-              <option value="div_teknik">Divisi Teknik</option>
-            </select>
+                            <select class="form-select" id="role" name="role" required>
+                                <option value="" disabled selected>Pilih Role</option>
+                                <option value="Super Admin">Super Admin</option>
+                                <option value="Admin">Admin</option>
+                                <option value="Direktur">Direktur</option>
+                                <option value="Sekretaris">Sekretaris</option>
+                                <option value="PJ Proyek">PJ Proyek</option>
+                                <option value="Div Teknik">Divisi Teknik</option>
+                                <option value="Bendahara">Bendahara</option>
+                            </select>
           </div>
 
         </div>
@@ -967,7 +972,23 @@ $result = mysqli_query($koneksi, "SELECT * FROM users");
       // Kosongkan input password supaya user bisa isi password baru jika mau
       document.getElementById('updatePassword').value = '';
 
-      // Reset gambar avatar preview (opsional, bisa disesuaikan kalau ada data gambar)
+        // Fungsi ini sekarang berada di scope global, sehingga bisa dipanggil oleh 'onchange'
+        function previewAvatar(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const avatarPreview = document.getElementById('avatarPreview');
+                    avatarPreview.src = e.target.result;
+                }
+                reader.readAsDataURL(file);
+            }
+        }
+
+    if (file) {
+      reader.readAsDataURL(file); // Membaca file sebagai URL data
+    }
+
       // document.getElementById('avatarPreview').src = 'path_to_default_avatar.jpg';
 
       // Tampilkan modal update user
