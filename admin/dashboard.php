@@ -184,6 +184,12 @@
                 </a>
               </li>
               <li class="nav-item">
+                <a href="pencatatan_pembelian.php">
+                  <i class="fas fa-pen-square"></i>
+                  <p>Pencatatan Pembelian</p>
+                </a>
+              </li>
+              <li class="nav-item">
                 <a data-bs-toggle="collapse" href="#forms">
                   <i class="fas fa-pen-square"></i>
                   <p>Forms</p>

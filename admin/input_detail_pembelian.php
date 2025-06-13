@@ -1,57 +1,138 @@
 <?php
+session_start();
 include("../config/koneksi_mysql.php");
 
-// Mengatur error reporting
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-// Mengambil data user dari database
-$result = mysqli_query($koneksi, "SELECT * FROM rab_upah");
-$perumahanResult = mysqli_query($koneksi, "SELECT id_perumahan, nama_perumahan, lokasi FROM master_perumahan ORDER BY nama_perumahan ASC");
-if (!$perumahanResult) {
-    die("Query Error (perumahan): " . mysqli_error($koneksi));
+// Validasi: Pastikan ada ID pembelian
+if (!isset($_GET['id']) || empty($_GET['id'])) {
+    $_SESSION['error_message'] = "ID Pembelian tidak ditemukan.";
+    header("Location: pencatatan_pembelian.php");
+    exit();
 }
-$kavlingResult = mysqli_query($koneksi, "SELECT id_proyek, kavling, type_proyek FROM master_proyek ORDER BY type_proyek ASC");
-if (!$perumahanResult) {
-    die("Query Error (proyek): " . mysqli_error($koneksi));
-}
-$mandorResult = mysqli_query($koneksi, "SELECT id_mandor, nama_mandor FROM master_mandor ORDER BY nama_mandor ASC");
-if (!$mandorResult) {
-    die("Query Error (mandor): " . mysqli_error($koneksi));
-}
-$sql = "SELECT 
-          tr.id_rab_upah,
-          tr.id_perumahan,
-          tr.id_proyek,
-          tr.id_mandor,
-          mpe.nama_perumahan,
-          mpr.kavling,
-          mm.nama_mandor,
-          tr.tanggal_mulai,
-          tr.total_rab_upah
-        FROM rab_upah tr
-        JOIN master_perumahan mpe ON tr.id_perumahan = mpe.id_perumahan
-        JOIN master_proyek mpr ON tr.id_proyek = mpr.id_proyek
-        JOIN master_mandor mm ON tr.id_mandor = mm.id_mandor
-        ";
 
-$result = mysqli_query($koneksi, $sql);
-if (!$result) {
-    die("Query Error: " . mysqli_error($koneksi));
+$pembelian_id = $_GET['id'];
+
+// Ambil data pembelian
+$stmt = $koneksi->prepare("SELECT id_pembelian, tanggal_pembelian, keterangan_pembelian FROM pencatatan_pembelian WHERE id_pembelian = ?");
+$stmt->bind_param("i", $pembelian_id);
+$stmt->execute();
+$result = $stmt->get_result();
+$pembelian = $result->fetch_assoc();
+
+if (!$pembelian) {
+    $_SESSION['error_message'] = "Data pembelian tidak ditemukan.";
+    header("Location: pencatatan_pembelian.php");
+    exit();
+}
+
+// Ambil data material + satuan
+$result_material = mysqli_query($koneksi, "
+  SELECT 
+    m.id_material, 
+    m.nama_material, 
+    s.nama_satuan 
+  FROM 
+    master_material m
+  LEFT JOIN 
+    master_satuan s ON m.id_satuan = s.id_satuan
+  ORDER BY 
+    m.nama_material ASC
+");
+
+$materials = [];
+while ($row = mysqli_fetch_assoc($result_material)) {
+    $materials[] = $row;
+}
+
+// Proses penyimpanan detail pembelian
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Ambil data dari POST
+    $items_json = $_POST['items_json'] ?? null;
+
+    if (empty($items_json)) {
+        $_SESSION['error_message'] = "Data detail tidak ditemukan.";
+        header("Location: input_detail_pembelian.php?id=" . $pembelian_id);
+        exit();
+    }
+
+    $items = json_decode($items_json, true);
+
+    if (json_last_error() !== JSON_ERROR_NONE || empty($items)) {
+        $_SESSION['error_message'] = "Format data item tidak valid.";
+        header("Location: input_detail_pembelian.php?id=" . $pembelian_id);
+        exit();
+    }
+
+    $koneksi->begin_transaction();
+
+    try {
+        // SQL untuk memasukkan detail pembelian
+        $sql = "INSERT INTO detail_pencatatan_pembelian (id_pembelian, id_material, quantity, harga_satuan_pp, sub_total_pp) 
+                VALUES (?, ?, ?, ?, ?)";
+        $stmt = $koneksi->prepare($sql);
+
+        if (!$stmt) {
+            throw new Exception("Gagal menyiapkan query: " . $koneksi->error);
+        }
+
+        // Loop melalui semua item dan masukkan data
+        foreach ($items as $item) {
+            // Bind parameter ke statement yang sudah disiapkan
+            $stmt->bind_param("iiidd", 
+                $pembelian_id, 
+                $item['id_material'], 
+                $item['quantity'], 
+                $item['harga_satuan_pp'], 
+                $item['sub_total_pp']
+            );
+
+            // Eksekusi query untuk item ini
+            if (!$stmt->execute()) {
+                throw new Exception("Gagal mengeksekusi query: " . $stmt->error);
+            }
+        }
+
+        // Setelah semua detail dimasukkan, update total_biaya
+        $update_total_biaya = "UPDATE pencatatan_pembelian SET total_biaya = 
+                               (SELECT SUM(sub_total_pp) 
+                                FROM detail_pencatatan_pembelian 
+                                WHERE id_pembelian = ?) 
+                               WHERE id_pembelian = ?";
+        $update_stmt = $koneksi->prepare($update_total_biaya);
+        $update_stmt->bind_param("ii", $pembelian_id, $pembelian_id);
+        $update_stmt->execute();
+
+        // Commit transaksi
+        $koneksi->commit();
+
+        $_SESSION['pesan_sukses'] = "Semua detail material untuk pembelian ID #{$pembelian_id} berhasil disimpan!";
+        header("Location: pencatatan_pembelian.php");
+        exit();
+
+    } catch (Exception $e) {
+        // Jika terjadi error, batalkan transaksi
+        $koneksi->rollback();
+
+        $_SESSION['error_message'] = "Terjadi kesalahan, data gagal disimpan: " . $e->getMessage();
+        header("Location: input_detail_pembelian.php?id=" . $pembelian_id);
+        exit();
+    }
 }
 ?>
+
+
 
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <title>Kaiadmin - Bootstrap 5 Admin Dashboard</title>
+    <title>Input Pembelian</title>
     <meta
       content="width=device-width, initial-scale=1.0, shrink-to-fit=no"
       name="viewport"
     />
     <link
       rel="icon"
-      href="assets/img/kaiadmin/favicon.ico"
+      href="assets/img/logo/LOGO PT.jpg"
       type="image/x-icon"
     />
 
@@ -90,10 +171,10 @@ if (!$result) {
         <div class="sidebar-logo">
           <!-- Logo Header -->
           <div class="logo-header" data-background-color="dark">
-            <a href="index.html" class="logo">
+            <a href="" class="logo">
               <img
-                src="assets/img/kaiadmin/logo_light.svg"
-                alt="navbar brand"
+                src="assets/img/logo/LOGO PT.jpg"
+                alt="Logo PT"
                 class="navbar-brand"
                 height="20"
               />
@@ -207,17 +288,29 @@ if (!$result) {
                 <div class="collapse" id="sidebarLayouts">
                   <ul class="nav nav-collapse">
                     <li>
-                      <a href="sidebar-style-2.html">
+                      <a href="transaksi_rab_upah.php">
                         <span class="sub-item">RAB Upah</span>
                       </a>
                     </li>
                     <li>
-                      <a href="icon-menu.html">
+                      <a href="transaksi_rab_material.php">
                         <span class="sub-item">RAB Material</span>
                       </a>
                     </li>
                   </ul>
                 </div>
+              </li>
+              <li class="nav-item">
+                <a href="pengajuan_upah.php">
+                  <i class="fas fa-pen-square"></i>
+                  <p>Pengajuah Upah</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="pencatatan_pembelian.php">
+                  <i class="fas fa-pen-square"></i>
+                  <p>Pencatatan Pembelian</p>
+                </a>
               </li>
               <li class="nav-item">
                 <a data-bs-toggle="collapse" href="#forms">
@@ -378,11 +471,11 @@ if (!$result) {
             <div class="logo-header" data-background-color="dark">
               <a href="index.html" class="logo">
                 <img
-                  src="assets/img/kaiadmin/logo_light.svg"
-                  alt="navbar brand"
+                  src="assets/img/logo/LOGO PT.jpg"
+                  alt="Logo PT"
                   class="navbar-brand"
                   height="20"
-                />
+              />
               </a>
               <div class="nav-toggle">
                 <button class="btn btn-toggle toggle-sidebar">
@@ -754,354 +847,247 @@ if (!$result) {
           <!-- End Navbar -->
         </div>
 
-        <div class="container">
-          <div class="page-inner">
-            <div class="page-header">
-              <h3 class="fw-bold mb-3">Rancang RAB</h3>
-              <ul class="breadcrumbs mb-3">
-                <li class="nav-home">
-                  <a href="dashboard.php">
-                    <i class="icon-home"></i>
-                  </a>
-                </li>
-                <li class="separator">
-                  <i class="icon-arrow-right"></i>
-                </li>
-                <li class="nav-item">
-                  <a href="#">Rancang RAB</a>
-                </li>
-                <li class="separator">
-                  <i class="icon-arrow-right"></i>
-                </li>
-                <li class="nav-item">
-                  <a href="#">RAB Upah</a>
-                </li>
-              </ul>
+<div class="container">
+    <div class="page-inner">
+        <div class="page-header">
+            <h3 class="fw-bold mb-3">Pencatatan Pembelian</h3>
+            <ul class="breadcrumbs mb-3">
+                <li class="nav-home"><a href="dashboard.php"><i class="icon-home"></i></a></li>
+                <li class="separator"><i class="icon-arrow-right"></i></li>
+                <li class="nav-item"><a href="#">Pencatatan Pembelian</a></li>
+                <li class="separator"><i class="icon-arrow-right"></i></li>
+                <li class="nav-item"><a href="">Pencatatan Pembelian Material</a></li>
+            </ul>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h4 class="card-title">Informasi Transaksi</h4>
             </div>
-
-<div class="row">
-  <div class="col-md-12">
-    <div class="card">
-      <div class="card-header d-flex align-items-center">
-        <h4 class="card-title">RAB Upah</h4>
-        <button
-          class="btn btn-primary btn-round ms-auto"
-          data-bs-toggle="modal"
-          data-bs-target="#addRABUpahModal"
-        >
-          <i class="fa fa-plus"></i> Tambah Data
-        </button>
-      </div>
-
-            <?php if (isset($_GET['msg'])): ?>
-        <div class="mb-3">
-          <div class="alert alert-success fade show" role="alert">
-            <?= htmlspecialchars($_GET['msg']) ?>
-          </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>ID Pembelian:</strong> <?= htmlspecialchars($pembelian['id_pembelian'] ?? '') ?></p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Tanggal:</strong> <?= date("d F Y", strtotime(htmlspecialchars($pembelian['tanggal_pembelian'] ?? ''))) ?></p>
+                    </div>
+                </div>
+                <p><strong>Keterangan:</strong> <?= htmlspecialchars($pembelian['keterangan_pembelian'] ?? '') ?></p>
+            </div>
         </div>
-      <?php endif; ?>
 
-      <script>
-      window.setTimeout(function() {
-        const alert = document.querySelector('.alert');
-        if (alert) {
-          alert.classList.add('fade');
-          alert.classList.remove('show');
-          setTimeout(() => alert.remove(), 350);
-        }
-      }, 3000);
+        <div class="card">
+            <div class="card-header">
+                <h4 class="card-title">Tambah Material</h4>
+            </div>
+            <div class="card-body">
+                <form id="form-add-item" enctype="multipart/form-data">
+                  <div class="row align-items-end">
+                      <div class="col-md-3 mb-3">
+                          <label for="id_material" class="form-label">Nama Material</label>
+                          <select class="form-select" id="id_material" name="id_material" required>
+                              <option value="" selected disabled>-- Pilih Material --</option>
+                              <?php foreach ($materials as $material): ?>
+                                  <option 
+                                      value="<?= $material['id_material'] ?? '' ?>" 
+                                      data-nama="<?= htmlspecialchars($material['nama_material'] ?? '') ?>"
+                                      data-satuan="<?= htmlspecialchars($material['nama_satuan'] ?? '') ?>"
+                                      data-allow-upload="<?= $material['allow_upload'] ?? '0' ?>">
+                                      <?= htmlspecialchars($material['nama_material'] ?? '') ?>
+                                  </option>
+                              <?php endforeach; ?>
+                          </select>
+                      </div>
 
-        // Hapus parameter 'msg' dari URL agar tidak muncul lagi saat reload
-      if (window.history.replaceState) {
-        const url = new URL(window.location);
-        if (url.searchParams.has('msg')) {
-          url.searchParams.delete('msg');
-          window.history.replaceState({}, document.title, url.pathname);
-        }
-      }
-      </script>
+                      <div class="col-md-2 mb-3">
+                          <label for="satuan" class="form-label">Satuan</label>
+                          <input type="text" class="form-control" id="satuan" name="satuan" readonly>
+                      </div>
 
-      <div class="card-body">
-        <div class="table-responsive">
-          <table
-            id="basic-datatables"
-            class="display table table-striped table-hover"
-          >
-            <thead>
-              <tr>
-                <th>ID RAB</th>
-                <th>Perumahan</th>
-                <th>Kavling</th>
-                <th>Mandor</th>
-                <th>Tanggal</th>
-                <th>Total</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-                <?php while ($row = mysqli_fetch_assoc($result)): ?>
-            <?php
-              $tahun = date('Y');
-              $bulan = date('m');
-<<<<<<< Updated upstream
-              $tahun_2digit = substr($tahun, -2);
-              $id_proyek = $row['id_proyek']; 
-              $id_rab_upah = $row['id_rab_upah']; 
-              $formatted_id = 'RABP' . $tahun_2digit . $bulan . $id_proyek . $id_rab_upah;
-              $tanggalMulaiFormatted = date('d-m-Y', strtotime($row['tanggal_mulai']));
-              $tanggalSelesaiFormatted = date('d-m-Y', strtotime($row['tanggal_selesai']));              
-=======
-              $id_proyek_3digit = str_pad($row['id_proyek'], 3, '0', STR_PAD_LEFT);
-              $formatted_id = 'RABP' . $tahun . $bulan . $id_proyek_3digit;
-              $tanggalFormatted = date('d-m-Y', strtotime($row['tanggal_mulai']));
->>>>>>> Stashed changes
-              $totalFormatted = number_format($row['total_rab_upah'], 0, ',', '.');
-            ?>
-            <tr>
-              <td><?= htmlspecialchars($formatted_id) ?></td>
-              <td><?= htmlspecialchars($row['nama_perumahan']) ?></td>
-              <td><?= htmlspecialchars($row['kavling']) ?></td>
-              <td><?= htmlspecialchars($row['nama_mandor']) ?></td>
-              <td><?= htmlspecialchars($tanggalFormatted) ?></td>
-              <td><?= $totalFormatted ?></td>
-              <td>
-                <a href="detail_rab_upah.php?id_rab_upah=<?= urlencode($row['id_rab_upah']) ?>" class="btn btn-info btn-sm">Detail</a>
-                <button class="btn btn-danger btn-sm delete-btn" data-id_rab_upah="<?= htmlspecialchars($row['id_rab_upah']) ?>">Delete</button>
-              </td>
-            </tr>
-          <?php endwhile; ?>
+                      <div class="col-md-2 mb-3">
+                          <label for="quantity" class="form-label">Jumlah</label>
+                          <input type="number" class="form-control" id="quantity" name="quantity" min="1" required>
+                      </div>
 
-            </tbody>
-          </table>
+                      <div class="col-md-2 mb-3">
+                          <label for="harga_satuan" class="form-label">Harga Satuan (Rp)</label>
+                          <input type="number" class="form-control" id="harga_satuan" name="harga_satuan" min="0" required>
+                      </div>
+
+                      <div class="col-md-3 mb-3">
+                          <label for="sub_total" class="form-label">Sub Total (Rp)</label>
+                          <input type="text" class="form-control" id="sub_total" name="sub_total" readonly>
+                      </div>
+                  </div>
+                  <button type="submit" class="btn btn-primary"><i class="fa fa-plus"></i> Tambah ke Daftar</button>
+                </form>
+
+            </div>
         </div>
-      </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h4 class="card-title">Daftar Material yang Akan Disimpan</h4>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped" id="detail-pembelian-table">
+                        <thead>
+                            <tr>
+                                <th>Nama Material</th>
+                                <th>Satuan</th>
+                                <th>Jumlah</th>
+                                <th>Harga Satuan</th>
+                                <th>Sub Total</th>
+                                <th>Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            </tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="4" class="text-end fw-bold">Grand Total</td>
+                                <td class="grand-total" id="grand_total">Rp 0</td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+                
+                <div class="d-flex justify-content-end mt-3">
+                    <form id="form-save-all" action="add_detail_pembelian.php" method="POST" style="display:inline;">
+                        <input type="hidden" name="pembelian_id" value="<?= $pembelian_id ?>">
+                        <input type="hidden" name="items_json" id="items_json">
+                        <button type="button" id="btn-save-all" class="btn btn-success btn-lg">
+                            <i class="fa fa-save"></i> Simpan Semua Pembelian
+                        </button>
+                    </form>
+                    <a href="pencatatan_pembelian.php" class="btn btn-secondary btn-lg ms-2">Batal</a>
+                </div>
+            </div>
+        </div>
     </div>
-  </div>
 </div>
 
-<!-- Modal Tambah Data RAB Upah -->
-<div class="modal fade" id="addRABUpahModal" tabindex="-1" aria-labelledby="addRABUpahModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <form method="POST" action="add_rab_upah.php">
-        <input type="hidden" name="action" value="add" />
-        <div class="modal-header">
-          <h5 class="modal-title" id="addRABUpahModalLabel">Tambah Data RAB Upah</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-
-          <!-- Dropdown Nama Perumahan -->
-          <div class="mb-3">
-            <label for="id_perumahan" class="form-label">Nama Perumahan</label>
-            <select class="form-select" id="id_perumahan" name="id_perumahan" required>
-              <option value="" disabled selected>Pilih Nama Perumahan</option>
-              <?php while ($perumahan = mysqli_fetch_assoc($perumahanResult)): ?>
-                <option 
-                  value="<?= htmlspecialchars($perumahan['id_perumahan']) ?>" 
-                  data-lokasi="<?= htmlspecialchars($perumahan['lokasi']) ?>"
-                >
-                  <?= htmlspecialchars($perumahan['nama_perumahan']) ?>
-                </option>
-              <?php endwhile; ?>
-            </select>
-          </div>
-
-          <!-- Dropdown Kavling (Master Proyek) -->
-          <div class="mb-3">
-            <label for="id_proyek" class="form-label">Kavling</label>
-            <select class="form-select" id="id_proyek" name="id_proyek" required>
-              <option value="" disabled selected>Pilih Kavling</option>
-              <?php while ($proyek = mysqli_fetch_assoc($kavlingResult)): ?>
-                <option 
-                  value="<?= htmlspecialchars($proyek['id_proyek']) ?>" 
-                  data-type_proyek="<?= htmlspecialchars($proyek['type_proyek']) ?>"
-                >
-                  <?= htmlspecialchars($proyek['kavling']) ?>
-                </option>
-              <?php endwhile; ?>            
-            </select>
-          </div>
-
-          <div class="mb-3">
-            <label for="type_proyek" class="form-label">Tipe Proyek</label>
-            <input type="text" class="form-control" id="type_proyek" name="type_proyek" readonly />
-          </div>
-
-                    <!-- Dropdown Mandor -->
-          <div class="mb-3">
-            <label for="id_mandor" class="form-label">Mandor</label>
-            <select class="form-select" id="id_mandor" name="id_mandor" required>
-              <option value="" disabled selected>Pilih Mandor</option>
-              <?php
-              $mandorResult = mysqli_query($koneksi, "SELECT id_mandor, nama_mandor FROM master_mandor ORDER BY nama_mandor ASC");
-              while ($mandor = mysqli_fetch_assoc($mandorResult)) {
-                  echo '<option value="' . htmlspecialchars($mandor['id_mandor']) . '">' . htmlspecialchars($mandor['nama_mandor']) . '</option>';
-              }
-              ?>
-            </select>
-          </div>
-
-          <!-- Input Tanggal Mulai -->
-          <div class="mb-3">
-            <label for="tanggal_mulai" class="form-label">Tanggal Mulai</label>
-            <input type="date" class="form-control" id="tanggal_mulai" name="tanggal_mulai" required />
-          </div>
-
-          <div class="mb-3">
-            <label for="update_lokasi" class="form-label">Lokasi</label>
-            <input type="text" class="form-control" id="update_lokasi" name="lokasi" readonly value="<?= htmlspecialchars($row['lokasi'] ?? '') ?>" />
-          </div>
-
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-          <button type="submit" class="btn btn-primary">Lanjut</button>
-        </div>
-      </form>
-    </div>
-  </div>
-</div>
-</div>
-
-  <!-- Modal Delete Confirmation -->
-  <div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title" id="confirmDeleteModalLabel">Confirm Deletion</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-          <p>Are you sure you want to delete this user?</p>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <a href="#" id="confirmDeleteLink" class="btn btn-danger">Delete</a>
-        </div>
-      </div>
-    </div>
-  </div>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
 
 <script>
-  $(document).ready(function() {
-    $('#basic-datatables').DataTable();
-  });
-</script>
+$(document).ready(function() {
 
-<script>
-  $(document).ready(function() {
-    // Ketika dropdown nama perumahan berubah
-    $('#id_perumahan').on('change', function() {
-      // Ambil data-lokasi dari option yang dipilih
-      const lokasi = $(this).find(':selected').data('lokasi') || '';
-      // Set lokasi ke input lokasi
-      $('#update_lokasi').val(lokasi);
-    });
-  });
-</script>
+    // ... (fungsi formatRupiah, calculateSubtotal, dll tidak berubah) ...
+    function formatRupiah(angka) {
+        let number_string = String(angka).replace(/[^,\d]/g, ''),
+            split = number_string.split(','),
+            sisa = split[0].length % 3,
+            rupiah = split[0].substr(0, sisa),
+            ribuan = split[0].substr(sisa).match(/\d{3}/gi);
 
-<script>
-  $(document).ready(function() {
-    // Ketika dropdown nama perumahan berubah
-    $('#id_proyek').on('change', function() {
-      // Ambil data-lokasi dari option yang dipilih
-      const type_proyek = $(this).find(':selected').data('type_proyek') || '';
-      // Set lokasi ke input lokasi
-      $('#update_type_proyek').val(type_proyek);
-    });
-  });
-</script>
-
-  <script>
-    // Konfirmasi penghapusan data upah 
-    document.querySelectorAll('.delete-btn').forEach(button => {
-      button.addEventListener('click', function() {
-        const idRabUpah = this.dataset.id_rab_upah;  // ambil data-id_rab_upah
-        const deleteLink = document.getElementById('confirmDeleteLink');
-        deleteLink.href = 'delete_rab_upah.php?id_rab_upah=' + idRabUpah;
-        const deleteModal = new bootstrap.Modal(document.getElementById('confirmDeleteModal'));
-        deleteModal.show();
-      });
-    });
-  </script>
-
-<script>
-$('#id_perumahan').on('change', function() {
-  const idPerumahan = $(this).val();
-
-  if (!idPerumahan) {
-    $('#id_proyek').html('<option value="" disabled selected>Pilih Kavling</option>');
-    $('#type_proyek').val('');
-    return;
-  }
-
-  $.ajax({
-    url: 'get_kavling.php',
-    method: 'POST',
-    data: { id_perumahan: idPerumahan },
-    dataType: 'json',
-    success: function(response) {
-      let options = '<option value="" disabled selected>Pilih Kavling</option>';
-      if (response.length > 0) {
-        response.forEach(function(proyek) {
-          options += `<option value="${proyek.id_proyek}" data-type_proyek="${proyek.type_proyek}">${proyek.kavling}</option>`;
-        });
-      } else {
-        options += '<option value="" disabled>Tidak ada kavling</option>';
-      }
-      $('#id_proyek').html(options);
-      $('#type_proyek').val(''); // clear tipe proyek kalau sebelumnya terisi
-    },
-    error: function(xhr, status, error) {
-      alert('Gagal mengambil data kavling: ' + error);
+        if (ribuan) {
+            separator = sisa ? '.' : '';
+            rupiah += separator + ribuan.join('.');
+        }
+        return 'Rp ' + (rupiah ? rupiah : '0');
     }
-  });
-});
+    
+    function calculateSubtotal() {
+        const quantity = parseFloat($('#quantity').val()) || 0;
+        const harga = parseFloat($('#harga_satuan').val()) || 0;
+        const subtotal = quantity * harga;
+        $('#sub_total').val(formatRupiah(subtotal));
+    }
 
-$('#id_proyek').on('change', function () {
-  const typeProyek = $(this).find(':selected').data('type_proyek') || '';
-  $('#type_proyek').val(typeProyek);
+    $('#quantity, #harga_satuan').on('keyup input', calculateSubtotal);
+
+    function updateGrandTotal() {
+        let grandTotal = 0;
+        $('#detail-pembelian-table tbody tr').each(function() {
+            const subtotal = parseFloat($(this).data('subtotal')) || 0;
+            grandTotal += subtotal;
+        });
+        $('#grand_total').text(formatRupiah(grandTotal));
+    }
+
+    $('#id_material').on('change', function() {
+        const selectedOption = $(this).find('option:selected');
+        const satuan = selectedOption.data('satuan');
+        $('#satuan').val(satuan || '');
+    });
+    
+    $('#form-add-item').on('submit', function(e) {
+        e.preventDefault();
+        const materialSelect = $('#id_material');
+        const id_material = materialSelect.val();
+        const nama_material = materialSelect.find('option:selected').data('nama');
+        const satuan = $('#satuan').val();
+        const quantity = $('#quantity').val();
+        const harga_satuan = $('#harga_satuan').val();
+
+        if (!id_material) {
+            alert('Harap pilih Nama Material.');
+            return;
+        }
+        if (!quantity || parseFloat(quantity) <= 0) {
+            alert('Jumlah harus diisi dan lebih besar dari 0.');
+            $('#quantity').focus();
+            return;
+        }
+        if (harga_satuan === '' || parseFloat(harga_satuan) < 0) {
+            alert('Harga Satuan harus diisi dan tidak boleh negatif.');
+            $('#harga_satuan').focus();
+            return;
+        }
+
+        const subtotal = parseFloat(quantity) * parseFloat(harga_satuan);
+        const newRow = `
+            <tr data-id_material="${id_material}" data-quantity="${quantity}" data-harga_satuan="${harga_satuan}" data-subtotal="${subtotal}">
+                <td>${nama_material}</td>
+                <td>${satuan}</td>
+                <td>${quantity}</td>
+                <td>${formatRupiah(harga_satuan)}</td>
+                <td>${formatRupiah(subtotal)}</td>
+                <td><button type="button" class="btn btn-sm btn-danger btn-delete-item"><i class="fa fa-trash"></i></button></td>
+            </tr>
+        `;
+        $('#detail-pembelian-table tbody').append(newRow);
+        updateGrandTotal();
+        $('#form-add-item')[0].reset();
+        $('#satuan').val('');
+        $('#sub_total').val('');
+    });
+
+    $('#detail-pembelian-table').on('click', '.btn-delete-item', function() {
+        if (confirm('Anda yakin ingin menghapus item ini?')) {
+            $(this).closest('tr').remove();
+            updateGrandTotal();
+        }
+    });
+
+    $('#btn-save-all').on('click', function() {
+        const items = [];
+        $('#detail-pembelian-table tbody tr').each(function() {
+            const row = $(this);
+            items.push({
+                id_material: row.data('id_material'),
+                quantity: row.data('quantity'),
+                harga_satuan_pp: row.data('harga_satuan'),
+                // --- INI PERBAIKANNYA ---
+                // DARI 'sub_total' MENJADI 'subtotal' (TANPA UNDERSCORE)
+                sub_total_pp: row.data('subtotal')
+            });
+        });
+
+        if (items.length === 0) {
+            alert('Tidak ada item untuk disimpan.');
+            return;
+        }
+        
+        $('#items_json').val(JSON.stringify(items));
+        $('#form-save-all').submit();
+    });
+    
+    $('#id_material').trigger('change');
 });
 </script>
-
-<script>
-  document.querySelectorAll('.btn-detail').forEach(button => {
-    button.addEventListener('click', function() {
-      const idRabUpah = this.dataset.id_rab_upah;
-      if(idRabUpah) {
-        window.location.href = 'detail_rab_upah.php?id_rab_upah=' + encodeURIComponent(idRabUpah);
-      }
-    });
-  });
-
-  newRow.find('.kategori').autocomplete({
-  source: function(request, response) {
-    $.ajax({
-      url: 'get_kategori.php',
-      dataType: 'json',
-      data: {
-        term: request.term
-      },
-      success: function(data) {
-        response(data);
-      },
-      error: function() {
-        response([]);
-      }
-    });
-  },
-  minLength: 1,
-  select: function(event, ui) {
-    $(this).val(ui.item.value); // gunakan ui.item.value agar sesuai dengan 'value'
-    return false;
-  }
-});
-
-</script>
-
 </body>
 </html>
