@@ -891,8 +891,15 @@ if (!$mandorResult) {
                 <a href="update_pengajuan_upah.php?id_pengajuan_upah=<?= urlencode($row['id_pengajuan_upah']) ?>" class="btn btn-warning btn-sm">Update</a>
               <?php endif; ?>
 
-              <!-- Tombol Delete -->
-              <button class="btn btn-danger btn-sm delete-btn" data-id_rab_upah="<?= htmlspecialchars($row['id_rab_upah']) ?>">Delete</button>
+                            <!-- [DIUBAH] Tombol Delete hanya muncul jika statusnya 'diajukan' atau 'ditolak' -->
+                            <?php if (in_array($row['status_pengajuan'], ['diajukan', 'ditolak'])): ?>
+                                <button class="btn btn-danger btn-sm delete-btn" 
+                                        data-id="<?= htmlspecialchars($row['id_pengajuan_upah']) ?>"
+                                        data-bs-toggle="modal" 
+                                        data-bs-target="#confirmDeleteModal">
+                                    Delete
+                                </button>
+                            <?php endif; ?>
             </td>
           </tr>
         <?php endwhile; ?>
@@ -1085,25 +1092,20 @@ $(document).ready(function() {
 });
 </script>
 
-  <script>
-    // Konfirmasi penghapusan data upah 
+<script>
 document.addEventListener("DOMContentLoaded", function() {
-    // Add event listener to delete buttons
-    document.querySelectorAll('.delete-btn').forEach(button => {
-        button.addEventListener('click', function() {
-            const idRabUpah = this.getAttribute('data-id_rab_upah'); // Correctly access the data-id_rab_upah attribute
+    // Menangkap semua tombol dengan class .delete-btn
+    const deleteButtons = document.querySelectorAll('.delete-btn');
+    const confirmDeleteLink = document.getElementById('confirmDeleteLink');
 
-            if (idRabUpah) {
-                const deleteLink = document.getElementById('confirmDeleteLink');
-                if (deleteLink) {
-                    deleteLink.href = 'delete_rab_upah.php?id_rab_upah=' + idRabUpah; // Pass the correct ID to the delete URL
-                    const deleteModal = new bootstrap.Modal(document.getElementById('confirmDeleteModal'));
-                    deleteModal.show(); // Show the modal
-                } else {
-                    console.error('Error: confirmDeleteLink not found.');
-                }
-            } else {
-                console.error('Error: ID RAB Upah is undefined or missing.');
+    deleteButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            // Ambil ID dari atribut data-id pada tombol yang diklik
+            const pengajuanId = this.getAttribute('data-id');
+            
+            // Atur atribut href pada link konfirmasi di dalam modal
+            if (pengajuanId && confirmDeleteLink) {
+                confirmDeleteLink.href = `delete_pengajuan_upah.php?id_pengajuan_upah=${pengajuanId}`;
             }
         });
     });

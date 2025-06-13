@@ -51,7 +51,7 @@ function getProgressLaluPersen($koneksi, $id_detail_rab_upah) {
               FROM detail_pengajuan_upah dp
               JOIN pengajuan_upah pu ON dp.id_pengajuan_upah = pu.id_pengajuan_upah
               WHERE dp.id_detail_rab_upah = $id_detail_rab_upah 
-              AND pu.status_pengajuan IN ('disetujui', 'dibayar', 'selesai')"; // <-- FILTER STATUS PENTING!
+              AND pu.status_pengajuan IN ('diajukan', 'disetujui', 'ditolak', 'dibayar')"; 
 
     $result = mysqli_query($koneksi, $query);
     
