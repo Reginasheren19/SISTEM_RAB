@@ -7,6 +7,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $kavling = mysqli_real_escape_string($koneksi, $_POST['kavling']);
     $type_proyek = mysqli_real_escape_string($koneksi, $_POST['type_proyek']);
     $id_mandor = mysqli_real_escape_string($koneksi, $_POST['id_mandor']);
+    $id_user_pj = (int)$_POST['id_user_pj']; // [PERBAIKAN KUNCI] Ambil ID PJ Proyek dari form
 
     // Validasi sederhana
     if (empty($id_perumahan) || empty($kavling) || empty($type_proyek) || empty($id_mandor)) {
@@ -15,8 +16,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
 
     // Query insert menggunakan ID (bukan nama)
-    $sql = "INSERT INTO master_proyek (id_perumahan, kavling, type_proyek, id_mandor) 
-            VALUES ('$id_perumahan', '$kavling', '$type_proyek', '$id_mandor')";
+    $sql = "INSERT INTO master_proyek (id_perumahan, id_mandor, id_user_pj, kavling, type_proyek) 
+        VALUES ('$id_perumahan', '$id_mandor', '$id_user_pj', '$kavling', '$type_proyek')";
 
     if (mysqli_query($koneksi, $sql)) {
         // Redirect dengan pesan sukses

@@ -9,6 +9,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $kavling = mysqli_real_escape_string($koneksi, $_POST['kavling']);
     $type_proyek = mysqli_real_escape_string($koneksi, $_POST['type_proyek']);
     $id_mandor = mysqli_real_escape_string($koneksi, $_POST['id_mandor']);
+        $id_user_pj = (int)$_POST['id_user_pj']; // [BARU] Ambil ID PJ Proyek dari form
 
     // Query update data mandor
     $sql = "UPDATE 
@@ -17,7 +18,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 id_perumahan = '$id_perumahan',
                 kavling = '$kavling',
                 type_proyek = '$type_proyek',
-                id_mandor = '$id_mandor'
+                id_mandor = '$id_mandor',
+                id_user_pj = '$id_user_pj'
             WHERE 
                 id_proyek = '$id_proyek'";
 

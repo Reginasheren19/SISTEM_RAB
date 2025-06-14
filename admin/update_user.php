@@ -12,6 +12,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         header("Location: master_user.php");
         exit();
     }
+
     $id_user = (int)$_POST['id_user'];
     $nama_lengkap = mysqli_real_escape_string($koneksi, $_POST['nama_lengkap']);
     $username = mysqli_real_escape_string($koneksi, $_POST['username']);
@@ -19,7 +20,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $password_baru = $_POST['password']; // Bisa kosong
 
     // 2. Ambil data LAMA dari database untuk perbandingan
-    // Ini penting untuk mendapatkan nama file foto lama dan password lama
     $stmt_old = $koneksi->prepare("SELECT password, profile_pic FROM master_user WHERE id_user = ?");
     $stmt_old->bind_param("i", $id_user);
     $stmt_old->execute();
@@ -63,7 +63,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
 
         // Hapus foto lama jika ada (dan bukan foto default)
-        if (!empty($user_lama['profile_pic']) && file_exists($upload_dir . $user_lama['profile_pic'])) {
+        if (!empty($user_lama['profile_pic']) && file_exists($upload_dir . $user_lama['profile_pic']) && $user_lama['profile_pic'] != 'default.jpg') {
             unlink($upload_dir . $user_lama['profile_pic']);
         }
         
@@ -102,7 +102,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         );
 
         if ($stmt->execute()) {
+            // Redirect ke halaman master_user dengan pesan sukses
             $_SESSION['pesan_sukses'] = "Data user berhasil di-update.";
+            header("Location: master_user.php?msg=Data%20berhasil%20diupdate");
+            exit();
         } else {
             $_SESSION['error_message'] = "Gagal meng-update user: " . $stmt->error;
         }
@@ -115,7 +118,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $_SESSION['error_message'] = "Akses tidak sah.";
 }
 
-// 7. Redirect kembali ke halaman master user
+// Redirect kembali ke halaman master user jika tidak ada POST
 $koneksi->close();
 header("Location: master_user.php");
 exit();

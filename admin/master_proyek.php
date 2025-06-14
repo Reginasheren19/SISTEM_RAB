@@ -1,28 +1,52 @@
 <?php
+// FILE: master_proyek.php (Dengan logika dropdown yang diperbaiki)
 include("../config/koneksi_mysql.php");
 
 // Mengatur error reporting
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
-// Mengambil data user dari database
-$result = mysqli_query($koneksi, "SELECT * FROM master_proyek");
+
+// Fetch data for Nama Perumahan
 $perumahanResult = mysqli_query($koneksi, "SELECT id_perumahan, nama_perumahan, lokasi FROM master_perumahan ORDER BY nama_perumahan ASC");
-if (!$perumahanResult) {
-    die("Query Error (perumahan): " . mysqli_error($koneksi));
+$perumahan_options = [];
+if($perumahanResult) {
+    while ($row = mysqli_fetch_assoc($perumahanResult)) {
+        $perumahan_options[] = $row;
+    }
 }
 
+// Fetch data for Nama Mandor
 $mandorResult = mysqli_query($koneksi, "SELECT id_mandor, nama_mandor FROM master_mandor ORDER BY nama_mandor ASC");
-if (!$mandorResult) {
-    die("Query Error (mandor): " . mysqli_error($koneksi));
+$mandor_options = [];
+if($mandorResult) {
+    while ($row = mysqli_fetch_assoc($mandorResult)) {
+        $mandor_options[] = $row;
+    }
 }
 
-$row = mysqli_fetch_assoc($result);
-if ($row) {
-    $id_perumahan_selected = $row['id_perumahan'];
-    $id_mandor_selected = $row['id_mandor'];
-} else {
-    $id_perumahan_selected = '';
-    $id_mandor_selected = '';
+
+// Ambil data PJ Proyek
+$pj_proyek_options = [];
+$pjProyekResult = mysqli_query($koneksi, "SELECT id_user, nama_lengkap FROM master_user WHERE role = 'PJ Proyek' ORDER BY nama_lengkap ASC");
+if($pjProyekResult){
+    while ($row = mysqli_fetch_assoc($pjProyekResult)) {
+        $pj_proyek_options[] = $row;
+    }
+}
+
+// --- Query utama untuk menampilkan tabel ---
+$sql = "SELECT 
+            mpr.id_proyek, mpr.kavling, mpr.type_proyek,
+            mpr.id_perumahan, mpe.nama_perumahan, mpe.lokasi,
+            mpr.id_mandor, mm.nama_mandor,
+            mpr.id_user_pj, u.nama_lengkap AS nama_pj_proyek
+        FROM master_proyek mpr
+        LEFT JOIN master_perumahan mpe ON mpr.id_perumahan = mpe.id_perumahan
+        LEFT JOIN master_mandor mm ON mpr.id_mandor = mm.id_mandor
+        LEFT JOIN master_user u ON mpr.id_user_pj = u.id_user";
+$result = mysqli_query($koneksi, $sql);
+if (!$result) {
+    die("Query gagal dijalankan: " . mysqli_error($koneksi));
 }
 ?>
 
@@ -809,73 +833,60 @@ if ($row) {
       }
       </script>
 
-      <div class="card-body">
-        <div class="table-responsive">
-          <table
-            id="basic-datatables"
-            class="display table table-striped table-hover"
-          >
+<div class="card-body">
+    <div class="table-responsive">
+        <table id="basic-datatables" class="display table table-striped table-hover">
             <thead>
-              <tr>
-                <th>ID Proyek</th>
-                <th>Perumahan</th>
-                <th>Kavling</th>
-                <th>Type Proyek</th>
-                <th>Mandor</th>
-                <th>Lokasi</th>
-                <th>Action</th>
-              </tr>
+                <tr>
+                    <th>ID Proyek</th>
+                    <th>Perumahan</th>
+                    <th>Kavling</th>
+                    <th>Type Proyek</th>
+                    <th>Mandor</th>
+                    <th>PJ Proyek</th> <!-- Menambahkan kolom PJ Proyek -->
+                    <th>Lokasi</th>
+                    <th>Action</th>
+                </tr>
             </thead>
             <tbody>
-              <?php
-              $sql = "SELECT 
-                          mpr.id_proyek,
-                          mpr.kavling,
-                          mpr.type_proyek,
-                          mpr.id_perumahan,
-                          mpr.id_mandor,
-                          mpe.nama_perumahan,
-                          mpe.lokasi,
-                          mm.nama_mandor
-                      FROM 
-                          master_proyek mpr
-                      JOIN 
-                          master_perumahan mpe ON mpr.id_perumahan = mpe.id_perumahan
-                      JOIN
-                          master_mandor mm ON mpr.id_mandor = mm.id_mandor";
+                <?php while ($row = mysqli_fetch_assoc($result)): ?>
+                    <tr>
+                        <td><?= htmlspecialchars($row['id_proyek']) ?></td>
+                        <td><?= htmlspecialchars($row['nama_perumahan']) ?></td>
+                        <td><?= htmlspecialchars($row['kavling']) ?></td>
+                        <td><?= htmlspecialchars($row['type_proyek']) ?></td>
+                        <td><?= htmlspecialchars($row['nama_mandor']) ?></td>
+                        <td><?= htmlspecialchars($row['nama_pj_proyek'] ?? 'N/A') ?></td> <!-- Menampilkan PJ Proyek -->
+                        <td><?= htmlspecialchars($row['lokasi']) ?></td>
+                        <td>
+                            <!-- Update Button -->
+                            <button class="btn btn-warning btn-sm btn-update" 
+                                    data-id_proyek='<?= $row['id_proyek'] ?>' 
+                                    data-id_perumahan='<?= $row['id_perumahan'] ?>' 
+                                    data-kavling='<?= $row['kavling'] ?>' 
+                                    data-type_proyek='<?= $row['type_proyek'] ?>' 
+                                    data-id_mandor='<?= $row['id_mandor'] ?>'
+                                    data-id_user_pj='<?= $row['id_user_pj'] ?>'
+                                    data-bs-toggle="modal" 
+                                    data-bs-target="#updateProyekModal">
+                                <i class="fa fa-edit"></i> Update
+                            </button>
 
-              $result = mysqli_query($koneksi, $sql);
-
-              if (!$result) {
-                  die("Query Error: " . mysqli_error($koneksi));
-              }
-
-              while ($row = mysqli_fetch_assoc($result)) {
-                  echo "<tr>
-                      <td>" . htmlspecialchars($row['id_proyek']) . "</td>
-                      <td>" . htmlspecialchars($row['nama_perumahan']) . "</td>
-                      <td>" . htmlspecialchars($row['kavling']) . "</td>
-                      <td>" . htmlspecialchars($row['type_proyek']) . "</td>
-                      <td>" . htmlspecialchars($row['nama_mandor']) . "</td>
-                      <td>" . htmlspecialchars($row['lokasi']) . "</td>
-                      <td>
-                         <button 
-                          class='btn btn-primary btn-sm btn-update' 
-                          data-id_proyek='" . htmlspecialchars($row['id_proyek']) . "' 
-                          data-id_perumahan='" . htmlspecialchars($row['id_perumahan']) . "' 
-                          data-kavling='" . htmlspecialchars($row['kavling']) . "' 
-                          data-id_mandor='" . htmlspecialchars($row['id_mandor']) . "'
-                          data-type_proyek='" . htmlspecialchars($row['type_proyek']) . "'>Update</button>
-                         <button class='btn btn-danger btn-sm delete-btn' data-id_proyek='" . htmlspecialchars($row['id_proyek']) . "'>Delete</button>                                        
-                      </td>
-                    </tr>";
-              }
-              ?>
-
+                            <!-- Delete Button -->
+                            <button class="btn btn-danger btn-sm btn-delete" 
+                                    data-id_proyek='<?= $row['id_proyek'] ?>'
+                                    data-bs-toggle="modal" 
+                                    data-bs-target="#confirmDeleteModal">
+                                <i class="fa fa-trash"></i> Delete
+                            </button>
+                        </td>
+                    </tr>
+                <?php endwhile; ?>
             </tbody>
-          </table>
-        </div>
-      </div>
+        </table>
+    </div>
+</div>
+
     </div>
   </div>
 </div>
@@ -892,20 +903,18 @@ if ($row) {
         </div>
         <div class="modal-body">
 
-          <div class="mb-3">
-            <label for="id_perumahan" class="form-label">Nama Perumahan</label>
-            <select class="form-select" id="id_perumahan" name="id_perumahan" required>
-              <option value="" disabled selected>Pilih Nama Perumahan</option>
-              <?php while ($perumahan = mysqli_fetch_assoc($perumahanResult)): ?>
-                <option 
-                  value="<?= htmlspecialchars($perumahan['id_perumahan']) ?>" 
-                  data-lokasi="<?= htmlspecialchars($perumahan['lokasi']) ?>"
-                >
-                  <?= htmlspecialchars($perumahan['nama_perumahan']) ?>
-                </option>
-              <?php endwhile; ?>
-            </select>
-          </div>
+<!-- Dropdown for Nama Perumahan -->
+<div class="mb-3">
+    <label for="id_perumahan" class="form-label">Nama Perumahan</label>
+    <select class="form-select" id="id_perumahan" name="id_perumahan" required>
+        <option value="" disabled selected>Pilih Nama Perumahan</option>
+        <?php foreach ($perumahan_options as $perumahan): ?>
+            <option value="<?= htmlspecialchars($perumahan['id_perumahan']) ?>" data-lokasi="<?= htmlspecialchars($perumahan['lokasi']) ?>">
+                <?= htmlspecialchars($perumahan['nama_perumahan']) ?>
+            </option>
+        <?php endforeach; ?>
+    </select>
+</div>
 
           <div class="mb-3">
             <label for="kavling" class="form-label">Kavling</label>
@@ -917,19 +926,30 @@ if ($row) {
             <input type="text" class="form-control" id="type_proyek" name="type_proyek" placeholder="Masukkan type proyek" required />
           </div>
 
-          <div class="mb-3">
-            <label for="id_mandor" class="form-label">Nama Mandor</label>
-            <select class="form-select" id="id_mandor" name="id_mandor" required>
-              <option value="" disabled selected>Pilih Nama Mandor</option>
+<!-- Dropdown for Nama Mandor -->
+<div class="mb-3">
+    <label for="id_mandor" class="form-label">Nama Mandor</label>
+    <select class="form-select" id="id_mandor" name="id_mandor" required>
+        <option value="" disabled selected>Pilih Nama Mandor</option>
+        <?php foreach ($mandor_options as $mandor): ?>
+            <option value="<?= htmlspecialchars($mandor['id_mandor']) ?>">
+                <?= htmlspecialchars($mandor['nama_mandor']) ?>
+            </option>
+        <?php endforeach; ?>
+    </select>
+</div>
 
-              <?php while ($mandor = mysqli_fetch_assoc($mandorResult)): ?>
-                <option value="<?= htmlspecialchars($mandor['id_mandor']) ?>">
-                  <?= htmlspecialchars($mandor['nama_mandor']) ?>
-                </option>
-              <?php endwhile; ?>
 
+        <!-- [DITAMBAHKAN] Dropdown untuk memilih PJ Proyek -->
+        <div class="mb-3">
+            <label class="form-label">PJ Proyek</label>
+            <select class="form-select" name="id_user_pj" required>
+                <option value="">Pilih PJ Proyek</option>
+                <?php foreach ($pj_proyek_options as $opt): ?>
+                    <option value="<?= $opt['id_user'] ?>"><?= htmlspecialchars($opt['nama_lengkap']) ?></option>
+                <?php endforeach; ?>
             </select>
-          </div>
+        </div>
 
           <!-- Lokasi (read-only) -->
           <div class="mb-3">
@@ -949,33 +969,22 @@ if ($row) {
 
 <!-- Modal Update Data Proyek -->
 <div class="modal fade" id="updateProyekModal" tabindex="-1" aria-labelledby="updateProyekModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <form method="POST" action="update_proyek.php">
-        <input type="hidden" name="id_proyek" id="update_id_proyek" />
-        <div class="modal-header">
-          <h5 class="modal-title" id="updateMandorModalLabel">Update Data Proyek</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form method="POST" action="update_proyek.php">
+                <input type="hidden" name="id_proyek" id="update_id_proyek" />
+                <div class="modal-header">
+                    <h5 class="modal-title" id="updateProyekModalLabel">Update Data Proyek</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
 
-          <div class="mb-3">
-            <label for="update_id_perumahan" class="form-label">Nama Perumahan</label>
-            <select class="form-select" id="update_id_perumahan" name="id_perumahan" required>
-              <option value="" disabled>Pilih Nama Perumahan</option>
-              <?php
-              $id_perumahan_selected = $row['id_perumahan'];
-              $perumahanResult = mysqli_query($koneksi, "SELECT id_perumahan, nama_perumahan, lokasi FROM master_perumahan ORDER BY nama_perumahan ASC");
-              while ($perumahan = mysqli_fetch_assoc($perumahanResult)) {
-                $selected = ($perumahan['id_perumahan'] == $id_perumahan_selected) ? 'selected' : '';
-                echo "<option 
-                  value='" . htmlspecialchars($perumahan['id_perumahan']) . "' 
-                  data-lokasi='" . htmlspecialchars($perumahan['lokasi']) . "' 
-                $selected>" . htmlspecialchars($perumahan['nama_perumahan']) . "</option>";
-              }
-              ?>
-            </select>
-          </div>
+                     <div class="mb-3">
+                            <label class="form-label">Nama Perumahan</label>
+                            <select class="form-select" name="id_perumahan" id="update_id_perumahan" required>
+                                <?php foreach ($perumahan_options as $opt): ?><option value="<?= $opt['id_perumahan'] ?>" data-lokasi="<?= htmlspecialchars($opt['lokasi']) ?>"><?= htmlspecialchars($opt['nama_perumahan']) ?></option><?php endforeach; ?>
+                            </select>
+                        </div>
 
           <div class="mb-3">
             <label for="update_kavling" class="form-label">Kavling</label>
@@ -988,18 +997,16 @@ if ($row) {
           </div>
 
           <div class="mb-3">
-            <label for="update_id_mandor" class="form-label">Nama Mandor</label>
-            <select class="form-select" id="update_id_mandor" name="id_mandor" required>
-              <option value="" disabled>Pilih Nama Mandor</option>
-              <?php
-              $id_mandor_selected = $row['id_mandor'];
-              $mandorResult = mysqli_query($koneksi, "SELECT id_mandor, nama_mandor FROM master_mandor ORDER BY nama_mandor ASC");
-              while ($mandor = mysqli_fetch_assoc($mandorResult)) {
-                      $selected = ($mandor['id_mandor'] == $id_mandor_selected) ? 'selected' : '';
-                echo '<option value="' . htmlspecialchars($mandor['id_mandor']) . '">' . htmlspecialchars($mandor['nama_mandor']) . '</option>';
-              }
-              ?>
-            </select>
+              <label class="form-label">Mandor</label>
+              <select class="form-select" name="id_mandor" id="update_id_mandor" required>
+                  <?php foreach ($mandor_options as $opt): ?><option value="<?= $opt['id_mandor'] ?>"><?= htmlspecialchars($opt['nama_mandor']) ?></option><?php endforeach; ?>
+              </select>
+          </div>
+          <div class="mb-3">
+              <label class="form-label">PJ Proyek</label>
+              <select class="form-select" name="id_user_pj" id="update_id_user_pj" required>
+                  <?php foreach ($pj_proyek_options as $opt): ?><option value="<?= $opt['id_user'] ?>"><?= htmlspecialchars($opt['nama_lengkap']) ?></option><?php endforeach; ?>
+              </select>
           </div>
 
           <div class="mb-3">
@@ -1008,10 +1015,10 @@ if ($row) {
           </div>
 
         </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-          <button type="submit" class="btn btn-primary">Update</button>
-        </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-primary">Update</button>
+                </div>
       </form>
     </div>
   </div>
@@ -1031,7 +1038,7 @@ if ($row) {
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <a href="#" id="confirmDeleteLink" class="btn btn-danger">Delete</a>
+          <a href="master_proyek.php" id="confirmDeleteLink" class="btn btn-danger">Delete</a>
         </div>
       </div>
     </div>
@@ -1042,69 +1049,101 @@ if ($row) {
 <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
 
 <script>
-  $(document).ready(function() {
-    // Ketika dropdown nama perumahan berubah
+$(document).ready(function() {
+    // Handle dropdown change for "id_perumahan" to update location
     $('#id_perumahan').on('change', function() {
-      // Ambil data-lokasi dari option yang dipilih
-      const lokasi = $(this).find(':selected').data('lokasi') || '';
-      // Set lokasi ke input lokasi
-      $('#lokasi').val(lokasi);
+        const lokasi = $(this).find(':selected').data('lokasi') || ''; // Get location from selected option
+        $('#lokasi').val(lokasi); // Set the location input field value
     });
-  });
-</script>
 
-<script>
-  $(document).ready(function() {
-    $('#basic-datatables').DataTable();
-  });
-</script>
-
-  <script>
-    // Konfirmasi penghapusan data proyek
-    document.querySelectorAll('.delete-btn').forEach(button => {
-      button.addEventListener('click', function() {
-        const proyekId = this.dataset.id_proyek;
-        const deleteLink = document.getElementById('confirmDeleteLink');
-        deleteLink.href = 'delete_proyek.php?proyek=' + proyekId;
-        const deleteModal = new bootstrap.Modal(document.getElementById('confirmDeleteModal'));
-        deleteModal.show();
-      });
-    });
-  </script>
-<script>
-  document.addEventListener('DOMContentLoaded', function() {
-    const perumahanSelect = document.getElementById('update_id_perumahan');
-    const lokasiInput = document.getElementById('update_lokasi');
-
-    // Fungsi update lokasi berdasarkan opsi yang dipilih
-    function updateLokasi() {
-      const selectedOption = perumahanSelect.options[perumahanSelect.selectedIndex];
-      const lokasi = selectedOption.getAttribute('data-lokasi') || '';
-      lokasiInput.value = lokasi;
-    }
-
-    // Saat dropdown perumahan berubah
-    perumahanSelect.addEventListener('change', updateLokasi);
-
-    // Saat modal update dibuka lewat tombol update
+    // Handle update button click event to populate the modal
     document.querySelectorAll('.btn-update').forEach(button => {
-      button.addEventListener('click', function() {
-        // Isi field lain
-        document.getElementById('update_id_proyek').value = this.dataset.id_proyek;
-        document.getElementById('update_id_perumahan').value = this.dataset.id_perumahan;
-        document.getElementById('update_kavling').value = this.dataset.kavling;
-        document.getElementById('update_type_proyek').value = this.dataset.type_proyek;
-        document.getElementById('update_id_mandor').value = this.dataset.id_mandor;
+        button.addEventListener('click', function() {
+            // Get data attributes and set modal inputs
+            const idProyek = this.dataset.id_proyek;
+            const idPerumahan = this.dataset.id_perumahan;
+            const kavling = this.dataset.kavling;
+            const typeProyek = this.dataset.type_proyek;
+            const idMandor = this.dataset.id_mandor;
+            const idUserPj = this.dataset.id_user_pj;
 
-        // Update lokasi berdasarkan data dropdown perumahan terpilih
-        updateLokasi();
+            // Fill the form fields inside the modal
+            document.getElementById('update_id_proyek').value = idProyek;
+            document.getElementById('update_id_perumahan').value = idPerumahan;
+            document.getElementById('update_kavling').value = kavling;
+            document.getElementById('update_type_proyek').value = typeProyek;
+            document.getElementById('update_id_mandor').value = idMandor;
 
-        // Tampilkan modal update
-        const updateModal = new bootstrap.Modal(document.getElementById('updateProyekModal'));
-        updateModal.show();
-      });
+            // Update the location field based on selected "id_perumahan"
+            const perumahanSelect = document.getElementById('update_id_perumahan');
+            const selectedOption = perumahanSelect.querySelector(`option[value="${idPerumahan}"]`);
+            const lokasi = selectedOption ? selectedOption.getAttribute('data-lokasi') : '';
+            document.getElementById('update_lokasi').value = lokasi;
+
+            // Show the update modal
+            const updateModal = new bootstrap.Modal(document.getElementById('updateProyekModal'));
+            updateModal.show();
+        });
     });
-  });
+});
+
+</script>
+
+    <script>
+    $(document).ready(function() {
+        $('#basic-datatables').DataTable();
+        
+        const updateModal = new bootstrap.Modal(document.getElementById('updateProyekModal'));
+        
+        function updateLokasi(selectElement, targetInput) {
+            const selectedOption = $(selectElement).find('option:selected');
+            const lokasi = selectedOption.data('lokasi') || '';
+            $(targetInput).val(lokasi);
+        }
+
+        $('#add_id_perumahan').on('change', function() { updateLokasi(this, '#add_lokasi'); });
+        $('#update_id_perumahan').on('change', function() { updateLokasi(this, '#update_lokasi'); });
+
+        // Event delegation untuk tombol di dalam tabel
+        $('#basic-datatables').on('click', '.btn-update', function() {
+            // Ambil data dari atribut data-* tombol yang diklik
+            $('#update_id_proyek').val($(this).data('id_proyek'));
+            $('#update_id_perumahan').val($(this).data('id_perumahan'));
+            $('#update_kavling').val($(this).data('kavling'));
+            $('#update_type_proyek').val($(this).data('type_proyek'));
+            $('#update_id_mandor').val($(this).data('id_mandor'));
+
+            // [PERBAIKAN KUNCI] Cek jika data PJ Proyek ada
+            const pjId = $(this).data('id_user_pj');
+            if (pjId && pjId !== 0) {
+                $('#update_id_user_pj').val(pjId);
+            } else {
+                // Jika tidak ada, set ke nilai kosong agar placeholder "-- Pilih PJ Proyek --" yang tampil
+                $('#update_id_user_pj').val('');
+            }
+            
+            updateLokasi('#update_id_perumahan', '#update_lokasi');
+            updateModal.show();
+        });
+
+        // ... (logika delete bisa ditambahkan di sini) ...
+    });
+</script>
+
+<script>
+$(document).ready(function() {
+    // Handle delete button click event to confirm deletion
+    document.querySelectorAll('.btn-delete').forEach(button => {
+        button.addEventListener('click', function() {
+            const proyekId = this.dataset.id_proyek;
+            const deleteLink = document.getElementById('confirmDeleteLink');
+            deleteLink.href = 'delete_proyek.php?proyek=' + proyekId; // Update the link with the correct project ID
+            const deleteModal = new bootstrap.Modal(document.getElementById('confirmDeleteModal'));
+            deleteModal.show(); // Show the delete confirmation modal
+        });
+    });
+});
+
 </script>
 
 
