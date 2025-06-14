@@ -753,179 +753,190 @@ if (!$result) {
           <!-- End Navbar -->
         </div>
 
-        <div class="container">
-          <div class="page-inner">
+        
+    <div class="container">
+        <div class="page-inner">
             <div class="page-header">
-              <h3 class="fw-bold mb-3">Pencatatan Pembelian</h3>
-              <ul class="breadcrumbs mb-3">
-                <li class="nav-home">
-                  <a href="dashboard.php">
-                    <i class="icon-home"></i>
-                  </a>
-                </li>
-                <li class="separator">
-                  <i class="icon-arrow-right"></i>
-                </li>
-                <li class="nav-item">
-                  <a href="#">Pencatatan Pembelian</a>
-                </li>
-                <li class="separator">
-                  <i class="icon-arrow-right"></i>
-                </li>
-                <li class="nav-item">
-                  <a href="">Pencatatan Pembelian Material</a>
-                </li>
-              </ul>
+                <h3 class="fw-bold mb-3">Pencatatan Pembelian</h3>
+                <ul class="breadcrumbs mb-3">
+                    <li class="nav-home">
+                        <a href="dashboard.php">
+                            <i class="icon-home"></i>
+                        </a>
+                    </li>
+                    <li class="separator">
+                        <i class="icon-arrow-right"></i>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#">Pencatatan Pembelian</a>
+                    </li>
+                </ul>
             </div>
 
-    <div class="row">
-      <div class="col-md-12">
-        <div class="card">
-          <div class="card-header d-flex align-items-center">
-            <h4 class="card-title">Daftar Transaksi Pembelian</h4>
-            <button class="btn btn-primary btn-round ms-auto" data-bs-toggle="modal" data-bs-target="#addPembelianModal">
-              <i class="fa fa-plus"></i> Tambah Pembelian
-            </button>
+            <?php
+            // Menampilkan pesan sukses atau error dari proses lain (seperti hapus data)
+            if (isset($_SESSION['pesan_sukses'])) {
+                echo '<div class="alert alert-success" role="alert">' . $_SESSION['pesan_sukses'] . '</div>';
+                unset($_SESSION['pesan_sukses']);
+            }
+            if (isset($_SESSION['error_message'])) {
+                echo '<div class="alert alert-danger" role="alert">' . $_SESSION['error_message'] . '</div>';
+                unset($_SESSION['error_message']);
+            }
+            ?>
+
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="card">
+                        <div class="card-header d-flex align-items-center">
+                            <h4 class="card-title">Daftar Transaksi Pembelian</h4>
+                            <button class="btn btn-primary btn-round ms-auto" data-bs-toggle="modal" data-bs-target="#addPembelianModal">
+                                <i class="fa fa-plus"></i> Tambah Pembelian
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table id="tabelPembelian" class="table table-striped table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>No.</th>
+                                            <th>ID Pembelian</th>
+                                            <th>Tanggal Pembelian</th>
+                                            <th>Keterangan</th>
+                                            <th>Total Biaya</th>
+                                            <th>Bukti Pembelian</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php 
+                                        if (isset($result) && $result && mysqli_num_rows($result) > 0): 
+                                            $nomor = 1; 
+                                            while ($row = mysqli_fetch_assoc($result)): 
+                                                $tahun_pembelian = date('Y', strtotime($row['tanggal_pembelian']));
+                                                $formatted_id = 'PB' . $row['id_pembelian'] . $tahun_pembelian;
+                                        ?>
+                                                <tr>
+                                                    <td><?= $nomor ?></td>
+                                                    <td><?= htmlspecialchars($formatted_id) ?></td>
+                                                    <td><?= date("d F Y", strtotime($row['tanggal_pembelian'])) ?></td>
+                                                    <td><?= htmlspecialchars($row['keterangan_pembelian']) ?></td>
+                                                    <td><?= 'Rp ' . number_format($row['total_biaya'] ?? 0, 0, ',', '.') ?></td>
+                                                    <td>
+                                                        <?php if (!empty($row['bukti_pembayaran'])): ?>
+                                                            <a href="../uploads/bukti_pembayaran/<?= htmlspecialchars($row['bukti_pembayaran']) ?>" target="_blank">
+                                                                <img src="../uploads/bukti_pembayaran/<?= htmlspecialchars($row['bukti_pembayaran']) ?>" alt="Nota" style="width: 80px; height: auto; border-radius: 4px;">
+                                                            </a>
+                                                        <?php else: ?>
+                                                            <span>-</span>
+                                                        <?php endif; ?>
+                                                    </td>
+                                                    <td>
+                                                        <a href="detail_pembelian.php?id=<?= urlencode($row['id_pembelian']) ?>" class="btn btn-info btn-sm">Detail</a>
+                                                        <button class="btn btn-danger btn-sm btn-delete" 
+                                                                data-id="<?= $row['id_pembelian'] ?>" 
+                                                                data-bs-toggle="modal" 
+                                                                data-bs-target="#confirmDeleteModal">
+                                                            Delete
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                        <?php 
+                                            $nomor++; 
+                                            endwhile; 
+                                        else: 
+                                        ?>
+                                            <tr>
+                                                <td colspan="7" class="text-center">Belum ada data pembelian.</td>
+                                            </tr>
+                                        <?php endif; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="addPembelianModal" tabindex="-1" aria-labelledby="addPembelianModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form method="POST" action="add_pembelian.php" enctype="multipart/form-data">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="addPembelianModalLabel">Tambah Pembelian Material</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="tanggal_pembelian" class="form-label">Tanggal Pembelian</label>
+                            <input type="date" class="form-control" id="tanggal_pembelian" name="tanggal_pembelian" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="keterangan_pembelian" class="form-label">Keterangan</label>
+                            <input type="text" class="form-control" id="keterangan_pembelian" name="keterangan_pembelian" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="bukti_pembayaran" class="form-label">Upload Nota Pembelian</label>
+                            <input type="file" class="form-control" id="bukti_pembayaran" name="bukti_pembayaran" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                        <button type="submit" class="btn btn-primary">Lanjut</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="confirmDeleteModalLabel">Konfirmasi Hapus</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
-
-          <div class="card-body">
-            <div class="table-responsive">
-              <table id="tabelPembelian" class="table table-striped table-hover">
-                <thead>
-                  <tr>
-                    <th>ID Pembelian</th>
-                    <th>Tanggal Pembelian</th>
-                    <th>Keterangan</th>
-                    <th>Total Biaya</th>
-                    <th>Bukti Pembelian</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                  <tbody>
-                      <?php 
-                      // Saya tambahkan pengecekan if ($result) untuk mencegah error jika query gagal
-                      if ($result && mysqli_num_rows($result) > 0): 
-                          while ($row = mysqli_fetch_assoc($result)): 
-                      ?>
-                          <tr>
-                              <td><?= htmlspecialchars($row['id_pembelian']) ?></td>
-
-                              <td><?= date("d F Y", strtotime($row['tanggal_pembelian'])) ?></td>
-
-                              <td><?= htmlspecialchars($row['keterangan_pembelian']) ?></td>
-
-                              <td><?= 'Rp ' . number_format($row['total_biaya'] ?? 0, 0, ',', '.') ?></td>
-
-                              <td>
-                                  <?php if (!empty($row['bukti_pembayaran'])): ?>
-                                      <a href="../uploads/bukti_pembayaran/<?= htmlspecialchars($row['bukti_pembayaran']) ?>" target="_blank">
-                                          <img src="../uploads/bukti_pembayaran/<?= htmlspecialchars($row['bukti_pembayaran']) ?>" alt="Nota" style="width: 80px; height: auto; border-radius: 4px;">
-                                      </a>
-                                  <?php else: ?>
-                                      <span>-</span>
-                                  <?php endif; ?>
-                              </td>
-
-                              <td>
-                                  <a href="input_detail_pembelian.php?id=<?= urlencode($row['id_pembelian']) ?>" class="btn btn-info btn-sm">Detail</a>
-                                  
-                                  <button class="btn btn-danger btn-sm btn-delete" 
-                                          data-id="<?= $row['id_pembelian'] ?>" 
-                                          data-bs-toggle="modal" 
-                                          data-bs-target="#confirmDeleteModal">
-                                      Hapus
-                                  </button>
-                              </td>
-                          </tr>
-                      <?php 
-                          endwhile; 
-                      else: 
-                      ?>
-                          <tr>
-                              <td colspan="6" class="text-center">Belum ada data pembelian.</td>
-                          </tr>
-                      <?php endif; ?>
-                  </tbody>              </table>
-            </div>
+          <div class="modal-body">
+            <p>Apakah Anda yakin ingin menghapus data pembelian ini?</p>
+            <p class="text-danger small">Semua detail material yang terkait juga akan ikut terhapus.</p>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+            <a href="#" id="confirmDeleteLink" class="btn btn-danger">Hapus</a>
           </div>
         </div>
       </div>
     </div>
-  </div>
-</div>
 
-<!-- Modal Tambah Pembelian -->
-<div class="modal fade" id="addPembelianModal" tabindex="-1" aria-labelledby="addPembelianModalLabel" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <form method="POST" action="add_pembelian.php"enctype="multipart/form-data">
-        <div class="modal-header">
-          <h5 class="modal-title" id="addPembelianModalLabel">Tambah Pembelian Material</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-          <div class="mb-3">
-            <label for="tanggal_pembelian" class="form-label">Tanggal Pembelian</label>
-            <input type="date" class="form-control" id="tanggal_pembelian" name="tanggal_pembelian" required>
-          </div>
-          <div class="mb-3">
-            <label for="keterangan_pembelian" class="form-label">Keterangan</label>
-            <input type="text" class="form-control" id="keterangan_pembelian" name="keterangan_pembelian" required>
-          </div>
-          <div class="mb-3">
-              <label for="bukti_pembayaran" class="form-label">Upload Nota Pembelian</label>
-              <input type="file" class="form-control" id="bukti_pembayaran" name="bukti_pembayaran" required>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-          <button type="submit" class="btn btn-primary">Lanjut</button>
-        </div>
-      </form>
-    </div>
-  </div>
-</div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
 
-  <!-- Modal Delete Confirmation -->
-  <div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title" id="confirmDeleteModalLabel">Confirm Deletion</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-          <p>Are you sure you want to delete this pembelian?</p>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <a href="#" id="confirmDeleteLink" class="btn btn-danger">Delete</a>
-        </div>
-      </div>
-    </div>
-  </div>
+    <script>
+    $(document).ready(function() {
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+        // Inisialisasi DataTable tanpa properti 'order'.
+        // Ini akan menjaga urutan asli dari HTML (yang sudah diurutkan dari server/PHP).
+        $('#tabelPembelian').DataTable();
 
+        // Bagian untuk modal hapus
+        $('#tabelPembelian').on('click', '.btn-delete', function() {
+            const id = $(this).data('id');
+            const deleteUrl = `delete_pembelian.php?id=${id}`;
+            $('#confirmDeleteLink').attr('href', deleteUrl);
+        });
 
-<script>
-$(document).ready(function() {
-
-    // Langsung panggil ID tabel yang sudah ada di HTML
-    $('#tabelPembelian').DataTable({
-        "order": [[ 0, "asc" ]] // atau [[ 0, "desc" ]] jika ingin urutan dari besar ke kecil
+        // Bagian notifikasi otomatis hilang
+        const alertBox = $('.alert');
+        if (alertBox.length) {
+            setTimeout(function() {
+                alertBox.fadeOut('slow');
+            }, 5000);
+        }
+        
     });
-
-    // Script untuk tombol delete (tidak perlu diubah)
-    $('#tabelPembelian').on('click', '.btn-delete', function() {
-        const id = $(this).data('id');
-        $('#idToDelete').val(id);
-    });
-
-});
-</script>
-
+    </script>
 </body>
 </html>

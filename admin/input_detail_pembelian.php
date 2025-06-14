@@ -12,8 +12,8 @@ if (!isset($_GET['id']) || empty($_GET['id'])) {
 $pembelian_id = $_GET['id'];
 
 // Ambil data pembelian
-$stmt = $koneksi->prepare("SELECT id_pembelian, tanggal_pembelian, keterangan_pembelian FROM pencatatan_pembelian WHERE id_pembelian = ?");
-$stmt->bind_param("i", $pembelian_id);
+// Menggunakan SELECT * untuk mengambil SEMUA kolom dari tabel
+$stmt = $koneksi->prepare("SELECT * FROM pencatatan_pembelian WHERE id_pembelian = ?");$stmt->bind_param("i", $pembelian_id);
 $stmt->execute();
 $result = $stmt->get_result();
 $pembelian = $result->fetch_assoc();
@@ -118,8 +118,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 ?>
-
-
 
 <!DOCTYPE html>
 <html lang="en">
@@ -854,29 +852,57 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <ul class="breadcrumbs mb-3">
                 <li class="nav-home"><a href="dashboard.php"><i class="icon-home"></i></a></li>
                 <li class="separator"><i class="icon-arrow-right"></i></li>
-                <li class="nav-item"><a href="#">Pencatatan Pembelian</a></li>
+                <li class="nav-item"><a href="pencatatan_pembelian.php">Pencatatan Pembelian</a></li>
                 <li class="separator"><i class="icon-arrow-right"></i></li>
-                <li class="nav-item"><a href="">Pencatatan Pembelian Material</a></li>
+                <li class="nav-item"><a href="">Input Pembelian Material</a></li>
             </ul>
         </div>
 
-        <div class="card">
-            <div class="card-header">
-                <h4 class="card-title">Informasi Transaksi</h4>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-6">
-                        <p><strong>ID Pembelian:</strong> <?= htmlspecialchars($pembelian['id_pembelian'] ?? '') ?></p>
-                    </div>
-                    <div class="col-md-6">
-                        <p><strong>Tanggal:</strong> <?= date("d F Y", strtotime(htmlspecialchars($pembelian['tanggal_pembelian'] ?? ''))) ?></p>
+<div class="card">
+    <div class="card-header">
+        <h4 class="card-title">Informasi Transaksi</h4>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="row mb-2">
+                    <div class="col-4 fw-bold">ID Pembelian</div>
+                    <div class="col-8">
+                        <?php
+                            $tahun_pembelian = date('Y', strtotime($pembelian['tanggal_pembelian']));
+                            $formatted_id = 'PB' . $pembelian['id_pembelian'] . $tahun_pembelian;
+                            echo ": " . htmlspecialchars($formatted_id);
+                        ?>
                     </div>
                 </div>
-                <p><strong>Keterangan:</strong> <?= htmlspecialchars($pembelian['keterangan_pembelian'] ?? '') ?></p>
+                <div class="row mb-2">
+                    <div class="col-4 fw-bold">Tanggal</div>
+                    <div class="col-8">: <?= date("d F Y", strtotime(htmlspecialchars($pembelian['tanggal_pembelian'] ?? ''))) ?></div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-4 fw-bold">Keterangan</div>
+                    <div class="col-8">: <?= htmlspecialchars($pembelian['keterangan_pembelian'] ?? '') ?></div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="row mb-2">
+                    <div class="col-4 fw-bold">Bukti Pembayaran</div>
+                    <div class="col-8">
+                        <?php if (!empty($pembelian['bukti_pembayaran'])): ?>
+                            <?php $image_path = '../uploads/bukti_pembayaran/' . htmlspecialchars($pembelian['bukti_pembayaran']); ?>
+                            : <a href="<?= $image_path ?>" target="_blank">
+                                <img src="<?= $image_path ?>" alt="Bukti Pembayaran" style="max-width: 150px; height: auto; border-radius: 5px; vertical-align: top;">
+                              </a>
+                        <?php else: ?>
+                            : <span class="text-muted fst-italic">Tidak diunggah.</span>
+                        <?php endif; ?>
+                    </div>
+                </div>
             </div>
         </div>
-
+    </div>
+</div>            
+        
         <div class="card">
             <div class="card-header">
                 <h4 class="card-title">Tambah Material</h4>
@@ -970,7 +996,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
 </div>
 
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
 
 <script>
 $(document).ready(function() {
