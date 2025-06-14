@@ -1,31 +1,26 @@
 <?php
-// Include file koneksi
+// FILE: update_pengajuan_upah.php (Hanya untuk menampilkan form)
+
+// Sertakan file koneksi Anda
 include("../config/koneksi_mysql.php");
 
-// Mengatur error reporting
+// Mengatur error reporting untuk development
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-// Pastikan ID Pengajuan Upah ada
+// Pastikan ID Pengajuan Upah ada dari GET request
 if (!isset($_GET['id_pengajuan_upah'])) {
-    die("ID Pengajuan Upah tidak diberikan.");
+    die("Akses tidak sah. ID Pengajuan Upah tidak diberikan.");
 }
-$id_pengajuan_upah = mysqli_real_escape_string($koneksi, $_GET['id_pengajuan_upah']);
 
-// Query utama untuk mengambil data pengajuan upah
-$sql_pengajuan = "SELECT 
-                    pu.id_pengajuan_upah, 
-                    pu.tanggal_pengajuan, 
-                    CONCAT(mpe.nama_perumahan, ' - ', mpr.kavling) AS pekerjaan,
-                    pu.total_pengajuan, 
-                    pu.status_pengajuan, 
-                    pu.keterangan, 
-                    ru.id_rab_upah, 
-                    mpe.nama_perumahan, 
-                    mpe.lokasi,
-                    mpr.kavling, 
-                    mpr.type_proyek, 
-                    mm.nama_mandor 
+// Ambil ID dari GET dan amankan
+$id_pengajuan_upah = (int)$_GET['id_pengajuan_upah'];
+
+//=============================================
+// BLOK UNTUK MENAMPILKAN DATA (METHOD GET)
+//=============================================
+// Query utama untuk mengambil data header pengajuan
+$sql_pengajuan = "SELECT pu.*, CONCAT(mpe.nama_perumahan, ' - ', mpr.kavling) AS pekerjaan, mpr.type_proyek, mpe.lokasi, mm.nama_mandor 
                   FROM pengajuan_upah pu
                   JOIN rab_upah ru ON pu.id_rab_upah = ru.id_rab_upah
                   JOIN master_perumahan mpe ON ru.id_perumahan = mpe.id_perumahan
@@ -38,48 +33,38 @@ if (!$pengajuan_result || mysqli_num_rows($pengajuan_result) == 0) {
     die("Data Pengajuan Upah tidak ditemukan.");
 }
 $pengajuan_info = mysqli_fetch_assoc($pengajuan_result);
+$id_rab_upah = $pengajuan_info['id_rab_upah'];
 
-// Query detail pengajuan upah
-$sql_detail = "SELECT 
-                    dp.id_detail_rab_upah, 
-                    dp.progress_pekerjaan, 
-                    dp.nilai_upah_diajukan, 
-                    k.nama_kategori, 
-                    mp.uraian_pekerjaan, 
-                    d.sub_total 
-                FROM detail_pengajuan_upah dp 
-                LEFT JOIN detail_rab_upah d ON dp.id_detail_rab_upah = d.id_detail_rab_upah
-                LEFT JOIN master_pekerjaan mp ON d.id_pekerjaan = mp.id_pekerjaan 
-                LEFT JOIN master_kategori k ON d.id_kategori = k.id_kategori 
-                WHERE dp.id_pengajuan_upah = '$id_pengajuan_upah' 
-                ORDER BY k.id_kategori, mp.uraian_pekerjaan";
-
-$detail_result = mysqli_query($koneksi, $sql_detail);
-if (!$detail_result) {
-    die("Error query detail pengajuan: " . mysqli_error($koneksi));
+// Hanya izinkan update jika status 'diajukan' atau 'ditolak'
+if (!in_array($pengajuan_info['status_pengajuan'], ['diajukan', 'ditolak'])) {
+    die("Pengajuan dengan status '" . $pengajuan_info['status_pengajuan'] . "' tidak dapat diupdate lagi.");
 }
 
-// Periksa status pengajuan, hanya bisa diupdate jika statusnya 'Diajukan' atau 'Ditolak'
-$status_pengajuan = $pengajuan_info['status_pengajuan'];
-if ($status_pengajuan != 'diajukan' && $status_pengajuan != 'ditolak') {
-    die("Pengajuan hanya bisa diupdate jika statusnya Diajukan atau Ditolak.");
+// Query untuk mendapatkan semua item dari RAB asli (untuk membangun struktur tabel)
+$sql_rab_items = "SELECT d.id_detail_rab_upah, k.nama_kategori, mp.uraian_pekerjaan, d.sub_total 
+                  FROM detail_rab_upah d 
+                  LEFT JOIN master_pekerjaan mp ON d.id_pekerjaan = mp.id_pekerjaan 
+                  LEFT JOIN master_kategori k ON d.id_kategori = k.id_kategori 
+                  WHERE d.id_rab_upah = '$id_rab_upah' 
+                  ORDER BY k.id_kategori, d.id_detail_rab_upah";
+$rab_items_result = mysqli_query($koneksi, $sql_rab_items);
+
+// Ambil data progress yang sudah ada untuk pengajuan ini ke dalam array agar mudah diakses di dalam loop
+$existing_progress = [];
+$sql_detail_pengajuan = "SELECT id_detail_rab_upah, progress_pekerjaan FROM detail_pengajuan_upah WHERE id_pengajuan_upah = '$id_pengajuan_upah'";
+$detail_pengajuan_result = mysqli_query($koneksi, $sql_detail_pengajuan);
+while($row = mysqli_fetch_assoc($detail_pengajuan_result)) {
+    $existing_progress[$row['id_detail_rab_upah']] = $row['progress_pekerjaan'];
 }
 
-
-// 4. Fungsi Helper
-// ===================================
-// Fungsi untuk mengambil akumulasi progress SEBELUM pengajuan yang sedang diedit
+// Fungsi untuk mengambil akumulasi progress dari pengajuan lain yang sudah disetujui/dibayar
 function getProgressLalu($koneksi, $id_detail_rab_upah, $id_pengajuan_to_exclude) {
-    $id_detail_rab_upah = (int)$id_detail_rab_upah;
-    $id_pengajuan_to_exclude = (int)$id_pengajuan_to_exclude;
-    
-    // Ambil SUM progress dari pengajuan lain yang statusnya tidak ditolak
     $query = "SELECT SUM(dpu.progress_pekerjaan) AS total_progress 
               FROM detail_pengajuan_upah dpu
               JOIN pengajuan_upah pu ON dpu.id_pengajuan_upah = pu.id_pengajuan_upah
-              WHERE dpu.id_detail_rab_upah = $id_detail_rab_upah 
-                AND pu.id_pengajuan_upah < $id_pengajuan_to_exclude 
-                AND pu.status_pengajuan != 'ditolak'";
+              WHERE dpu.id_detail_rab_upah = ".(int)$id_detail_rab_upah." 
+                AND pu.id_pengajuan_upah != ".(int)$id_pengajuan_to_exclude."
+                AND pu.status_pengajuan IN ('disetujui', 'dibayar')";
     $result = mysqli_query($koneksi, $query);
     $data = mysqli_fetch_assoc($result);
     return (float)($data['total_progress'] ?? 0);
@@ -95,19 +80,6 @@ function toRoman($num) {
     }
     return $result;
 }
-
-
-    // Query untuk mengupdate nominal pengajuan final
-    $query_update = "UPDATE pengajuan_upah SET 
-                    total_pengajuan = '$nominal_pengajuan_final'
-                  WHERE id_pengajuan_upah = '$id_pengajuan_upah'";
-
-    // Eksekusi query update
-    if (mysqli_query($koneksi, $query_update)) {
-        echo "Nominal Pengajuan berhasil diupdate.";
-    } else {
-        echo "Terjadi kesalahan saat mengupdate pengajuan: " . mysqli_error($koneksi);
-    }
 
 ?>
 
@@ -839,7 +811,8 @@ function toRoman($num) {
                 <h4>Detail dan Pengajuan Progress RAB</h4>
             </div>
 <div class="card-body">
-    <form method="POST" action="add_pengajuan.php">
+    <form method="POST" action="proses_update_pengajuan.php">
+      <input type="hidden" name="id_pengajuan_upah" value="<?= htmlspecialchars($id_pengajuan_upah) ?>">
         <div class="row row-cols-1 row-cols-md-2 g-3">
             <!-- ID RAB -->
             <div class="col">
@@ -909,158 +882,171 @@ function toRoman($num) {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            <?php
-                                            $grandTotalRAB = 0;
-                                            $prevKategori = null;
-                                            $noKategori = 0;
-                                            $noPekerjaan = 1;
+                            <?php
+                            while ($row_rab = mysqli_fetch_assoc($rab_items_result)) {
+                                $idDetailRab = $row_rab['id_detail_rab_upah'];
+                                $progressLalu = getProgressLalu($koneksi, $idDetailRab, $id_pengajuan_upah);
+                                $sisaProgress = 100 - $progressLalu;
+                                $progressSaatIni = (float)($existing_progress[$idDetailRab] ?? 0);
+                            ?>
+                                <tr>
+                                    <!-- Isi dengan kolom-kolom tabel seperti sebelumnya -->
+                                    <td class="text-center"><?= $idDetailRab ?></td> <!-- Contoh -->
+                                    <td><?= htmlspecialchars($row_rab['uraian_pekerjaan']) ?></td>
+                                    <td class="text-end"><?= number_format($row_rab['sub_total'], 0, ',', '.') ?></td>
+                                    <td class="text-center"><?= number_format($progressLalu, 2, ',', '.') ?>%</td>
+                                    <td class="text-center">
+                                        <input type="number" class="form-control form-control-sm progress-input mx-auto" style="width:90px;"
+                                               data-subtotal="<?= $row_rab['sub_total'] ?>"
+                                               data-id="<?= $idDetailRab ?>"
+                                               name="progress[<?= $idDetailRab ?>]"
+                                               min="0" max="<?= number_format($sisaProgress, 2, '.', '') ?>" step="0.01"
+                                               value="<?= number_format($progressSaatIni, 2, '.', '') ?>">
+                                    </td>
+                                    <td class="text-end fw-bold nilai-pengajuan" data-id="<?= $idDetailRab ?>">Rp 0</td>
+                                </tr>
+                            <?php } ?>
+                        </tbody>
+                         <tfoot>
+                           <tr class='table-info fw-bold'>
+                                <td colspan="5" class='text-end'>TOTAL PENGAJUAN SAAT INI</td>
+                                <td id="total-pengajuan-saat-ini" class='text-end'>Rp 0</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
 
-                                            while ($row = mysqli_fetch_assoc($detail_result)) {
-                                                if ($prevKategori !== $row['nama_kategori']) {
-                                                    $noKategori++;
-                                                    echo "<tr class='table-primary fw-bold'><td class='text-center'>" . toRoman($noKategori) . "</td><td colspan='5'>" . htmlspecialchars($row['nama_kategori']) . "</td></tr>";
-                                                    $prevKategori = $row['nama_kategori'];
-                                                    $noPekerjaan = 1;
-                                                }
-
-                                                $idDetailRab = $row['id_detail_rab_upah'];
-                                                $progressLalu = getProgressLalu($koneksi, $idDetailRab, $id_pengajuan_upah);
-                                                $sisaProgress = 100 - $progressLalu;
-                                                $progressSaatIni = (float)$row['progress_pekerjaan'];
-                                            ?>
-                                            <tr>
-                                                <td class="text-center"><?= $noPekerjaan++ ?></td>
-                                                <td><span class="ms-3"><?= htmlspecialchars($row['uraian_pekerjaan']) ?></span></td>
-                                                <td class="text-end"><?= number_format($row['sub_total'], 0, ',', '.') ?></td>
-                                                <td class="text-center"><?= number_format($progressLalu, 2, ',', '.') ?>%</td>
-                                                <td class="text-center">
-                                                    <input type="number" class="form-control form-control-sm progress-input mx-auto"
-                                                           data-subtotal="<?= $row['sub_total'] ?>"
-                                                           data-id="<?= $idDetailRab ?>"
-                                                           name="progress[<?= $idDetailRab ?>]"
-                                                           min="0" max="<?= number_format($sisaProgress, 2, '.', '') ?>" step="0.01"
-                                                           value="<?= number_format($progressSaatIni, 2, '.', '') ?>">
-                                                </td>
-                                                <td class="text-end fw-bold nilai-pengajuan" data-id="<?= $idDetailRab ?>">Rp 0</td>
-                                            </tr>
-                                            <?php
-                                                $grandTotalRAB += $row['sub_total'];
-                                            }
-                                            ?>
-                                        </tbody>
-                                        <tfoot>
-                                            <tr class='table-success fw-bold'>
-                                                <td colspan="5" class='text-end'>TOTAL KESELURUHAN RAB</td>
-                                                <td id="total-keseluruhan" class='text-end'>Rp <?= number_format($grandTotalRAB, 0, ',', '.') ?></td>
-                                            </tr>
-                                            <tr class='table-info fw-bold'>
-                                                <td colspan="5" class='text-end'>TOTAL PENGAJUAN SAAT INI</td>
-                                                <td id="total-pengajuan-saat-ini" class='text-end'>Rp 0</td>
-                                            </tr>
-                                        </tfoot>
-                                    </table>
-                                </div>
-
-                                <div class="row justify-content-end mt-4">
-                                     <div class="col-md-4">
-                                         <label for="keterangan" class="form-label">Keterangan (Opsional)</label>
-                                         <textarea class="form-control" id="keterangan" name="keterangan" rows="2"><?= htmlspecialchars($pengajuan_info['keterangan']) ?></textarea>
-                                     </div>
-                                     <div class="col-md-4">
-                                         <label for="nominal-pengajuan" class="form-label fw-bold">Nominal Final yang Diajukan</label>
-                                         <input type="number" class="form-control form-control-lg text-end" id="nominal-pengajuan" name="nominal_pengajuan_final" value="<?= round($pengajuan_info['total_pengajuan']) ?>">
-                                         <div id="error-nominal" class="form-text text-danger d-none">Nominal tidak boleh melebihi Total Pengajuan Saat Ini.</div>
-                                     </div>
-                                </div>
-
-                                <div class="d-flex justify-content-end mt-4">
-                                    <a href="pengajuan_upah.php" class="btn btn-secondary me-2">Kembali</a>
-                                    <button type="submit" id="btn-submit" class="btn btn-primary">
-                                        <i class="fa fa-save"></i> Update Pengajuan
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
+                <!-- Input Nominal & Keterangan -->
+                <div class="row justify-content-end mt-4">
+                    <div class="col-md-4">
+                        <label for="keterangan" class="form-label">Keterangan (Opsional)</label>
+                        <textarea class="form-control" id="keterangan" name="keterangan" rows="2"><?= htmlspecialchars($pengajuan_info['keterangan']) ?></textarea>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="nominal-pengajuan" class="form-label fw-bold">Nominal Final yang Diajukan</label>
+                        <input type="text" class="form-control form-control-lg text-end" id="nominal-pengajuan" name="nominal_pengajuan_final" 
+                               value="<?= number_format($pengajuan_info['total_pengajuan'], 0, ',', '.') ?>">
                     </div>
                 </div>
-            </div>
+
+                <!-- Tombol Aksi -->
+                <div class="d-flex justify-content-end mt-4">
+                    <a href="pengajuan_upah.php" class="btn btn-secondary me-2">Kembali</a>
+                    <button type="submit" id="btn-submit" class="btn btn-primary">
+                        <i class="fa fa-save"></i> Update Pengajuan
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const tableBody = document.querySelector("#tblDetailRAB tbody");
+    const totalPengajuanEl = document.getElementById('total-pengajuan-saat-ini');
+    const nominalPengajuanInput = document.getElementById('nominal-pengajuan');
+    const btnSubmit = document.getElementById('btn-submit');
+    
+    // Fungsi untuk format angka ke Rupiah
+    function formatRupiah(angka, prefix = 'Rp ') {
+        let number_string = Math.round(angka).toString().replace(/[^,\d]/g, ''),
+            split = number_string.split(','),
+            sisa = split[0].length % 3,
+            rupiah = split[0].substr(0, sisa),
+            ribuan = split[0].substr(sisa).match(/\d{3}/gi);
 
-    <script>
-    document.addEventListener("DOMContentLoaded", function() {
-        const tableBody = document.querySelector("#tblDetailRAB tbody");
-        const totalPengajuanEl = document.getElementById('total-pengajuan-saat-ini');
-        const nominalPengajuanInput = document.getElementById('nominal-pengajuan');
-        const errorNominalEl = document.getElementById('error-nominal');
-        const btnSubmit = document.getElementById('btn-submit');
-
-        function formatRupiah(angka) {
-            return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka || 0);
+        if (ribuan) {
+            let separator = sisa ? '.' : '';
+            rupiah += separator + ribuan.join('.');
         }
 
-        function calculateTotals() {
-            let totalPengajuan = 0;
-            document.querySelectorAll('.progress-input').forEach(input => {
-                if (input.disabled) return;
-                const id = input.dataset.id;
-                const subtotal = parseFloat(input.dataset.subtotal);
-                let progressDiajukan = parseFloat(input.value) || 0;
-                const maxProgress = parseFloat(input.max);
-                
-                if (progressDiajukan > maxProgress) {
-                    progressDiajukan = maxProgress;
-                    input.value = maxProgress.toFixed(2);
-                }
-                if (progressDiajukan < 0) {
-                    progressDiajukan = 0;
-                    input.value = '0.00';
-                }
-                
-                const nilaiPengajuan = (progressDiajukan / 100) * subtotal;
-                const nilaiCell = document.querySelector(`.nilai-pengajuan[data-id='${id}']`);
-                if (nilaiCell) {
-                    nilaiCell.textContent = formatRupiah(nilaiPengajuan);
-                }
-                totalPengajuan += nilaiPengajuan;
-            });
-            
-            totalPengajuanEl.textContent = formatRupiah(totalPengajuan);
-            // Otomatis update nominal final saat progress diubah
-            nominalPengajuanInput.value = Math.round(totalPengajuan);
-            
-            validateNominal();
-        }
-        
-        function validateNominal() {
-            const totalPengajuanText = totalPengajuanEl.textContent || 'Rp 0';
-            const totalPengajuan = parseFloat(totalPengajuanText.replace(/[^0-9,-]/g, '').replace(',', '.')) || 0;
-            const nominalFinal = parseFloat(nominalPengajuanInput.value) || 0;
+        rupiah = split[1] != undefined ? rupiah + ',' + split[1] : rupiah;
+        return prefix + (rupiah || '0');
+    }
 
-            if (nominalFinal > Math.ceil(totalPengajuan)) {
-                errorNominalEl.classList.remove('d-none');
-                btnSubmit.disabled = true;
-            } else {
-                errorNominalEl.classList.add('d-none');
-                btnSubmit.disabled = nominalFinal <= 0;
+    // Fungsi untuk mengubah format Rupiah kembali ke angka
+    function unformatRupiah(rupiahStr) {
+        if (!rupiahStr) return 0;
+        return parseInt(String(rupiahStr).replace(/[^0-9]/g, '')) || 0;
+    }
+
+    /**
+     * Menghitung nilai per baris dan total.
+     * @param {boolean} updateFinalInput - Jika true, akan mengupdate juga input "Nominal Final".
+     */
+    function calculateTotals(updateFinalInput = false) {
+        let totalPengajuan = 0;
+        document.querySelectorAll('.progress-input').forEach(input => {
+            const subtotal = parseFloat(input.dataset.subtotal) || 0;
+            let progress = parseFloat(input.value) || 0;
+            const maxProgress = parseFloat(input.max) || 100;
+
+            if (progress > maxProgress) {
+                progress = maxProgress;
+                input.value = maxProgress.toFixed(2);
             }
-        }
-
-        tableBody.addEventListener('input', function(event) {
-            if (event.target.classList.contains('progress-input')) {
-                calculateTotals();
+            if (progress < 0) {
+                progress = 0;
+                input.value = '0.00';
             }
+            
+            const nilaiPengajuan = (progress / 100) * subtotal;
+            const nilaiCell = document.querySelector(`.nilai-pengajuan[data-id='${input.dataset.id}']`);
+            if (nilaiCell) {
+                nilaiCell.textContent = formatRupiah(nilaiPengajuan);
+            }
+            totalPengajuan += nilaiPengajuan;
         });
         
-        nominalPengajuanInput.addEventListener('input', validateNominal);
+        if(totalPengajuanEl) totalPengajuanEl.textContent = formatRupiah(totalPengajuan);
+        
+        if (updateFinalInput) {
+            nominalPengajuanInput.value = formatRupiah(totalPengajuan, ''); // Format tanpa "Rp"
+        }
+        
+        validateNominal();
+    }
+    
+    function validateNominal() {
+        const nominalFinal = unformatRupiah(nominalPengajuanInput.value);
+        if(btnSubmit) {
+            btnSubmit.disabled = nominalFinal <= 0;
+        }
+    }
 
-        // Panggil sekali saat halaman dimuat untuk menghitung nilai awal
-        calculateTotals();
-    });
-    </script>
+    if(tableBody) {
+        tableBody.addEventListener('input', function(event) {
+            if (event.target.classList.contains('progress-input')) {
+                calculateTotals(true);
+            }
+        });
+    }
+
+    if(nominalPengajuanInput) {
+        nominalPengajuanInput.addEventListener('input', function(e) {
+            const cursorPos = e.target.selectionStart;
+            const originalLength = e.target.value.length;
+            
+            let value = unformatRupiah(e.target.value);
+            e.target.value = formatRupiah(value, '');
+            
+            const newLength = e.target.value.length;
+            e.target.setSelectionRange(cursorPos + (newLength - originalLength), cursorPos + (newLength - originalLength));
+            
+            validateNominal();
+        });
+    }
+
+    // Panggil saat halaman dimuat: Kalkulasi nilai per baris, tapi JANGAN update nominal final (false).
+    calculateTotals(false);
+    
+    // Jalankan validasi untuk nominal yang sudah ada dari database.
+    validateNominal();
+});
+</script>
 </body>
 </html>
 

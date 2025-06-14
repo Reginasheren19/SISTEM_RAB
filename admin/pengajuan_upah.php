@@ -6,6 +6,22 @@ include("../config/koneksi_mysql.php");
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
+// [BARU] Fungsi helper untuk menentukan kelas warna berdasarkan status
+function getStatusClass($status) {
+    switch ($status) {
+        case 'disetujui':
+            return 'bg-success text-white';
+        case 'dibayar':
+            return 'bg-primary text-white';
+        case 'ditolak':
+            return 'bg-danger text-white';
+        case 'diajukan':
+            return 'bg-warning text-dark';
+        default:
+            return 'bg-secondary text-white';
+    }
+}
+
 // Mengambil data rab_upah yang bergabung dengan master_perumahan, master_proyek, dan master_mandor
 $sql = "SELECT 
     pu.id_pengajuan_upah,
@@ -23,7 +39,6 @@ JOIN master_perumahan mpe ON ru.id_perumahan = mpe.id_perumahan
 JOIN master_proyek mpr ON ru.id_proyek = mpr.id_proyek
 JOIN master_mandor mm ON ru.id_mandor = mm.id_mandor
 ";
-
 
 
 $pengajuanresult = mysqli_query($koneksi, $sql);
@@ -63,6 +78,37 @@ if (!$mandorResult) {
       href="assets/img/kaiadmin/favicon.ico"
       type="image/x-icon"
     />
+        <style>
+        /* [BARU] CSS untuk membuat dropdown berwarna terlihat lebih baik */
+        .status-select {
+            border-radius: 0.25rem; /* Menyamakan dengan badge */
+            font-weight: 500;
+            border: none;
+            padding-right: 2rem; /* Memberi ruang untuk panah dropdown */
+        }
+        .status-select:focus {
+            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25); /* Menambahkan outline saat fokus */
+        }
+        
+        .modal-header.bg-success .modal-title,
+        .modal-header.bg-danger .modal-title,
+        .modal-header.bg-primary .modal-title,
+        .modal-header.bg-info .modal-title,
+        .modal-header.bg-secondary .modal-title,
+        .modal-header.bg-warning .modal-title,
+        .modal-header.bg-success .btn-close,
+        .modal-header.bg-danger .btn-close,
+        .modal-header.bg-primary .btn-close,
+        .modal-header.bg-info .btn-close,
+        .modal-header.bg-secondary .btn-close,
+        .modal-header.bg-warning .btn-close {
+            color: white;
+        }
+        .modal-header.bg-warning .modal-title,
+        .modal-header.bg-warning .btn-close {
+             color: black;
+        }
+    </style>
 
     <!-- Fonts and icons -->
     <script src="assets/js/plugin/webfont/webfont.min.js"></script>
@@ -868,17 +914,18 @@ if (!$mandorResult) {
             }
           ?>
           <tr>
-            <td><?= htmlspecialchars($row['id_pengajuan_upah']) ?></td>
+            <td class="text-center"><?= htmlspecialchars($row['id_pengajuan_upah']) ?></td>
             <td><?= htmlspecialchars($row['nama_perumahan']) . ' - ' . htmlspecialchars($row['kavling']) ?></td> <!-- Display formatted Proyek -->
             <td><?= htmlspecialchars($row['nama_mandor']) ?></td>
-            <td><?= $tanggalFormatted ?></td>
-            <td><?= $totalFormatted ?></td>
+            <td class="text-center"><?= $tanggalFormatted ?></td>
+            <td class="text-center"><?= $totalFormatted ?></td>
             <td>
-              <select class="form-select status-select" data-id="<?= htmlspecialchars($row['id_pengajuan_upah']) ?>">
-                <option value="diajukan" <?= ($row['status_pengajuan'] == 'diajukan') ? 'selected' : '' ?>>Diajukan</option>
-                <option value="disetujui" <?= ($row['status_pengajuan'] == 'disetujui') ? 'selected' : '' ?>>Disetujui</option>
-                <option value="ditolak" <?= ($row['status_pengajuan'] == 'ditolak') ? 'selected' : '' ?>>Ditolak</option>
-                <option value="dibayar" <?= ($row['status_pengajuan'] == 'dibayar') ? 'selected' : '' ?>>Dibayar</option>
+              <!-- [DIUBAH] Menambahkan class warna dari fungsi PHP -->
+              <select class="form-select status-select <?= getStatusClass($row['status_pengajuan']) ?>" data-id="<?= htmlspecialchars($row['id_pengajuan_upah']) ?>">
+                  <option value="diajukan" <?= ($row['status_pengajuan'] == 'diajukan') ? 'selected' : '' ?>>Diajukan</option>
+                  <option value="disetujui" <?= ($row['status_pengajuan'] == 'disetujui') ? 'selected' : '' ?>>Disetujui</option>
+                  <option value="ditolak" <?= ($row['status_pengajuan'] == 'ditolak') ? 'selected' : '' ?>>Ditolak</option>
+                  <option value="dibayar" <?= ($row['status_pengajuan'] == 'dibayar') ? 'selected' : '' ?>>Dibayar</option>
               </select>
             </td>
             <td><?= htmlspecialchars($row['keterangan']) ?></td>
@@ -1005,109 +1052,200 @@ if (!$mandorResult) {
     </div>
 </div>
 
+<!-- Modal untuk Konfirmasi Hapus -->
+<div class="modal fade" id="confirmDeleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">Konfirmasi Penghapusan</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">Apakah Anda yakin ingin menghapus data ini?</div>
+            <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button><a id="confirmDeleteLink" href="#" class="btn btn-danger">Ya, Hapus</a></div>
+        </div>
+    </div>
+</div>
+
+<!-- [DIUBAH] Modal Universal untuk Ubah Status -->
+<div class="modal fade" id="statusUpdateModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Konfirmasi Perubahan Status</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Anda akan mengubah status menjadi <strong id="new-status-text-modal" class="text-primary"></strong>.</p>
+                <div class="mb-3">
+                    <label for="updateKeteranganText" class="form-label">Catatan / Alasan (Opsional):</label>
+                    <textarea class="form-control" id="updateKeteranganText" rows="3" placeholder="Jika status 'ditolak', alasan wajib diisi..."></textarea>
+                    <div id="keteranganError" class="text-danger mt-2 d-none">Alasan penolakan tidak boleh kosong.</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                <button type="button" class="btn btn-primary" id="submitUpdateBtn">Simpan Perubahan</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal untuk Alasan Penolakan -->
+<div class="modal fade" id="rejectionReasonModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Alasan Penolakan</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="rejectionReasonText" class="form-label">Harap masukkan alasan penolakan:</label>
+                    <textarea class="form-control" id="rejectionReasonText" rows="3" placeholder="Contoh: Perhitungan tidak sesuai, perlu revisi..."></textarea>
+                    <div id="rejectionError" class="text-danger mt-2 d-none">Alasan penolakan tidak boleh kosong.</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="cancelRejectionBtn" data-bs-dismiss="modal">Batal</button>
+                <button type="button" class="btn btn-danger" id="submitRejectionBtn">Tolak Pengajuan</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
 
 <script>
-  $(document).ready(function() {
+$(document).ready(function() {
+    // 1. Inisialisasi DataTable
     $('#basic-datatables').DataTable();
-  });
-</script>
 
-<script>
-// Ketika tombol 'Pilih' di dalam modal diklik
-document.querySelectorAll('.selectProyekBtn').forEach(button => {
-    button.addEventListener('click', function () {
-        // Ambil ID RAB Upah yang dipilih dari atribut data
-        const idRabUpah = this.getAttribute('data-id');
+    // 2. Inisialisasi semua modal
+    const deleteModal = new bootstrap.Modal(document.getElementById('confirmDeleteModal'));
+    const statusChangeModal = new bootstrap.Modal(document.getElementById('confirmStatusChangeModal'));
+    const rejectionModal = new bootstrap.Modal(document.getElementById('rejectionReasonModal'));
 
-        // Jika ID valid, arahkan pengguna ke halaman pengajuan
+    // Variabel global untuk menyimpan state dropdown
+    let currentSelect, originalValue;
+
+        function getJsStatusClass(status) {
+        switch (status) {
+            case 'disetujui': return { bg: 'bg-success', text: 'text-white' };
+            case 'dibayar':   return { bg: 'bg-primary', text: 'text-white' };
+            case 'ditolak':   return { bg: 'bg-danger',  text: 'text-white' };
+            case 'diajukan':  return { bg: 'bg-warning', text: 'text-dark'  };
+            default:          return { bg: 'bg-secondary', text: 'text-white' };
+        }
+    }
+
+        // [BARU] 3. Logika untuk tombol PILIH PROYEK di dalam modal
+    // Menggunakan event delegation karena tombol ada di dalam modal
+    $('#selectProyekModal').on('click', '.selectProyekBtn', function () {
+        const idRabUpah = $(this).data('id');
         if (idRabUpah) {
-            // Arahkan ke halaman add_pengajuan_upah.php sambil membawa ID RAB yang dipilih
             window.location.href = 'detail_pengajuan_upah.php?id_rab_upah=' + idRabUpah;
         }
     });
-});
 
-// Anda bisa menyimpan skrip ini jika masih diperlukan untuk halaman lain
-// Konfirmasi penghapusan data
-document.querySelectorAll('.delete-btn').forEach(button => {
-    button.addEventListener('click', function() {
-        // Logika untuk menampilkan modal konfirmasi hapus
-        // ...
+    // 3. Logika untuk tombol HAPUS
+    $('#basic-datatables').on('click', '.delete-btn', function() {
+        const pengajuanId = $(this).data('id');
+        $('#confirmDeleteLink').attr('href', `delete_pengajuan_upah.php?id_pengajuan_upah=${pengajuanId}`);
+        deleteModal.show();
     });
-});
-</script>
 
-<script>
-$(document).ready(function() {
-    // Menambahkan event listener pada setiap dropdown dengan kelas '.status-select'
-    $('.status-select').on('change', function() {
-        // Ambil ID pengajuan dari atribut data-id
-        var id_pengajuan = $(this).data('id');
-        // Ambil status baru yang dipilih
-        var new_status = $(this).val();
+    // 4. Logika untuk DROPDOWN STATUS
+    // Simpan nilai asli dropdown saat difokuskan
+    $('#basic-datatables').on('focus', '.status-select', function() {
+        originalValue = $(this).val();
+        currentSelect = $(this);
+    });
 
-        // Tampilkan konfirmasi kepada user
-        if (!confirm('Anda yakin ingin mengubah status pengajuan ini menjadi "' + new_status + '"?')) {
-            // Jika user membatalkan, kembalikan dropdown ke posisi semula
-            // (Ini memerlukan sedikit trik, cara termudah adalah me-reload halaman)
-            location.reload(); 
+    // Saat dropdown diubah, siapkan modal
+    $('#basic-datatables').on('change', '.status-select', function() {
+        const select = $(this);
+        const newStatus = select.val();
+        const originalValue = select.data('original-value');
+        const pengajuanId = select.data('id');
+
+        // Kembalikan dropdown ke nilai asli secara visual sambil menunggu konfirmasi modal
+        select.val(originalValue);
+
+        // Simpan konteks/data yang diperlukan ke elemen modal itu sendiri
+        $(modalElement).data('pengajuan-id', pengajuanId);
+        $(modalElement).data('new-status', newStatus);
+
+        // Siapkan tampilan modal universal
+        $('#new-status-text-modal').text(`"${newStatus}"`).removeClass('text-danger text-primary');
+        if (newStatus === 'ditolak') {
+            $('#new-status-text-modal').addClass('text-danger');
+        } else {
+            $('#new-status-text-modal').addClass('text-primary');
+        }
+        $('#updateKeteranganText').val('');
+        $('#keteranganError').addClass('d-none');
+        statusUpdateModal.show();
+    });
+    
+    // Fungsi umum untuk mengirim data AJAX
+    function submitStatusChange(data) {
+        $.ajax({
+            url: 'update_status_pengajuan.php',
+            type: 'POST',
+            data: data,
+            dataType: 'json',
+            success: function(response) {
+                if (response.success) {
+                    location.reload();
+                } else {
+                    alert('Error! ' + response.message);
+                }
+            },
+            error: function(xhr) {
+                alert('Terjadi kesalahan pada server.');
+                console.error("AJAX Error:", xhr.responseText);
+            }
+        });
+    }
+
+    // Handler untuk tombol "Simpan Perubahan" di modal universal
+    $('#submitUpdateBtn').on('click', function() {
+        const pengajuanId = $(modalElement).data('pengajuan-id');
+        const newStatus = $(modalElement).data('new-status');
+
+        if (!pengajuanId || !newStatus) return; // Pengaman jika data tidak ada
+
+        const keterangan = $('#updateKeteranganText').val().trim();
+
+        // Validasi: jika status 'ditolak', keterangan wajib diisi
+        if (newStatus === 'ditolak' && keterangan === '') {
+            $('#keteranganError').removeClass('d-none');
             return;
         }
 
-        // Kirim data menggunakan AJAX ke server
-        $.ajax({
-            url: 'update_status_pengajuan.php', // Arahkan ke file backend kita
-            type: 'POST',
-            data: {
-                id_pengajuan_upah: id_pengajuan,
-                new_status: new_status
-            },
-            dataType: 'json', // Harapkan response dalam format JSON
-            success: function(response) {
-                // Fungsi ini dijalankan jika request berhasil
-                if (response.success) {
-                    // Beri notifikasi sukses
-                    alert('Sukses! ' + response.message);
-                    // Refresh halaman untuk melihat perubahan badge (jika masih menggunakan badge di tempat lain)
-                    // Atau bisa juga update tampilan secara dinamis tanpa refresh
-                    location.reload(); // Cara paling mudah
-                } else {
-                    // Beri notifikasi gagal
-                    alert('Error! ' + response.message);
-                    location.reload(); // Reload untuk mengembalikan state
-                }
-            },
-            error: function(xhr, status, error) {
-                // Fungsi ini dijalankan jika ada error pada request AJAX
-                alert('Terjadi kesalahan pada server. Silakan coba lagi.');
-                console.error("AJAX Error: ", status, error, xhr.responseText);
-                location.reload(); // Reload untuk mengembalikan state
-            }
+        submitStatusChange({
+            id_pengajuan_upah: pengajuanId,
+            new_status: newStatus,
+            keterangan: keterangan
         });
+        statusUpdateModal.hide();
     });
-});
-</script>
 
-<script>
-document.addEventListener("DOMContentLoaded", function() {
-    // Menangkap semua tombol dengan class .delete-btn
-    const deleteButtons = document.querySelectorAll('.delete-btn');
-    const confirmDeleteLink = document.getElementById('confirmDeleteLink');
-
-    deleteButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            // Ambil ID dari atribut data-id pada tombol yang diklik
-            const pengajuanId = this.getAttribute('data-id');
-            
-            // Atur atribut href pada link konfirmasi di dalam modal
-            if (pengajuanId && confirmDeleteLink) {
-                confirmDeleteLink.href = `delete_pengajuan_upah.php?id_pengajuan_upah=${pengajuanId}`;
-            }
+    // Handler untuk tombol "Tolak Pengajuan" di modal penolakan
+    $('#submitRejectionBtn').on('click', function() {
+        if (!currentSelect) return;
+        const reason = $('#rejectionReasonText').val().trim();
+        if (reason === '') {
+            $('#rejectionError').removeClass('d-none');
+            return;
+        }
+        
+        submitStatusChange({
+            id_pengajuan_upah: currentSelect.data('id'),
+            new_status: 'ditolak',
+            keterangan: reason
         });
+        rejectionModal.hide();
     });
 });
 </script>
