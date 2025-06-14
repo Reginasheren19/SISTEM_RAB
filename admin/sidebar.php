@@ -1,6 +1,18 @@
 <?php
-session_start(); 
-include("../config/koneksi_mysql.php");
+// FILE: sidebar.php (Revisi dengan semua peran)
+
+// Pastikan session sudah dimulai di halaman utama yang memanggil file ini.
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+// Ambil role dari session. Jika tidak ada (belum login), anggap sebagai 'tamu'.
+$user_role = $_SESSION['role'] ?? 'tamu';
+
+// Helper sederhana untuk mengecek apakah role saat ini cocok dengan daftar yang diizinkan.
+function can_access($allowed_roles, $current_role) {
+    return in_array($current_role, $allowed_roles);
+}
 ?>
 
 <!DOCTYPE html>
@@ -49,19 +61,293 @@ include("../config/koneksi_mysql.php");
   </head>
   <body>
     <div class="wrapper">
-        <!-- Sidebar -->
-        <div class="sidebar" data-background-color="dark">
-            <div class="sidebar-logo">
-                <!-- ... Logo Header ... -->
+      <!-- Sidebar -->
+      <div class="sidebar" data-background-color="dark">
+        <div class="sidebar-logo">
+          <!-- Logo Header -->
+          <div class="logo-header" data-background-color="dark">
+            <a href="" class="logo">
+              <img
+                src="assets/img/logo/LOGO PT.jpg"
+                alt="Logo PT"
+                class="navbar-brand"
+                height="20"
+              />
+            </a>
+            <div class="nav-toggle">
+              <button class="btn btn-toggle toggle-sidebar">
+                <i class="gg-menu-right"></i>
+              </button>
+              <button class="btn btn-toggle sidenav-toggler">
+                <i class="gg-menu-left"></i>
+              </button>
             </div>
-            <div class="sidebar-wrapper scrollbar scrollbar-inner">
-                
-                <!-- [INI BAGIAN PENTINGNYA] -->
-                <?php include 'sidebar.php'; ?>
-
-            </div>
+            <button class="topbar-toggler more">
+              <i class="gg-more-vertical-alt"></i>
+            </button>
+          </div>
+          <!-- End Logo Header -->
         </div>
-        <!-- End Sidebar -->
+
+
+        <!-- ============================================== -->
+        <!-- MENU UNTUK DIVISI TEKNIK                       -->
+        <!-- ============================================== -->
+
+
+        <!-- ============================================== -->
+        <!-- MENU UNTUK PJ PROYEK                           -->
+        <!-- ============================================== -->
+        <?php if (can_access(['PJ Proyek', 'Super Admin', 'Direktur', 'Admin'], $user_role)): ?>
+        <li class="nav-item">
+          <a href="dashboard_pjproyek.php">
+            <i class="fas fa-pen-square"></i>
+            <p>Pengajuah Upah</p>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="pengajuan_upah.php">
+            <i class="fas fa-pen-square"></i>
+            <p>Pengajuah Upah</p>
+          </a>
+        </li>
+        <?php endif; ?>
+
+        <div class="sidebar-wrapper scrollbar scrollbar-inner">
+          <div class="sidebar-content">
+            <ul class="nav nav-secondary">
+              <li class="nav-item active">
+                <a
+                  data-bs-toggle="collapse"
+                  href="#dashboard"
+                  class="collapsed"
+                  aria-expanded="false"
+                >
+                  <i class="fas fa-home"></i>
+                  <p>Dashboard</p>
+                  <span class="caret"></span>
+                </a>
+                <div class="collapse" id="dashboard">
+                  <ul class="nav nav-collapse">
+                    <li>
+                      <a href="../admin/dashboard.php">
+                        <span class="sub-item">Dashboard Admin</span>
+                      </a>
+                    </li>
+                  </ul>
+                </div>
+              </li>
+              <li class="nav-section">
+                <span class="sidebar-mini-icon">
+                  <i class="fa fa-ellipsis-h"></i>
+                </span>
+                <h4 class="text-section">Components</h4>
+              </li>
+
+              <li class="nav-item">
+                <a data-bs-toggle="collapse" href="#sidebarLayouts">
+                  <i class="fas fa-th-list"></i>
+                  <p>Rancang RAB</p>
+                  <span class="caret"></span>
+                </a>
+                <div class="collapse" id="sidebarLayouts">
+                  <ul class="nav nav-collapse">
+                    <li>
+                      <a href="transaksi_rab_upah.php">
+                        <span class="sub-item">RAB Upah</span>
+                      </a>
+                    </li>
+                    <li>
+                      <a href="transaksi_rab_material.php">
+                        <span class="sub-item">RAB Material</span>
+                      </a>
+                    </li>
+                  </ul>
+                </div>
+              </li>
+              <li class="nav-item">
+                <a href="pengajuan_upah.php">
+                  <i class="fas fa-pen-square"></i>
+                  <p>Pengajuah Upah</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="pencatatan_pembelian.php">
+                  <i class="fas fa-pen-square"></i>
+                  <p>Pencatatan Pembelian</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a data-bs-toggle="collapse" href="#forms">
+                  <i class="fas fa-pen-square"></i>
+                  <p>Forms</p>
+                  <span class="caret"></span>
+                </a>
+                <div class="collapse" id="forms">
+                  <ul class="nav nav-collapse">
+                    <li>
+                      <a href="forms/forms.html">
+                        <span class="sub-item">Basic Form</span>
+                      </a>
+                    </li>
+                  </ul>
+                </div>
+              </li>
+              <li class="nav-item">
+                <a data-bs-toggle="collapse" href="#tables">
+                  <i class="fas fa-table"></i>
+                  <p>Tables</p>
+                  <span class="caret"></span>
+                </a>
+                <div class="collapse" id="tables">
+                  <ul class="nav nav-collapse">
+                    <li>
+                      <a href="tables/tables.html">
+                        <span class="sub-item">Basic Table</span>
+                      </a>
+                    </li>
+                    <li>
+                      <a href="tables/datatables.html">
+                        <span class="sub-item">Datatables</span>
+                      </a>
+                    </li>
+                  </ul>
+                </div>
+              </li>
+              <li class="nav-item">
+                <a data-bs-toggle="collapse" href="#maps">
+                  <i class="fas fa-map-marker-alt"></i>
+                  <p>Maps</p>
+                  <span class="caret"></span>
+                </a>
+                <div class="collapse" id="maps">
+                  <ul class="nav nav-collapse">
+                    <li>
+                      <a href="maps/googlemaps.html">
+                        <span class="sub-item">Google Maps</span>
+                      </a>
+                    </li>
+                    <li>
+                      <a href="maps/jsvectormap.html">
+                        <span class="sub-item">Jsvectormap</span>
+                      </a>
+                    </li>
+                  </ul>
+                </div>
+              </li>
+              <li class="nav-item">
+                <a data-bs-toggle="collapse" href="#charts">
+                  <i class="far fa-chart-bar"></i>
+                  <p>Charts</p>
+                  <span class="caret"></span>
+                </a>
+                <div class="collapse" id="charts">
+                  <ul class="nav nav-collapse">
+                    <li>
+                      <a href="charts/charts.html">
+                        <span class="sub-item">Chart Js</span>
+                      </a>
+                    </li>
+                    <li>
+                      <a href="charts/sparkline.html">
+                        <span class="sub-item">Sparkline</span>
+                      </a>
+                    </li>
+                  </ul>
+                </div>
+              </li>
+              <li class="nav-item">
+                <a href="widgets.html">
+                  <i class="fas fa-desktop"></i>
+                  <p>Widgets</p>
+                  <span class="badge badge-success">4</span>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="../../documentation/index.html">
+                  <i class="fas fa-file"></i>
+                  <p>Documentation</p>
+                  <span class="badge badge-secondary">1</span>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a data-bs-toggle="collapse" href="#">
+                  <i class="fas fa-file"></i>
+                  <p>Laporan RAB Upah</p>
+                  <span class="caret"></span>
+                </a>
+                <div class="collapse" id="charts">
+                  <ul class="nav nav-collapse">
+                    <li>
+                      <a href="charts/charts.html">
+                        <span class="sub-item">Lap</span>
+                      </a>
+                    </li>
+                    <li>
+                      <a href="charts/sparkline.html">
+                        <span class="sub-item">Sparkline</span>
+                      </a>
+                    </li>
+                  </ul>
+                </div>
+              </li>
+              <li class="nav-item">
+                <a data-bs-toggle="collapse" href="#submenu">
+                  <i class="fas fa-bars"></i>
+                  <p>Mastering</p>
+                  <span class="caret"></span>
+                </a>
+                <div class="collapse" id="submenu">
+                  <ul class="nav nav-collapse">
+                    <li>
+                      <a href="master_perumahan.php">
+                        <span class="sub-item">Master Perumahan</span>
+                      </a>
+                    </li>
+                    <li>
+                      <a href="master_proyek.php">
+                        <span class="sub-item">Master Proyek</span>
+                      </a>
+                    </li>
+                    <li>
+                      <a href="master_mandor.php">
+                        <span class="sub-item">Master Mandor</span>
+                      </a>
+                    </li>
+                    <li>
+                      <a href="master_kategori.php">
+                        <span class="sub-item">Master Kategori</span>
+                      </a>
+                    </li>
+                    <li>
+                      <a href="master_satuan.php">
+                        <span class="sub-item">Master Satuan</span>
+                      </a>
+                    </li>
+                    <li>
+                      <a href="master_pekerjaan.php">
+                        <span class="sub-item">Master Pekerjaan</span>
+                      </a>
+                    </li>
+                    <li>
+                      <a href="master_material.php">
+                        <span class="sub-item">Master Material</span>
+                      </a>
+                    </li>
+                    <li>
+                      <a href="master_user.php">
+                        <span class="sub-item">Master User</span>
+                      </a>
+                    </li>
+                  </ul>
+                </div>
+              </li>
+
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- End Sidebar -->
 
       <div class="main-panel">
         <div class="main-header">
@@ -306,6 +592,84 @@ include("../config/koneksi_mysql.php");
                       </a>
                     </li>
                   </ul>
+                </li>
+                <li class="nav-item topbar-icon dropdown hidden-caret">
+                  <a
+                    class="nav-link"
+                    data-bs-toggle="dropdown"
+                    href="#"
+                    aria-expanded="false"
+                  >
+                    <i class="fas fa-layer-group"></i>
+                  </a>
+                  <div class="dropdown-menu quick-actions animated fadeIn">
+                    <div class="quick-actions-header">
+                      <span class="title mb-1">Quick Actions</span>
+                      <span class="subtitle op-7">Shortcuts</span>
+                    </div>
+                    <div class="quick-actions-scroll scrollbar-outer">
+                      <div class="quick-actions-items">
+                        <div class="row m-0">
+                          <a class="col-6 col-md-4 p-0" href="#">
+                            <div class="quick-actions-item">
+                              <div class="avatar-item bg-danger rounded-circle">
+                                <i class="far fa-calendar-alt"></i>
+                              </div>
+                              <span class="text">Calendar</span>
+                            </div>
+                          </a>
+                          <a class="col-6 col-md-4 p-0" href="#">
+                            <div class="quick-actions-item">
+                              <div
+                                class="avatar-item bg-warning rounded-circle"
+                              >
+                                <i class="fas fa-map"></i>
+                              </div>
+                              <span class="text">Maps</span>
+                            </div>
+                          </a>
+                          <a class="col-6 col-md-4 p-0" href="#">
+                            <div class="quick-actions-item">
+                              <div class="avatar-item bg-info rounded-circle">
+                                <i class="fas fa-file-excel"></i>
+                              </div>
+                              <span class="text">Reports</span>
+                            </div>
+                          </a>
+                          <a class="col-6 col-md-4 p-0" href="#">
+                            <div class="quick-actions-item">
+                              <div
+                                class="avatar-item bg-success rounded-circle"
+                              >
+                                <i class="fas fa-envelope"></i>
+                              </div>
+                              <span class="text">Emails</span>
+                            </div>
+                          </a>
+                          <a class="col-6 col-md-4 p-0" href="#">
+                            <div class="quick-actions-item">
+                              <div
+                                class="avatar-item bg-primary rounded-circle"
+                              >
+                                <i class="fas fa-file-invoice-dollar"></i>
+                              </div>
+                              <span class="text">Invoice</span>
+                            </div>
+                          </a>
+                          <a class="col-6 col-md-4 p-0" href="#">
+                            <div class="quick-actions-item">
+                              <div
+                                class="avatar-item bg-secondary rounded-circle"
+                              >
+                                <i class="fas fa-credit-card"></i>
+                              </div>
+                              <span class="text">Payments</span>
+                            </div>
+                          </a>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </li>
 
 <li class="nav-item topbar-user dropdown hidden-caret">
