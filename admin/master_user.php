@@ -761,6 +761,7 @@ $result = mysqli_query($koneksi, "SELECT * FROM master_user");
                                         <table id="tabelUser" class="display table table-striped table-hover">
                                             <thead>
                                                 <tr>
+                                                    <th>ID User</th>
                                                     <th>Foto</th>
                                                     <th>Nama Lengkap</th>
                                                     <th>Username</th>
@@ -779,6 +780,7 @@ $result = mysqli_query($koneksi, "SELECT * FROM master_user");
                                                                 : 'assets/img/default-avatar.png'; // Sediakan gambar default ini
                                                 ?>
                                                     <tr>
+                                                        <td><?= htmlspecialchars($row['id_user']) ?></td>
                                                         <td>
                                                             <div class="avatar avatar-md">
                                                                 <img src="<?= htmlspecialchars($foto_path) ?>" alt="Foto" class="avatar-img rounded-circle">

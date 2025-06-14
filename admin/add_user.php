@@ -6,14 +6,13 @@ include("../config/koneksi_mysql.php");
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     // 1. Ambil semua data dari form, sesuaikan dengan database-mu
-    // Kolom 'email' tidak ada, jadi kita ambil 'nama_lengkap'
     $nama_lengkap = mysqli_real_escape_string($koneksi, $_POST['nama_lengkap']);
     $username = mysqli_real_escape_string($koneksi, $_POST['username']);
     $password = $_POST['password']; // Kita akan hash password ini
     $role = mysqli_real_escape_string($koneksi, $_POST['role']);
 
     // Variabel untuk menyimpan nama file gambar, defaultnya NULL (kosong)
-    $nama_file_foto = null;
+    $nama_file_foto = NULL;
 
     // 2. Proses Upload Foto Profil (Jika ada file yang diunggah)
     if (isset($_FILES['profile_pic']) && $_FILES['profile_pic']['error'] === UPLOAD_ERR_OK) {
@@ -24,7 +23,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         
         // Tentukan folder tujuan upload
         $upload_dir = "../uploads/user_photos/";
-        
+
+        // Pastikan folder untuk menyimpan gambar sudah ada, jika belum buat
+        if (!file_exists($upload_dir)) {
+            mkdir($upload_dir, 0777, true);
+        }
+
         // Validasi tipe file (hanya izinkan gambar)
         $allowed_types = ['jpg', 'jpeg', 'png', 'gif'];
         $file_ext = strtolower(pathinfo($nama_asli_file, PATHINFO_EXTENSION));
@@ -43,7 +47,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
 
         // Buat nama file yang unik untuk menghindari file tertimpa
-        // Format: user_timestamp_namarandom.ext
         $nama_file_baru = "user_" . time() . "_" . uniqid() . "." . $file_ext;
         $tujuan_upload = $upload_dir . $nama_file_baru;
 
@@ -65,7 +68,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $sql = "INSERT INTO master_user (nama_lengkap, username, password, role, profile_pic) 
             VALUES (?, ?, ?, ?, ?)";
     
-    $stmt = $koneksi->prepare($sql);
+    $stmt = mysqli_prepare($koneksi, $sql);
     if ($stmt) {
         // Bind parameter ke query: s = string
         $stmt->bind_param("sssss", $nama_lengkap, $username, $hashed_password, $role, $nama_file_foto);
