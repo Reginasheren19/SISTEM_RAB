@@ -13,14 +13,14 @@ $result = mysqli_query($koneksi, "SELECT * FROM master_user");
 <html lang="en">
   <head>
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <title>Kaiadmin - Bootstrap 5 Admin Dashboard</title>
+    <title>Master User</title>
     <meta
       content="width=device-width, initial-scale=1.0, shrink-to-fit=no"
       name="viewport"
     />
     <link
       rel="icon"
-      href="assets/img/kaiadmin/favicon.ico"
+      href="assets/img/logo/LOGO PT.jpg"
       type="image/x-icon"
     />
     <link href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css" rel="stylesheet" />
@@ -61,8 +61,8 @@ $result = mysqli_query($koneksi, "SELECT * FROM master_user");
           <div class="logo-header" data-background-color="dark">
             <a href="index.html" class="logo">
               <img
-                src="assets/img/kaiadmin/logo_light.svg"
-                alt="navbar brand"
+                src="assets/img/logo/LOGO PT.jpg"
+                alt="Logo PT"
                 class="navbar-brand"
                 height="20"
               />
@@ -310,13 +310,13 @@ $result = mysqli_query($koneksi, "SELECT * FROM master_user");
           <div class="main-header-logo">
             <!-- Logo Header -->
             <div class="logo-header" data-background-color="dark">
-              <a href="../index.html" class="logo">
+              <a href="index.html" class="logo">
                 <img
-                  src="assets/img/kaiadmin/logo_light.svg"
-                  alt="navbar brand"
+                  src="assets/img/logo/LOGO PT.jpg"
+                  alt="Logo PT"
                   class="navbar-brand"
                   height="20"
-                />
+              />
               </a>
               <div class="nav-toggle">
                 <button class="btn btn-toggle toggle-sidebar">
@@ -756,247 +756,237 @@ $result = mysqli_query($koneksi, "SELECT * FROM master_user");
       }
       </script>
 
-      <div class="card-body">
-        <div class="table-responsive">
-          <table
-            id="basic-datatables"
-            class="display table table-striped table-hover"
-          >
-            <thead>
-              <tr>
-                <th>ID User</th>
-                <th>Nama Lengkap</th>
-                <th>Username</th>
-                <th>Email</th>
-                <th>Role
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              <?php
-              $result = mysqli_query($koneksi, "SELECT * FROM master_user");
-              while ($row = mysqli_fetch_assoc($result)) {
-                echo "<tr>
-                    <td>" . htmlspecialchars($row['id_users']) . "</td>
-                    <td>" . htmlspecialchars($row['nama_Lengkap']) . "</td>
-                    <td>" . htmlspecialchars($row['username']) . "</td>
-                    <td>" . htmlspecialchars($row['email']) . "</td>
-                    <td>" . htmlspecialchars($row['role']) . "</td>
-                    <td>
-                      <button class='btn btn-primary btn-sm btn-update' data-id_users='" . htmlspecialchars($row['id_users']) . "'>Update</button>
-                      <button class='btn btn-danger btn-sm delete-btn' data-id_users='" . htmlspecialchars($row['id_users']) . "'>Delete</button>                    </td>
-                  </tr>";
-              }
-              ?>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Modal Tambah Data Karyawan -->
-<div class="modal fade" id="addUserModal" tabindex="-1" aria-labelledby="addUserModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <form method="POST" action="add_user.php">
-        <input type="hidden" name="action" value="add" />
-        <div class="modal-header">
-          <h5 class="modal-title" id="addUserModalLabel">Tambah Data Karyawan</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-
-<!-- Avatar Preview -->
-<div class="card-body mb-3 text-center">
-                            <div class="avatar avatar-xxl">
-                                <img id="avatarPreview" src="assets/img/jm_denis.jpg" alt="..." class="avatar-img rounded-circle">
+                            <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table id="tabelUser" class="display table table-striped table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>Foto</th>
+                                                    <th>Nama Lengkap</th>
+                                                    <th>Username</th>
+                                                    <th>Role</th>
+                                                    <th>Action</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <?php
+                                                // Menggunakan nama kolom yang sesuai dari databasemu
+                                                $result = mysqli_query($koneksi, "SELECT id_user, nama_lengkap, username, role, profile_pic FROM master_user ORDER BY id_user DESC");
+                                                while ($row = mysqli_fetch_assoc($result)) {
+                                                    // Logika untuk menentukan path foto dipindahkan ke dalam loop
+                                                    $foto_path = (!empty($row['profile_pic']) && file_exists('../uploads/user_photos/' . $row['profile_pic']))
+                                                                ? '../uploads/user_photos/' . $row['profile_pic']
+                                                                : 'assets/img/default-avatar.png'; // Sediakan gambar default ini
+                                                ?>
+                                                    <tr>
+                                                        <td>
+                                                            <div class="avatar avatar-md">
+                                                                <img src="<?= htmlspecialchars($foto_path) ?>" alt="Foto" class="avatar-img rounded-circle">
+                                                            </div>
+                                                        </td>
+                                                        <td><?= htmlspecialchars($row['nama_lengkap']) ?></td>
+                                                        <td><?= htmlspecialchars($row['username']) ?></td>
+                                                        <td><?= htmlspecialchars($row['role']) ?></td>
+                                                        <td>
+                                                            <button class="btn btn-primary btn-sm btn-update" 
+                                                                    data-id_user="<?= $row['id_user'] ?>"
+                                                                    data-nama_lengkap="<?= htmlspecialchars($row['nama_lengkap']) ?>"
+                                                                    data-username="<?= htmlspecialchars($row['username']) ?>"
+                                                                    data-role="<?= htmlspecialchars($row['role']) ?>"
+                                                                    data-foto="<?= htmlspecialchars($foto_path) ?>"
+                                                                    data-bs-toggle="modal" 
+                                                                    data-bs-target="#updateUserModal">
+                                                                Update
+                                                            </button>
+                                                            <button class="btn btn-danger btn-sm btn-delete" 
+                                                                    data-id_user="<?= $row['id_user'] ?>"
+                                                                    data-bs-toggle="modal"
+                                                                    data-bs-target="#confirmDeleteModal">
+                                                                Delete
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                <?php } ?>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
                             </div>
-</div>
-
-          <!-- Input untuk foto profil -->
-                        <div class="mb-3">
-                            <label for="profilePic" class="form-label">Foto Profil (Opsional)</label>
-                            <input type="file" class="form-control" id="profilePic" name="profile_pic" accept="image/*" onchange="previewAvatar(event)">
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-          <div class="mb-3">
-            <label for="username" class="form-label">Username</label>
-            <input type="text" class="form-control" id="username" name="username" placeholder="Masukkan username" required />
-          </div>
-
-          <div class="mb-3">
-            <label for="email" class="form-label">Email</label>
-            <input type="email" class="form-control" id="email" name="email" placeholder="name@example.com" required />
-          </div>
-
-          <div class="form-group mb-3">
-            <label for="password" class="form-label">Password</label>
-            <input type="password" class="form-control" id="password" name="password" placeholder="Password" required />
-          </div>
-
-          <div class="form-group mb-3">
-            <label for="role" class="form-label">Role</label>
-                            <select class="form-select" id="role" name="role" required>
+    <div class="modal fade" id="addUserModal" tabindex="-1" aria-labelledby="addUserModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <form method="POST" action="add_user.php" enctype="multipart/form-data">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="addUserModalLabel">Tambah Data User</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="text-center mb-3">
+                            <div class="avatar avatar-xxl">
+                                <img id="addAvatarPreview" src="assets/img/default-avatar.png" alt="..." class="avatar-img rounded-circle">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="addProfilePic" class="form-label">Foto Profil (Opsional)</label>
+                            <input type="file" class="form-control" id="addProfilePic" name="profile_pic" accept="image/jpeg, image/png">
+                        </div>
+                        <div class="mb-3">
+                            <label for="addNamaLengkap" class="form-label">Nama Lengkap</label>
+                            <input type="text" class="form-control" id="addNamaLengkap" name="nama_lengkap" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="addUsername" class="form-label">Username</label>
+                            <input type="text" class="form-control" id="addUsername" name="username" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="addPassword" class="form-label">Password</label>
+                            <input type="password" class="form-control" id="addPassword" name="password" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="addRole" class="form-label">Role</label>
+                            <select class="form-select" id="addRole" name="role" required>
                                 <option value="" disabled selected>Pilih Role</option>
                                 <option value="Super Admin">Super Admin</option>
                                 <option value="Admin">Admin</option>
                                 <option value="Direktur">Direktur</option>
                                 <option value="Sekretaris">Sekretaris</option>
                                 <option value="PJ Proyek">PJ Proyek</option>
-                                <option value="Div Teknik">Divisi Teknik</option>
+                                <option value="Divisi Teknik">Divisi Teknik</option>
                                 <option value="Bendahara">Bendahara</option>
                             </select>
-          </div>
-
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                        <button type="submit" class="btn btn-primary">Simpan</button>
+                    </div>
+                </form>
+            </div>
         </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-          <button type="submit" class="btn btn-primary">Simpan</button>
-        </div>
-      </form>
     </div>
-  </div>
-</div>
-</div>
 
-  <!-- Modal Update User -->
-  <div class="modal fade" id="updateUserModal" tabindex="-1" aria-labelledby="updateUserModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-      <div class="modal-content">
-        <form method="POST" action="update_user.php" enctype="multipart/form-data">
-          <div class="modal-header">
-            <h5 class="modal-title" id="updateUserModalLabel">Update Data User</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <div class="modal-body">
-
-            <div class="mb-3">
-              <label for="updateUsername" class="form-label">Username</label>
-              <input type="text" class="form-control" id="updateUsername" name="username" required />
+    <div class="modal fade" id="updateUserModal" tabindex="-1" aria-labelledby="updateUserModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <form method="POST" action="update_user.php" enctype="multipart/form-data">
+                    <input type="hidden" name="id_user" id="updateUserId">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="updateUserModalLabel">Update Data User</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="text-center mb-3">
+                            <div class="avatar avatar-xxl">
+                                <img id="updateAvatarPreview" src="assets/img/default-avatar.png" alt="..." class="avatar-img rounded-circle">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="updateProfilePic" class="form-label">Ganti Foto Profil (Opsional)</label>
+                            <input type="file" class="form-control" id="updateProfilePic" name="profile_pic" accept="image/jpeg, image/png">
+                        </div>
+                        <div class="mb-3">
+                            <label for="updateNamaLengkap" class="form-label">Nama Lengkap</label>
+                            <input type="text" class="form-control" id="updateNamaLengkap" name="nama_lengkap" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="updateUsername" class="form-label">Username</label>
+                            <input type="text" class="form-control" id="updateUsername" name="username" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="updatePassword" class="form-label">Password Baru (Opsional)</label>
+                            <input type="password" class="form-control" id="updatePassword" name="password">
+                            <small class="form-text text-muted">Kosongkan jika tidak ingin mengubah password.</small>
+                        </div>
+                        <div class="mb-3">
+                            <label for="updateRole" class="form-label">Role</label>
+                            <select class="form-select" id="updateRole" name="role" required>
+                                <option value="Super Admin">Super Admin</option>
+                                <option value="Admin">Admin</option>
+                                <option value="Direktur">Direktur</option>
+                                <option value="Sekretaris">Sekretaris</option>
+                                <option value="PJ Proyek">PJ Proyek</option>
+                                <option value="Divisi Teknik">Divisi Teknik</option>
+                                <option value="Bendahara">Bendahara</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                        <button type="submit" class="btn btn-primary">Update</button>
+                    </div>
+                </form>
             </div>
-
-            <div class="mb-3">
-              <label for="updateEmail" class="form-label">Email</label>
-              <input type="email" class="form-control" id="updateEmail" name="email" required />
-            </div>
-
-            <div class="mb-3">
-              <label for="updateRole" class="form-label">Role</label>
-              <select class="form-select" id="updateRole" name="role" required>
-                <option value="admin">Admin</option>
-                <option value="direktur">Direktur</option>
-                <option value="pj_proyek">PJ Proyek</option>
-                <option value="div_teknik">Divisi Teknik</option>
-              </select>
-            </div>
-
-            <div class="mb-3">
-              <label for="updateProfilePic" class="form-label">Profile Picture</label>
-              <input type="file" class="form-control" id="updateProfilePic" name="profile_pic" accept="image/*" />
-            </div>
-
-            <input type="hidden" name="user_id" id="updateUserId">
-
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="submit" class="btn btn-primary">Update</button>
-          </div>
-        </form>
-      </div>
+        </div>
     </div>
-  </div>
 
-  <!-- Modal Delete Confirmation -->
-  <div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title" id="confirmDeleteModalLabel">Confirm Deletion</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    <div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmDeleteModalLabel">Konfirmasi Hapus</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Apakah Anda yakin ingin menghapus user ini?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <a href="#" id="confirmDeleteLink" class="btn btn-danger">Hapus</a>
+                </div>
+            </div>
         </div>
-        <div class="modal-body">
-          <p>Are you sure you want to delete this user?</p>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <a href="#" id="confirmDeleteLink" class="btn btn-danger">Delete</a>
-        </div>
-      </div>
     </div>
-  </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+    <script src="assets/js/core/jquery-3.7.1.min.js"></script>
+    <script src="assets/js/core/popper.min.js"></script>
+    <script src="assets/js/core/bootstrap.min.js"></script>
+    <script src="assets/js/plugin/datatables/datatables.min.js"></script>
 
-<script>
-  $(document).ready(function() {
-    $('#basic-datatables').DataTable();
-  });
-</script>
+    <script>
+    $(document).ready(function() {
+        // Inisialisasi DataTable
+        $('#tabelUser').DataTable();
 
-  <script>
-    // Konfirmasi penghapusan data user
-    document.querySelectorAll('.delete-btn').forEach(button => {
-      button.addEventListener('click', function() {
-        const userId = this.dataset.id_users;
-        const deleteLink = document.getElementById('confirmDeleteLink');
-        deleteLink.href = 'delete_user.php?user=' + userId;
-        const deleteModal = new bootstrap.Modal(document.getElementById('confirmDeleteModal'));
-        deleteModal.show();
-      });
-    });
-  </script>
-<script>
-  // Menangani klik tombol update pada Master User
-  document.querySelectorAll('.btn-update').forEach(button => {
-    button.addEventListener('click', function() {
-      // Ambil data dari baris tabel yang bersangkutan
-      const row = this.closest('tr');
-
-      // Ambil nilai kolom-kolom sesuai urutan di tabel
-      const userId = row.cells[0].innerText;
-      const username = row.cells[1].innerText;
-      const email = row.cells[2].innerText;
-      const role = row.cells[3].innerText;
-
-      // Isi modal update dengan data dari tabel
-      document.getElementById('updateUserId').value = userId;
-      document.getElementById('updateUsername').value = username;
-      document.getElementById('updateEmail').value = email;
-      document.getElementById('updateRole').value = role;
-
-      // Kosongkan input password supaya user bisa isi password baru jika mau
-      document.getElementById('updatePassword').value = '';
-
-        // Fungsi ini sekarang berada di scope global, sehingga bisa dipanggil oleh 'onchange'
-        function previewAvatar(event) {
-            const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const avatarPreview = document.getElementById('avatarPreview');
-                    avatarPreview.src = e.target.result;
-                }
-                reader.readAsDataURL(file);
+        // Fungsi terpusat untuk preview gambar
+        function previewImage(event, previewElementId) {
+            const reader = new FileReader();
+            reader.onload = function() {
+                const output = document.getElementById(previewElementId);
+                output.src = reader.result;
+            }
+            if (event.target.files[0]) {
+                reader.readAsDataURL(event.target.files[0]);
             }
         }
 
-    if (file) {
-      reader.readAsDataURL(file); // Membaca file sebagai URL data
-    }
+        // Event listener untuk preview di modal Tambah dan Update
+        $('#addProfilePic').on('change', function(event) { previewImage(event, 'addAvatarPreview'); });
+        $('#updateProfilePic').on('change', function(event) { previewImage(event, 'updateAvatarPreview'); });
 
-      // document.getElementById('avatarPreview').src = 'path_to_default_avatar.jpg';
+        // Event listener untuk tombol Update
+        $('#tabelUser').on('click', '.btn-update', function() {
+            const button = $(this);
+            $('#updateUserId').val(button.data('id_user'));
+            $('#updateNamaLengkap').val(button.data('nama_lengkap'));
+            $('#updateUsername').val(button.data('username'));
+            $('#updateRole').val(button.data('role'));
+            $('#updateAvatarPreview').attr('src', button.data('foto'));
+            $('#updatePassword').val('');
+        });
 
-      // Tampilkan modal update user
-      var updateModal = new bootstrap.Modal(document.getElementById('updateUserModal'));
-      updateModal.show();
+        // Event listener untuk tombol Delete
+        $('#tabelUser').on('click', '.btn-delete', function() {
+            const userId = $(this).data('id_user');
+            $('#confirmDeleteLink').attr('href', 'delete_user.php?id_user=' + userId);
+        });
     });
-  });
-</script>
-
+    </script>
 </body>
 </html>
