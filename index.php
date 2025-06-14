@@ -1,40 +1,52 @@
 <!DOCTYPE html>
 <html lang="en" dir="ltr">
-  <head>
+<head>
     <meta charset="UTF-8">
-    <title>Login and Registration Form</title>
+    <title>Login | Sistem RAB HBN</title>
+    
+    <link
+      rel="icon"
+      href="admin/assets/img/logo/LOGO PT.jpg"
+      type="image/x-icon"
+    />
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
     <!-- Fontawesome CDN Link -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <style>
-      /* Google Font */
-      @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@200;300;400;500;600;700&display=swap');
+<style>
+    /* Google Font */
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@200;300;400;500;600;700&display=swap');
 
-      * {
+    * {
         margin: 0;
         padding: 0;
         box-sizing: border-box;
         font-family: "Poppins", sans-serif;
-      }
-      body {
+    }
+    body {
         min-height: 100vh;
         display: flex;
         align-items: center;
         justify-content: center;
-        background:rgb(225, 200, 147);
+        /* LATAR BELAKANG HALAMAN - Diubah dari beige ke abu-abu muda yang bersih */
+        background: #F0F2F5;
         padding: 30px;
-      }
-      .container {
+    }
+    .container {
         position: relative;
         max-width: 850px;
         width: 100%;
         background: #fff;
         padding: 40px 30px;
-        box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1); /* Shadow dibuat lebih halus */
         perspective: 2700px;
-      }
-      .container .cover {
+        border-radius: 8px; /* Tambahan: sudut sedikit melengkung agar lebih modern */
+    }
+    .container .cover {
         position: absolute;
         top: 0;
         left: 50%;
@@ -45,32 +57,33 @@
         transform-origin: left;
         transform-style: preserve-3d;
         backface-visibility: hidden;
-      }
-      .container #flip:checked ~ .cover {
+    }
+    .container #flip:checked ~ .cover {
         transform: rotateY(-180deg);
-      }
-      .container #flip:checked ~ .forms .login-form {
+    }
+    .container #flip:checked ~ .forms .login-form {
         pointer-events: none;
-      }
-      .container .cover .front,
-      .container .cover .back {
+    }
+    .container .cover .front,
+    .container .cover .back {
         position: absolute;
         top: 0;
         left: 0;
         height: 100%;
         width: 100%;
-      }
-      .cover .back {
+    }
+    .cover .back {
         transform: rotateY(180deg);
-      }
-      .container .cover img {
+    }
+    .container .cover img {
         position: absolute;
         height: 100%;
         width: 100%;
         object-fit: cover;
         z-index: 10;
-      }
-      .container .cover .text {
+        border-radius: 0 8px 8px 0; /* Menyesuaikan dengan lengkungan container */
+    }
+    .container .cover .text {
         position: absolute;
         z-index: 10;
         height: 100%;
@@ -79,71 +92,74 @@
         flex-direction: column;
         align-items: center;
         justify-content: center;
-      }
-      .container .cover .text::before {
+    }
+    /* OVERLAY GAMBAR - Diubah menjadi gelap agar selaras dengan sidebar */
+    .container .cover .text::before {
         content: '';
         position: absolute;
         height: 100%;
         width: 100%;
-        opacity: 0.5;
-        background:rgb(225, 200, 147);
-      }
-      .cover .text .text-1,
-      .cover .text .text-2 {
+        opacity: 0.6;
+        background: #1A2035; /* Warna biru sangat tua dari sidebarmu */
+        border-radius: 0 8px 8px 0;
+    }
+    .cover .text .text-1,
+    .cover .text .text-2 {
         z-index: 20;
         font-size: 26px;
         font-weight: 600;
         color: #fff;
         text-align: center;
-      }
-      .cover .text .text-2 {
+    }
+    .cover .text .text-2 {
         font-size: 15px;
         font-weight: 500;
-      }
-      .container .forms {
+    }
+    .container .forms {
         height: 100%;
         width: 100%;
         background: #fff;
-      }
-      .container .form-content {
+    }
+    .container .form-content {
         display: flex;
         align-items: center;
         justify-content: space-between;
-      }
-      .form-content .login-form,
-      .form-content .register-form {
+    }
+    .form-content .login-form,
+    .form-content .register-form {
         width: calc(100% / 2 - 25px);
-      }
-      .forms .form-content .title {
+    }
+    .forms .form-content .title {
         position: relative;
         font-size: 24px;
         font-weight: 500;
         color: #333;
-      }
-      .forms .form-content .title:before {
+    }
+    /* WARNA AKSEN UTAMA - Diubah menjadi biru keunguan */
+    .forms .form-content .title:before {
         content: '';
         position: absolute;
         left: 0;
         bottom: 0;
         height: 3px;
         width: 25px;
-        background:rgb(225, 200, 147);
-      }
-      .forms .register-form .title:before {
+        background: #4C51BF; /* Warna biru keunguan */
+    }
+    .forms .register-form .title:before {
         width: 20px;
-      }
-      .forms .form-content .input-boxes {
+    }
+    .forms .form-content .input-boxes {
         margin-top: 30px;
-      }
-      .forms .form-content .input-box {
+    }
+    .forms .form-content .input-box {
         display: flex;
         align-items: center;
         height: 50px;
         width: 100%;
         margin: 10px 0;
         position: relative;
-      }
-      .form-content .input-box input {
+    }
+    .form-content .input-box input {
         height: 100%;
         width: 100%;
         outline: none;
@@ -153,77 +169,81 @@
         font-weight: 500;
         border-bottom: 2px solid rgba(0, 0, 0, 0.2);
         transition: all 0.3s ease;
-      }
-      .form-content .input-box input:focus,
-      .form-content .input-box input:valid {
-        border-color:rgb(187, 160, 101);
-      }
-      .form-content .input-box i {
+    }
+    /* WARNA AKSEN UTAMA - Border saat input aktif */
+    .form-content .input-box input:focus,
+    .form-content .input-box input:valid {
+        border-color: #4C51BF; /* Warna biru keunguan */
+    }
+    /* WARNA AKSEN UTAMA - Ikon di dalam input */
+    .form-content .input-box i {
         position: absolute;
-        color:rgb(225, 200, 147);
+        color: #4C51BF; /* Warna biru keunguan */
         font-size: 17px;
-      }
-      .forms .form-content .text {
+    }
+    .forms .form-content .text {
         font-size: 14px;
         font-weight: 500;
         color: #333;
-      }
-      .forms .form-content .text a {
+    }
+    .forms .form-content .text a {
         color: #333; 
         text-decoration: none;
-      }
-      .forms .form-content .text a:hover {
+    }
+    .forms .form-content .text a:hover {
         text-decoration: underline;
-      }
-      .forms .form-content .button {
+    }
+    .forms .form-content .button {
         color: #fff;
         margin-top: 40px;
-      }
-      .forms .form-content .button input {
+    }
+    /* WARNA AKSEN UTAMA - Tombol utama */
+    .forms .form-content .button input {
         color: #fff;
-        background:rgb(187, 160, 101);
+        background: #4C51BF; /* Warna biru keunguan */
         border-radius: 6px;
         padding: 0;
         cursor: pointer;
         transition: all 0.4s ease;
-      }
-      .forms .form-content .button input:hover {
-        background:rgb(187, 160, 101);
-      }
-      .forms .form-content label {
-        color:rgb(187, 160, 101);
+    }
+    /* WARNA AKSEN UTAMA - Efek hover pada tombol */
+    .forms .form-content .button input:hover {
+        background: #4347A5; /* Warna biru yang sedikit lebih gelap */
+    }
+    .forms .form-content label {
+        color: #4C51BF; /* Warna biru keunguan */
         cursor: pointer;
-      }
-      .forms .form-content label:hover {
+    }
+    .forms .form-content label:hover {
         text-decoration: underline;
-      }
-      .forms .form-content .login-text,
-      .forms .form-content .sign-up-text {
+    }
+    .forms .form-content .login-text,
+    .forms .form-content .sign-up-text {
         text-align: center;
         margin-top: 25px;
-      }
-      .container #flip {
+    }
+    .container #flip {
         display: none;
-      }
-      @media (max-width: 730px) {
+    }
+    @media (max-width: 730px) {
         .container .cover {
-          display: none;
+            display: none;
         }
         .form-content .login-form,
         .form-content .register-form {
-          width: 100%;
+            width: 100%;
         }
         .form-content .register-form {
-          display: none;
+            display: none;
         }
         .container #flip:checked ~ .forms .register-form {
-          display: block;
+            display: block;
         }
         .container #flip:checked ~ .forms .login-form {
-          display: none;
+            display: none;
         }
-      }
-    </style>
+    }
+</style>
   </head>
   <body>
     <div class="container">
