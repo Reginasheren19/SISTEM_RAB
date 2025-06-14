@@ -1,3 +1,8 @@
+<?php
+session_start(); 
+include("../config/koneksi_mysql.php");
+?>
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -40,6 +45,7 @@
 
     <!-- CSS Just for demo purpose, don't include it in your project -->
     <link rel="stylesheet" href="assets/css/demo.css" />
+    
   </head>
   <body>
     <div class="wrapper">
@@ -684,60 +690,50 @@
                   </div>
                 </li>
 
-                <li class="nav-item topbar-user dropdown hidden-caret">
-                  <a
-                    class="dropdown-toggle profile-pic"
-                    data-bs-toggle="dropdown"
-                    href="#"
-                    aria-expanded="false"
-                  >
-                    <div class="avatar-sm">
-                      <img
-                        src="assets/img/profile.jpg"
-                        alt="..."
-                        class="avatar-img rounded-circle"
-                      />
-                    </div>
-                    <span class="profile-username">
-                      <span class="op-7">Hi,</span>
-                      <span class="fw-bold">Hizrian</span>
-                    </span>
-                  </a>
-                  <ul class="dropdown-menu dropdown-user animated fadeIn">
-                    <div class="dropdown-user-scroll scrollbar-outer">
-                      <li>
-                        <div class="user-box">
-                          <div class="avatar-lg">
-                            <img
-                              src="assets/img/profile.jpg"
-                              alt="image profile"
-                              class="avatar-img rounded"
-                            />
-                          </div>
-                          <div class="u-text">
-                            <h4>Hizrian</h4>
-                            <p class="text-muted">hello@example.com</p>
-                            <a
-                              href="profile.html"
-                              class="btn btn-xs btn-secondary btn-sm"
-                              >View Profile</a
-                            >
-                          </div>
-                        </div>
-                      </li>
-                      <li>
-                        <div class="dropdown-divider"></div>
-                        <a class="dropdown-item" href="#">My Profile</a>
-                        <a class="dropdown-item" href="#">My Balance</a>
-                        <a class="dropdown-item" href="#">Inbox</a>
-                        <div class="dropdown-divider"></div>
-                        <a class="dropdown-item" href="#">Account Setting</a>
-                        <div class="dropdown-divider"></div>
-                        <a class="dropdown-item" href="#">Logout</a>
-                      </li>
-                    </div>
-                  </ul>
-                </li>
+<li class="nav-item topbar-user dropdown hidden-caret">
+  <a class="dropdown-toggle profile-pic" data-bs-toggle="dropdown" href="#" aria-expanded="false">
+    <div class="avatar-sm">
+      <!-- Gambar profil, jika ada -->
+      <img src="uploads/user_photos/<?= isset($_SESSION['profile_pic']) && !empty($_SESSION['profile_pic']) ? $_SESSION['profile_pic'] : 'default.jpg' ?>" alt="Profile Picture" class="avatar-img rounded-circle" />
+    </div>
+    <span class="profile-username">
+      <span class="op-7">Hi,</span>
+      <span class="fw-bold"><?= isset($_SESSION['nama_lengkap']) ? $_SESSION['nama_lengkap'] : 'Guest' ?></span> <!-- Menampilkan nama lengkap dari session -->
+    </span>
+  </a>
+
+  <ul class="dropdown-menu dropdown-user animated fadeIn">
+    <div class="dropdown-user-scroll scrollbar-outer">
+      <li>
+        <div class="user-box">
+          <!-- Gambar Profil -->
+    <div class="avatar avatar-md">
+        <img src="<?= htmlspecialchars($foto_path) ?>" alt="Foto Profil" class="avatar-img rounded-circle">
+    </div>
+
+          <!-- Nama Lengkap -->
+          <h4 class="fw-bold"><?= isset($_SESSION['nama_lengkap']) ? $_SESSION['nama_lengkap'] : 'Guest' ?></h4> <!-- Menampilkan nama lengkap -->
+
+          <!-- Username -->
+          <p class="text-muted"><?= isset($_SESSION['username']) ? $_SESSION['username'] : 'Not logged in' ?></p> <!-- Menampilkan username -->
+
+          <!-- View Profile Button -->
+          <a href="profile.php" class="btn btn-xs btn-secondary btn-sm">View Profile</a>
+        </div>
+      </li>
+
+      <li>
+        <div class="dropdown-divider"></div>
+        <a class="dropdown-item" href="#">Account Setting</a> <!-- Account Setting -->
+        <div class="dropdown-divider"></div>
+        <a class="dropdown-item" href="logout.php">Logout</a> <!-- Logout Link -->
+      </li>
+    </div>
+  </ul>
+</li>
+
+
+
               </ul>
             </div>
           </nav>
