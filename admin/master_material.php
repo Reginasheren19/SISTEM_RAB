@@ -1,37 +1,51 @@
 <?php
+session_start();
 include("../config/koneksi_mysql.php");
 
-// Mengatur error reporting
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-// Mengambil data user dari database
-$result = mysqli_query($koneksi, "SELECT * FROM master_material");
-$satuanResult = mysqli_query($koneksi, "SELECT id_satuan, nama_satuan FROM master_satuan ORDER BY nama_satuan ASC");
-if (!$satuanResult) {
-    die("Query Error (satuan): " . mysqli_error($koneksi));
+// 1. Cukup 1x query untuk mengambil semua data satuan untuk modal Tambah dan Update
+$satuan_result = mysqli_query($koneksi, "SELECT id_satuan, nama_satuan FROM master_satuan ORDER BY nama_satuan ASC");
+$satuans = [];
+while ($satuan = mysqli_fetch_assoc($satuan_result)) {
+    $satuans[] = $satuan;
 }
-$row = mysqli_fetch_assoc($result);
-if (isset($row)) {
-    $id_satuan_selected = $row['id_satuan'];
-} else {
-    $id_satuan_selected = ''; // Atau nilai default jika tidak ada
-}
-?>
-?>
 
+// 2. QUERY UTAMA: Menggabungkan 3 Tabel (Material, Satuan, Stok) dengan LEFT JOIN
+$sql = "
+    SELECT 
+        m.id_material,
+        m.nama_material,
+        m.keterangan_material,
+        m.id_satuan,
+        s.nama_satuan,
+        st.jumlah_stok_tersedia
+    FROM 
+        master_material m
+    LEFT JOIN 
+        master_satuan s ON m.id_satuan = s.id_satuan
+    LEFT JOIN 
+        stok_material st ON m.id_material = st.id_material
+    ORDER BY 
+        m.id_material DESC
+";
+$result = mysqli_query($koneksi, $sql);
+
+if (!$result) {
+    die("Query Error: " . mysqli_error($koneksi));
+}
+?>
 
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <title>Kaiadmin - Bootstrap 5 Admin Dashboard</title>
+    <title>Master Material</title>
     <meta
       content="width=device-width, initial-scale=1.0, shrink-to-fit=no"
       name="viewport"
     />
     <link
       rel="icon"
-      href="assets/img/kaiadmin/favicon.ico"
+      href="assets/img/logo/LOGO PT.jpg"
       type="image/x-icon"
     />
     <link href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css" rel="stylesheet" />
@@ -73,8 +87,8 @@ if (isset($row)) {
           <div class="logo-header" data-background-color="dark">
             <a href="index.html" class="logo">
               <img
-                src="assets/img/kaiadmin/logo_light.svg"
-                alt="navbar brand"
+                src="assets/img/logo/LOGO PT.jpg"
+                alt="Logo PT"
                 class="navbar-brand"
                 height="20"
               />
@@ -359,11 +373,12 @@ if (isset($row)) {
             <div class="logo-header" data-background-color="dark">
               <a href="../index.html" class="logo">
                 <img
-                  src="assets/img/kaiadmin/logo_light.svg"
-                  alt="navbar brand"
+                  src="assets/img/logo/LOGO PT.jpg"
+                  alt="Logo PT"
                   class="navbar-brand"
                   height="20"
                 />
+            </a>
               </a>
               <div class="nav-toggle">
                 <button class="btn btn-toggle toggle-sidebar">
@@ -760,262 +775,227 @@ if (isset($row)) {
               </ul>
             </div>
 
-<div class="row">
-  <div class="col-md-12">
-    <div class="card">
-      <div class="card-header d-flex align-items-center">
-        <h4 class="card-title">Master Material</h4>
-        <button
-          class="btn btn-primary btn-round ms-auto"
-          data-bs-toggle="modal"
-          data-bs-target="#addMaterialModal"
-        >
-          <i class="fa fa-plus"></i> Tambah Data
-        </button>
+            <div class="row">
+                    <div class="col-md-12">
+                        <div class="card">
+                            <div class="card-header d-flex align-items-center">
+                                <h4 class="card-title">Daftar Material</h4>
+                                <button class="btn btn-primary btn-round ms-auto" data-bs-toggle="modal" data-bs-target="#addMaterialModal">
+                                    <i class="fa fa-plus"></i> Tambah Data
+                                </button>
+                            </div>
+                            <?php
+                            // Cek apakah ada pesan sukses di dalam session
+                            if (isset($_SESSION['pesan_sukses'])) {
+                                // 1. Tampilkan pesannya
+                                echo '<div class="alert alert-success" role="alert">' . htmlspecialchars($_SESSION['pesan_sukses']) . '</div>';
+                                
+                                // 2. LANGKAH PENTING: Hapus pesan dari session agar tidak muncul lagi
+                                unset($_SESSION['pesan_sukses']);
+                            }
+
+                            // Lakukan hal yang sama untuk pesan error
+                            if (isset($_SESSION['error_message'])) {
+                                echo '<div class="alert alert-danger" role="alert">' . htmlspecialchars($_SESSION['error_message']) . '</div>';
+                                unset($_SESSION['error_message']);
+                            }
+                            ?>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table id="tabelMaterial" class="display table table-striped table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>No.</th>
+                                                <th>Nama Material</th>
+                                                <th>Satuan</th>
+                                                <th>Stok Tersedia</th> <th>Keterangan</th>
+                                                <th>Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <?php
+                                            $nomor = 1;
+                                            while ($row = mysqli_fetch_assoc($result)):
+                                            ?>
+                                                <tr>
+                                                    <td><?= $nomor++ ?></td>
+                                                    <td><?= htmlspecialchars($row['nama_material']) ?></td>
+                                                    <td><?= htmlspecialchars($row['nama_satuan']) ?></td>
+                                                    <td>
+                                                        <strong>
+                                                            <?php
+                                                                // Jika stok NULL (belum ada), tampilkan 0. Jika ada, format angkanya.
+                                                                echo number_format($row['jumlah_stok_tersedia'] ?? 0, 2, ',', '.');
+                                                            ?>
+                                                        </strong>
+                                                    </td>
+                                                    <td><?= htmlspecialchars($row['keterangan_material']) ?></td>
+                                                    <td>
+                                                        <button class="btn btn-primary btn-sm btn-update" 
+                                                                data-id_material="<?= $row['id_material'] ?>" 
+                                                                data-nama_material="<?= htmlspecialchars($row['nama_material']) ?>" 
+                                                                data-id_satuan="<?= $row['id_satuan'] ?>"
+                                                                data-keterangan_material="<?= htmlspecialchars($row['keterangan_material']) ?>"
+                                                                data-bs-toggle="modal" 
+                                                                data-bs-target="#updateMaterialModal">
+                                                            Update
+                                                        </button>
+                                                        <button class="btn btn-danger btn-sm btn-delete" 
+                                                                data-id_material="<?= $row['id_material'] ?>"
+                                                                data-bs-toggle="modal"
+                                                                data-bs-target="#confirmDeleteModal">
+                                                            Delete
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            <?php endwhile; ?>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+          <div class="modal fade" id="addMaterialModal" tabindex="-1" aria-labelledby="addMaterialModalLabel" aria-hidden="true">
+              <div class="modal-dialog modal-lg">
+                  <div class="modal-content">
+                      <form method="POST" action="add_material.php">
+                          <div class="modal-header">
+                              <h5 class="modal-title" id="addMaterialModalLabel">Tambah Data Material</h5>
+                              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                          </div>
+                          <div class="modal-body">
+                              <div class="mb-3">
+                                  <label for="nama_material" class="form-label">Nama Material</label>
+                                  <input type="text" class="form-control" id="nama_material" name="nama_material" required />
+                              </div>
+                              <div class="mb-3">
+                                  <label for="id_satuan" class="form-label">Nama Satuan</label>
+                                  <select class="form-select" id="id_satuan" name="id_satuan" required>
+                                      <option value="" disabled selected>Pilih Nama Satuan</option>
+                                      <?php foreach ($satuans as $satuan): ?>
+                                          <option value="<?= htmlspecialchars($satuan['id_satuan']) ?>"><?= htmlspecialchars($satuan['nama_satuan']) ?></option>
+                                      <?php endforeach; ?>
+                                  </select>
+                              </div>
+                              <div class="mb-3">
+                                  <label for="keterangan_material" class="form-label">Keterangan Material</label>
+                                  <input type="text" class="form-control" id="keterangan_material" name="keterangan_material" />
+                              </div>
+                          </div>
+                          <div class="modal-footer">
+                              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                              <button type="submit" class="btn btn-primary">Simpan</button>
+                          </div>
+                      </form>
+                  </div>
+              </div>
+          </div>
+
+      <div class="modal fade" id="updateMaterialModal" tabindex="-1" aria-labelledby="updateMaterialModalLabel" aria-hidden="true">
+          <div class="modal-dialog modal-lg">
+              <div class="modal-content">
+                  <form method="POST" action="update_material.php">
+                      <input type="hidden" name="id_material" id="update_id_material" />
+                      <div class="modal-header">
+                          <h5 class="modal-title" id="updateMaterialModalLabel">Update Data Material</h5>
+                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                      </div>
+                      <div class="modal-body">
+                          <div class="mb-3">
+                              <label for="update_nama_material" class="form-label">Nama Material</label>
+                              <input type="text" class="form-control" id="update_nama_material" name="nama_material" required />
+                          </div>
+                          <div class="mb-3">
+                              <label for="update_id_satuan" class="form-label">Nama Satuan</label>
+                              <select class="form-select" id="update_id_satuan" name="id_satuan" required>
+                                  <option value="" disabled>Pilih Nama Satuan</option>
+                                  <?php foreach ($satuans as $satuan): ?>
+                                      <option value="<?= htmlspecialchars($satuan['id_satuan']) ?>"><?= htmlspecialchars($satuan['nama_satuan']) ?></option>
+                                  <?php endforeach; ?>
+                              </select>
+                          </div>
+                          <div class="mb-3">
+                              <label for="update_keterangan_material" class="form-label">Keterangan Material</label>
+                              <input type="text" class="form-control" id="update_keterangan_material" name="keterangan_material" />
+                          </div>
+                      </div>
+                      <div class="modal-footer">
+                          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                          <button type="submit" class="btn btn-primary">Update</button>
+                      </div>
+                  </form>
+              </div>
+          </div>
       </div>
 
-            <?php if (isset($_GET['msg'])): ?>
-        <div class="mb-3">
-          <div class="alert alert-success fade show" role="alert">
-            <?= htmlspecialchars($_GET['msg']) ?>
+        <!-- Modal Delete Confirmation -->
+        <div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteModalLabel" aria-hidden="true">
+          <div class="modal-dialog">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title" id="confirmDeleteModalLabel">Confirm Deletion</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+              <div class="modal-body">
+                <p>Are you sure you want to delete this material?</p>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <a href="#" id="confirmDeleteLink" class="btn btn-danger">Delete</a>
+              </div>
+            </div>
           </div>
         </div>
-      <?php endif; ?>
 
-      <script>
-      window.setTimeout(function() {
-        const alert = document.querySelector('.alert');
-        if (alert) {
-          alert.classList.add('fade');
-          alert.classList.remove('show');
-          setTimeout(() => alert.remove(), 350);
-        }
-      }, 3000);
+      <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+      <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+      <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
 
-        // Hapus parameter 'msg' dari URL agar tidak muncul lagi saat reload
-      if (window.history.replaceState) {
-        const url = new URL(window.location);
-        if (url.searchParams.has('msg')) {
-          url.searchParams.delete('msg');
-          window.history.replaceState({}, document.title, url.pathname);
-        }
-      }
-      </script>
-
-      <div class="card-body">
-        <div class="table-responsive">
-          <table
-            id="basic-datatables"
-            class="display table table-striped table-hover"
-          >
-            <thead>
-              <tr>
-                <th>ID Material</th>
-                <th>Nama Material</th>
-                <th>Nama Satuan</th>
-                <th>Keterangan Material</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              <?php
-              $sql = "SELECT mp.id_material, mp.nama_material, mp.id_satuan, mp.keterangan_material, ms.nama_satuan
-                      FROM master_material mp
-                      JOIN master_satuan ms ON mp.id_satuan = ms.id_satuan";
-
-              $result = mysqli_query($koneksi, $sql);
-
-              if (!$result) {
-                  die("Query Error: " . mysqli_error($koneksi));
-              }
-
-              while ($row = mysqli_fetch_assoc($result)) {
-                  echo "<tr>
-                      <td>" . htmlspecialchars($row['id_material']) . "</td>
-                      <td>" . htmlspecialchars($row['nama_material']) . "</td>
-                      <td>" . htmlspecialchars($row['nama_satuan']) . "</td>
-                      <td>" . htmlspecialchars($row['keterangan_material']) . "</td>
-                      <td>
-                         <button 
-                          class='btn btn-primary btn-sm btn-update' 
-                          data-id_material='" . htmlspecialchars($row['id_material']) . "' 
-                          data-nama_material='" . htmlspecialchars($row['nama_material']) . "' 
-                          data-id_satuan='" . htmlspecialchars($row['id_satuan']) . "'
-                          data-keterangan_material='" . htmlspecialchars($row['keterangan_material']) . "'>Update</button>
-                         <button class='btn btn-danger btn-sm delete-btn' data-id_material='" . htmlspecialchars($row['id_material']) . "'>Delete</button>                                        
-                      </td>
-                    </tr>";
-              }
-              ?>
-
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Modal Tambah Data Material -->
-<div class="modal fade" id="addMaterialModal" tabindex="-1" aria-labelledby="addMaterialModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <form method="POST" action="add_material.php">
-        <input type="hidden" name="action" value="add" />
-        <div class="modal-header">
-          <h5 class="modal-title" id="addMaterialModalLabel">Tambah Data Material</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-
-          <div class="mb-3">
-            <label for="nama_material" class="form-label">Nama Material</label>
-            <input type="text" class="form-control" id="nama_material" name="nama_material" placeholder="Masukkan nama material" required />
-          </div>
-
-          <div class="mb-3">
-            <label for="id_satuan" class="form-label">Nama Satuan</label>
-            <select class="form-select" id="id_satuan" name="id_satuan" required>
-              <option value="" disabled selected>Pilih Nama Satuan</option>
-
-              <?php while ($satuan = mysqli_fetch_assoc($satuanResult)): ?>
-                <option value="<?= htmlspecialchars($satuan['id_satuan']) ?>">
-                  <?= htmlspecialchars($satuan['nama_satuan']) ?>
-                </option>
-              <?php endwhile; ?>
-
-            </select>
-          </div>
-
-          <div class="mb-3">
-            <label for="keterangan_material" class="form-label">Keterangan Material</label>
-            <input type="text" class="form-control" id="keterangan_material" name="keterangan_material" placeholder="Masukkan keterangan material" required />
-          </div>
-
-
-
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-          <button type="submit" class="btn btn-primary">Simpan</button>
-        </div>
-      </form>
-    </div>
-  </div>
-</div>
-</div>
-
-<!-- Modal Update Data Material -->
-<div class="modal fade" id="updateMaterialModal" tabindex="-1" aria-labelledby="updateMaterialModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <form method="POST" action="update_material.php">
-        <input type="hidden" name="id_material" id="update_id_material" />
-        <div class="modal-header">
-          <h5 class="modal-title" id="updateMandorModalLabel">Update Data Material</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-
-          <div class="mb-3">
-            <label for="update_nama_material" class="form-label">Nama Material</label>
-            <input type="text" class="form-control" id="update_nama_material" name="nama_material" placeholder="Ubah nama material" required />
-          </div>
-
-          <div class="mb-3">
-            <label for="update_id_satuan" class="form-label">Nama Satuan</label>
-            <select class="form-select" id="update_id_satuan" name="id_satuan" required>
-              <option value="" disabled selected>Pilih Nama Satuan</option>
-              <?php
-              $id_satuan_selected = $row['id_satuan'];
-              $satuanResult = mysqli_query($koneksi, "SELECT id_satuan, nama_satuan FROM master_satuan ORDER BY nama_satuan ASC");
-              while ($satuan = mysqli_fetch_assoc($satuanResult)) {
-                $selected = ($satuan['id_satuan'] == $id_satuan_selected) ? 'selected' : '';
-                echo '<option value="' . htmlspecialchars($satuan['id_satuan']) . '">' . htmlspecialchars($satuan['nama_satuan']) . '</option>';
-              }
-              ?>
-            </select>
-          </div>
-
-          <div class="mb-3">
-            <label for="update_keterangan_material" class="form-label">Keterangan Material</label>
-            <input type="text" class="form-control" id="update_keterangan_material" name="keterangan_material" placeholder="Ubah keterangan material" required />
-          </div>
-
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-          <button type="submit" class="btn btn-primary">Update</button>
-        </div>
-      </form>
-    </div>
-  </div>
-</div>
-
-
-  <!-- Modal Delete Confirmation -->
-  <div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title" id="confirmDeleteModalLabel">Confirm Deletion</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-          <p>Are you sure you want to delete this material?</p>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <a href="#" id="confirmDeleteLink" class="btn btn-danger">Delete</a>
-        </div>
-      </div>
-    </div>
-  </div>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
 
 <script>
-  $(document).ready(function() {
-    $('#basic-datatables').DataTable();
-  });
-</script>
-
-  <script>
-    // Konfirmasi penghapusan data material
-    document.querySelectorAll('.delete-btn').forEach(button => {
-      button.addEventListener('click', function() {
-        const materialId = this.dataset.id_material;
-        const deleteLink = document.getElementById('confirmDeleteLink');
-        deleteLink.href = 'delete_material.php?material=' + materialId;
-        const deleteModal = new bootstrap.Modal(document.getElementById('confirmDeleteModal'));
-        deleteModal.show();
-      });
+$(document).ready(function() {
+    // Inisialisasi DataTable
+    $('#tabelMaterial').DataTable({
+        "order": [] // Menghormati urutan dari server
     });
-  </script>
-<script>
-  // Menangani klik tombol update pada Master Material
-document.querySelectorAll('.btn-update').forEach(button => {
-  button.addEventListener('click', function() {
-    // Ambil data dari atribut tombol
-    const idMaterial = this.dataset.id_material;
-    const namaMaterial = this.dataset.nama_material;
-    const idSatuan = this.dataset.id_satuan;  // ini id satuan yang benar
-    const keteranganMaterial = this.dataset.keterangan_material; 
 
-    // Set nilai input modal
-    document.getElementById('update_id_material').value = idMaterial;
-    document.getElementById('update_nama_material').value = namaMaterial;
-    document.getElementById('update_id_satuan').value = idSatuan;  // ini akan otomatis pilih dropdown sesuai id_satuan
-    document.getElementById('update_keterangan_material').value = keteranganMaterial;
+    // Event listener untuk Tombol UPDATE
+    $('#tabelMaterial').on('click', '.btn-update', function() {
+        const button = $(this);
+        var updateModal = new bootstrap.Modal(document.getElementById('updateMaterialModal'));
+        
+        $('#update_id_material').val(button.data('id_material'));
+        $('#update_nama_material').val(button.data('nama_material'));
+        $('#update_id_satuan').val(button.data('id_satuan'));
+        $('#update_keterangan_material').val(button.data('keterangan_material'));
+        
+        updateModal.show();
+    });
 
-    // Tampilkan modal update
-    const updateModal = new bootstrap.Modal(document.getElementById('updateMaterialModal'));
-    updateModal.show();
-  });
+    // Event listener untuk Tombol DELETE
+    $('#tabelMaterial').on('click', '.btn-delete', function() {
+        const materialId = $(this).data('id_material');
+        const deleteLink = $('#confirmDeleteLink');
+        var deleteModal = new bootstrap.Modal(document.getElementById('confirmDeleteModal'));
+        
+        deleteLink.attr('href', 'delete_material.php?id_material=' + materialId);
+        
+        deleteModal.show();
+    });
+
+    // --- KODE TAMBAHAN UNTUK NOTIFIKASI OTOMATIS HILANG ---
+    const alertBox = $('.alert');
+    // Cek apakah notifikasi ada di halaman
+    if (alertBox.length) {
+        // Jika ada, tunggu 5 detik, lalu hilangkan dengan efek fade out
+        setTimeout(function() {
+            alertBox.fadeOut('slow');
+        }, 5000); // 5000 milidetik = 5 detik
+    }
+    // --- AKHIR DARI KODE TAMBAHAN ---
 });
-
 </script>
-
-</body>
-</html>
+    </body>
+  </html>

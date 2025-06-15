@@ -773,18 +773,6 @@ if (!$result) {
                 </ul>
             </div>
 
-            <?php
-            // Menampilkan pesan sukses atau error dari proses lain (seperti hapus data)
-            if (isset($_SESSION['pesan_sukses'])) {
-                echo '<div class="alert alert-success" role="alert">' . $_SESSION['pesan_sukses'] . '</div>';
-                unset($_SESSION['pesan_sukses']);
-            }
-            if (isset($_SESSION['error_message'])) {
-                echo '<div class="alert alert-danger" role="alert">' . $_SESSION['error_message'] . '</div>';
-                unset($_SESSION['error_message']);
-            }
-            ?>
-
             <div class="row">
                 <div class="col-md-12">
                     <div class="card">
@@ -795,6 +783,17 @@ if (!$result) {
                             </button>
                         </div>
                         <div class="card-body">
+                            <?php
+                            // Menampilkan pesan sukses atau error dari proses lain (seperti hapus data)
+                            if (isset($_SESSION['pesan_sukses'])) {
+                                echo '<div class="alert alert-success" role="alert">' . $_SESSION['pesan_sukses'] . '</div>';
+                                unset($_SESSION['pesan_sukses']);
+                            }
+                            if (isset($_SESSION['error_message'])) {
+                                echo '<div class="alert alert-danger" role="alert">' . $_SESSION['error_message'] . '</div>';
+                                unset($_SESSION['error_message']);
+                            }
+                            ?>
                             <div class="table-responsive">
                                 <table id="tabelPembelian" class="table table-striped table-hover">
                                     <thead>
