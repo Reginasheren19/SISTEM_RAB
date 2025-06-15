@@ -6,9 +6,10 @@ include("../config/koneksi_mysql.php");
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-// [BARU] Fungsi helper untuk menentukan kelas warna berdasarkan status
+// Fungsi helper untuk menentukan kelas warna dropdown
 function getStatusClass($status) {
-    switch ($status) {
+    // Menggunakan strtolower untuk memastikan konsistensi
+    switch (strtolower(trim($status))) {
         case 'disetujui':
             return 'bg-success text-white';
         case 'dibayar':
@@ -929,26 +930,23 @@ if (!$mandorResult) {
               </select>
             </td>
             <td><?= htmlspecialchars($row['keterangan']) ?></td>
-            <td>
-              <!-- Tombol Detail -->
-              <a href="get_pengajuan_upah.php?id_pengajuan_upah=<?= urlencode($row['id_pengajuan_upah']) ?>" class="btn btn-info btn-sm">Detail</a>
+      <td>
+        <!-- Tombol Detail -->
+        <a href="get_pengajuan_upah.php?id_pengajuan_upah=<?= urlencode($row['id_pengajuan_upah']) ?>" class="btn btn-info btn-sm">Detail</a>
 
-              <!-- Tombol Update hanya jika statusnya 'Diajukan' atau 'Ditolak' -->
-              <?php if ($row['status_pengajuan'] == 'diajukan' || $row['status_pengajuan'] == 'ditolak'): ?>
-                <a href="update_pengajuan_upah.php?id_pengajuan_upah=<?= urlencode($row['id_pengajuan_upah']) ?>" class="btn btn-warning btn-sm">Update</a>
-              <?php endif; ?>
+        <!-- Tombol Update hanya jika statusnya 'Diajukan' atau 'Ditolak' -->
+        <?php if ($row['status_pengajuan'] == 'diajukan' || $row['status_pengajuan'] == 'ditolak'): ?>
+          <a href="update_pengajuan_upah.php?id_pengajuan_upah=<?= urlencode($row['id_pengajuan_upah']) ?>" class="btn btn-warning btn-sm">Update</a>
+        <?php endif; ?>
 
-                            <!-- [DIUBAH] Tombol Delete hanya muncul jika statusnya 'diajukan' atau 'ditolak' -->
-                            <?php if (in_array($row['status_pengajuan'], ['diajukan', 'ditolak'])): ?>
-                                <button class="btn btn-danger btn-sm delete-btn" 
-                                        data-id="<?= htmlspecialchars($row['id_pengajuan_upah']) ?>"
-                                        data-bs-toggle="modal" 
-                                        data-bs-target="#confirmDeleteModal">
-                                    Delete
-                                </button>
-                            <?php endif; ?>
-            </td>
-          </tr>
+        <!-- Tombol Delete hanya muncul jika statusnya 'diajukan' atau 'ditolak' -->
+        <?php if (in_array($row['status_pengajuan'], ['diajukan', 'ditolak'])): ?>
+          <button class="btn btn-danger btn-sm delete-btn" data-id="<?= htmlspecialchars($row['id_pengajuan_upah']) ?>" data-bs-toggle="modal" data-bs-target="#confirmDeleteModal">
+            Delete
+          </button>
+        <?php endif; ?>
+      </td>
+    </tr>
         <?php endwhile; ?>
       </tbody>
     </table>
@@ -1154,11 +1152,23 @@ $(document).ready(function() {
         deleteModal.show();
     });
 
-    // 4. Logika untuk DROPDOWN STATUS
-    // Simpan nilai asli dropdown saat difokuskan
+    // 5. Logika untuk DROPDOWN STATUS
     $('#basic-datatables').on('focus', '.status-select', function() {
-        originalValue = $(this).val();
+        $(this).data('original-value', $(this).val());
+    });
+
+    $('#basic-datatables').on('change', '.status-select', function() {
         currentSelect = $(this);
+        const newStatus = $(this).val();
+        
+        $(this).val($(this).data('original-value'));
+
+        $(modalElement).data('pengajuan-id', $(this).data('id'));
+        $(modalElement).data('new-status', newStatus);
+
+        $('#new-status-text-modal').text(`"${newStatus}"`);
+        // ... Logika warna modal ...
+        statusUpdateModal.show();
     });
 
     // Saat dropdown diubah, siapkan modal

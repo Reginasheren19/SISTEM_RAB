@@ -2,15 +2,13 @@
 include("../config/koneksi_mysql.php");
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $id_perumahan = mysqli_real_escape_string($koneksi, $_POST['id_perumahan']);
     $id_proyek = mysqli_real_escape_string($koneksi, $_POST['id_proyek']);
-    $id_mandor = mysqli_real_escape_string($koneksi, $_POST['id_mandor']);
     $tanggal_mulai = mysqli_real_escape_string($koneksi, $_POST['tanggal_mulai']);
         $tanggal_selesai = mysqli_real_escape_string($koneksi, $_POST['tanggal_selesai']);
 
     // Insert the new record
-    $sql = "INSERT INTO rab_upah (id_perumahan, id_proyek, id_mandor, tanggal_mulai, tanggal_selesai) 
-            VALUES ('$id_perumahan', '$id_proyek', '$id_mandor', '$tanggal_mulai', '$tanggal_selesai')";
+    $sql = "INSERT INTO rab_upah (id_proyek, tanggal_mulai, tanggal_selesai) 
+            VALUES ('$id_proyek', '$tanggal_mulai', '$tanggal_selesai')";
 
     if (mysqli_query($koneksi, $sql)) {
         // Get the last inserted ID
