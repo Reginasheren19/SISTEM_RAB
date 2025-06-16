@@ -10,22 +10,26 @@ $id_pengajuan_upah = (int)$_GET['id_pengajuan_upah']; // Casting ke integer untu
 
 // Query utama untuk mengambil data pengajuan dan info RAB terkait
 $sql_pengajuan_info = "SELECT 
-                    pu.tanggal_pengajuan,
-                    pu.total_pengajuan,
-                    pu.status_pengajuan,
-                    pu.keterangan,
-                    tr.id_rab_upah,
-                    CONCAT(mpe.nama_perumahan, ' - ', mpr.kavling) AS pekerjaan,
-                    mpr.type_proyek,
-                    mpe.lokasi,
-                    YEAR(tr.tanggal_mulai) AS tahun,
-                    mm.nama_mandor
-                FROM pengajuan_upah pu
-                JOIN rab_upah tr ON pu.id_rab_upah = tr.id_rab_upah
-                JOIN master_perumahan mpe ON tr.id_perumahan = mpe.id_perumahan
-                JOIN master_proyek mpr ON tr.id_proyek = mpr.id_proyek
-                JOIN master_mandor mm ON tr.id_mandor = mm.id_mandor
-                WHERE pu.id_pengajuan_upah = '$id_pengajuan_upah'";
+                        pu.tanggal_pengajuan,
+                        pu.total_pengajuan,
+                        pu.status_pengajuan,
+                        pu.keterangan,
+                        tr.id_rab_upah,
+                        tr.total_rab_upah,
+                        tr.tanggal_mulai,
+                        tr.tanggal_selesai,
+                        CONCAT(mpe.nama_perumahan, ' - ', mpr.kavling) AS pekerjaan,
+                        mpr.type_proyek,
+                        mpe.lokasi,
+                        mm.nama_mandor,
+                        u.nama_lengkap AS pj_proyek -- <-- Sekarang ini bisa diambil
+                    FROM pengajuan_upah pu
+                    LEFT JOIN rab_upah tr ON pu.id_rab_upah = tr.id_rab_upah
+                    LEFT JOIN master_proyek mpr ON tr.id_proyek = mpr.id_proyek
+                    LEFT JOIN master_perumahan mpe ON mpr.id_perumahan = mpe.id_perumahan
+                    LEFT JOIN master_mandor mm ON mpr.id_mandor = mm.id_mandor
+                    LEFT JOIN master_user u ON mpr.id_user_pj = u.id_user -- <-- DITAMBAHKAN JOIN INI
+                    WHERE pu.id_pengajuan_upah = $id_pengajuan_upah";
 
 $pengajuan_result = mysqli_query($koneksi, $sql_pengajuan_info);
 // Periksa jika query info pengajuan gagal
@@ -63,7 +67,21 @@ if (!$detail_result) {
     die("Error query detail pengajuan: " . mysqli_error($koneksi));
 }
 
+// Query untuk mengambil semua file bukti
+$sql_bukti = "SELECT nama_file, path_file FROM bukti_pengajuan_upah WHERE id_pengajuan_upah = $id_pengajuan_upah";
+$bukti_result = mysqli_query($koneksi, $sql_bukti);
+if (!$bukti_result) {
+    die("Error query bukti: " . mysqli_error($koneksi));
+}
 
+// Query untuk menghitung termin pengajuan
+$id_rab_upah = $pengajuan_info['id_rab_upah'];
+$sql_termin = "SELECT COUNT(id_pengajuan_upah) AS termin_ke 
+               FROM pengajuan_upah 
+               WHERE id_rab_upah = $id_rab_upah AND id_pengajuan_upah <= $id_pengajuan_upah";
+$termin_result = mysqli_query($koneksi, $sql_termin);
+$termin_data = mysqli_fetch_assoc($termin_result);
+$termin_ke = $termin_data['termin_ke'];
 
 // Fungsi untuk mengubah angka menjadi Angka Romawi
 function toRoman($num) {
@@ -796,104 +814,138 @@ function toRoman($num) {
         <div class="container">
           <div class="page-inner">
             <div class="page-header">
-              <h3 class="fw-bold mb-3">Form Detail Pengajuan RAB Upah</h3>
+                <h3 class="fw-bold mb-3">Detail Pengajuan Upah</h3>
+                <div class="ms-auto">
+                    <a href="pengajuan_upah.php" class="btn btn-secondary btn-round">
+                        <i class="fas fa-arrow-left"></i> Kembali ke Daftar
+                    </a>
+                </div>
             </div>
 
-          <div class="container mt-4">
+            <!-- [DIUBAH] Bagian Informasi Header yang lebih rapi -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <h4 class="card-title mb-0">Informasi Pengajuan</h4>
+                    <span class="badge bg-primary fs-6">Pengajuan Termin Ke-<?= htmlspecialchars($termin_ke) ?></span>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <!-- Kolom Kiri -->
+                        <div class="col-md-6">
+                            <dl class="row">
+                                <dt class="col-sm-4">ID Pengajuan</dt>
+                                <dd class="col-sm-8">: <?= htmlspecialchars($id_pengajuan_upah) ?></dd>
 
-          <div class="card shadow-sm mb-4">
-            <div class="card-header">
-                <h4>Detail dan Pengajuan Progress RAB</h4>
+                                <dt class="col-sm-4">Pekerjaan</dt>
+                                <dd class="col-sm-8">: <?= htmlspecialchars($pengajuan_info['pekerjaan']) ?></dd>
+                                
+                                <dt class="col-sm-4">Type Proyek</dt>
+                                <dd class="col-sm-8">: <?= htmlspecialchars($pengajuan_info['type_proyek']) ?></dd>
+
+                                <dt class="col-sm-4">Lokasi</dt>
+                                <dd class="col-sm-8">: <?= htmlspecialchars($pengajuan_info['lokasi']) ?></dd>
+                                
+                                <dt class="col-sm-4">Keterangan</dt>
+                                <dd class="col-sm-8">: <?= !empty($pengajuan_info['keterangan']) ? htmlspecialchars($pengajuan_info['keterangan']) : '-' ?></dd>
+                            </dl>
+                        </div>
+                        <!-- Kolom Kanan -->
+                        <div class="col-md-6">
+                            <dl class="row">
+                                <dt class="col-sm-4">Tanggal Pengajuan</dt>
+                                <dd class="col-sm-8">: <?= date('d F Y', strtotime($pengajuan_info['tanggal_pengajuan'])) ?></dd>
+                                
+                                <dt class="col-sm-4">Status</dt>
+                                <dd class="col-sm-8">: <span class="badge bg-info"><?= ucwords(htmlspecialchars($pengajuan_info['status_pengajuan'])) ?></span></dd>
+                                
+                                <dt class="col-sm-4">Mandor</dt>
+                                <dd class="col-sm-8">: <?= htmlspecialchars($pengajuan_info['nama_mandor']) ?></dd>
+                                
+                                <dt class="col-sm-4">PJ Proyek</dt>
+                                <dd class="col-sm-8">: <?= htmlspecialchars($pengajuan_info['pj_proyek']) ?></dd>
+                                
+                                <dt class="col-sm-4">Total RAB Upah</dt>
+                                <dd class="col-sm-8">: <strong class="text-success">Rp <?= number_format($pengajuan_info['total_rab_upah'], 0, ',', '.') ?></strong></dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
             </div>
-<div class="card-body">
-    <div class="container mt-4">        
-        <!-- Tampilkan Informasi RAB -->
-        <div class="row mb-4">
-            <div class="col-md-6">
-                <label class="fw-bold">ID RAB:</label>
-                <p><?= htmlspecialchars($pengajuan_info['id_rab_upah']) ?></p>
+
+            <!-- Tabel Detail Pekerjaan -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-light"><h4 class="card-title mb-0">Rincian Pekerjaan yang Diajukan</h4></div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-vcenter mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width:5%;" class="text-center">No</th>
+                                    <th>Uraian Pekerjaan</th>
+                                    <th style="width:15%;" class="text-center">Jumlah RAB (Rp)</th>
+                                    <th style="width:15%;" class="text-center">Progress Diajukan (%)</th>
+                                    <th style="width:15%;" class="text-center">Nilai Diajukan (Rp)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if ($detail_result && mysqli_num_rows($detail_result) > 0) {
+                                    $prevKategori = null;
+                                    $noKategori = 0;
+                                    $noPekerjaan = 1;
+                                    while ($row = mysqli_fetch_assoc($detail_result)) {
+                                        if ($prevKategori !== $row['nama_kategori']) {
+                                            $noKategori++;
+                                            echo "<tr class='table-primary fw-bold'><td class='text-center'>" . toRoman($noKategori) . "</td><td colspan='4'>" . htmlspecialchars($row['nama_kategori']) . "</td></tr>";
+                                            $prevKategori = $row['nama_kategori'];
+                                            $noPekerjaan = 1;
+                                        }
+                                        echo "<tr>
+                                                <td class='text-center'>" . $noPekerjaan++ . "</td>
+                                                <td><span class='ms-3'>" . htmlspecialchars($row['uraian_pekerjaan']) . "</span></td>
+                                                <td class='text-end'>" . number_format($row['sub_total'], 0, ',', '.') . "</td>
+                                                <td class='text-center'>" . number_format($row['progress_pekerjaan'], 2, ',', '.') . "%</td>
+                                                <td class='text-end fw-bold'>" . number_format($row['nilai_upah_diajukan'], 0, ',', '.') . "</td>
+                                              </tr>";
+                                    }
+                                } else {
+                                    echo "<tr><td colspan='5' class='text-center text-muted'>Tidak ada rincian pekerjaan untuk pengajuan ini.</td></tr>";
+                                }
+                                ?>
+                            </tbody>
+                            <tfoot>
+                                <tr class='table-success fw-bolder'>
+                                    <td colspan="4" class='text-end'>TOTAL PENGAJUAN</td>
+                                    <td class='text-end'>Rp <?= number_format($pengajuan_info['total_pengajuan'], 0, ',', '.') ?></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+              </div>
+                        <!-- Galeri Bukti Pekerjaan -->
+            <div id="bukti" class="card shadow-sm mb-4">
+                <div class="card-header bg-light"><h4 class="card-title mb-0">Bukti Pekerjaan Terlampir</h4></div>
+                <div class="card-body">
+                    <?php if ($bukti_result && mysqli_num_rows($bukti_result) > 0): ?>
+                        <div class="row g-3">
+                            <?php while($bukti = mysqli_fetch_assoc($bukti_result)): ?>
+                                <div class="col-6 col-md-3 col-lg-2">
+                                    <a href="../<?= htmlspecialchars($bukti['path_file']) ?>" target="_blank" title="<?= htmlspecialchars($bukti['nama_file']) ?>">
+                                        <img src="../<?= htmlspecialchars($bukti['path_file']) ?>" class="img-thumbnail" alt="<?= htmlspecialchars($bukti['nama_file']) ?>" style="width: 100%; height: 120px; object-fit: cover;" onerror="this.onerror=null;this.src='https://placehold.co/600x400/EEE/31343C?text=Gagal\nMuat';">
+                                    </a>
+                                </div>
+                            <?php endwhile; ?>
+                        </div>
+                    <?php else: ?>
+                        <p class="text-muted text-center py-3">Tidak ada bukti yang dilampirkan untuk pengajuan ini.</p>
+                    <?php endif; ?>
+                </div>
             </div>
-            <div class="col-md-6">
-                <label class="fw-bold">Pekerjaan:</label>
-                <p><?= htmlspecialchars($pengajuan_info['pekerjaan']) ?></p>
-            </div>
-            <div class="col-md-6">
-                <label class="fw-bold">Tipe Proyek:</label>
-                <p><?= htmlspecialchars($pengajuan_info['type_proyek']) ?></p>
-            </div>
-            <div class="col-md-6">
-                <label class="fw-bold">Lokasi:</label>
-                <p><?= htmlspecialchars($pengajuan_info['lokasi']) ?></p>
-            </div>
-            <div class="col-md-6">
-                <label class="fw-bold">Tanggal Pengajuan:</label>
-                <p><?= htmlspecialchars($pengajuan_info['tanggal_pengajuan']) ?></p>
-            </div>
-            <div class="col-md-6">
-                <label class="fw-bold">Mandor:</label>
-                <p><?= htmlspecialchars($pengajuan_info['nama_mandor']) ?></p>
-            </div>
+
+          </div>
         </div>
-
-
-     <!-- Table for Displaying Pengajuan Upah Details -->
-    <table class="table table-bordered">
-<thead>
-    <tr>
-        <th style="text-align: center;">No</th>
-        <th style="text-align: center;">Uraian Pekerjaan</th>
-        <th style="text-align: center;">Jumlah (Rp)</th>
-        <th style="text-align: center;">Progress(%)</th>
-        <th style="text-align: center;">Nilai Pengajuan (Rp)</th>
-    </tr>
-</thead>
-    <tbody>
-        <?php
-        $grandTotal = 0;
-        $prevKategori = null;
-        $noKategori = 0;
-        $noPekerjaan = 1;
-
-        while ($row = mysqli_fetch_assoc($detail_result)) {
-            // Displaying category row
-            if ($prevKategori !== $row['nama_kategori']) {
-                $noKategori++;
-                echo "<tr class='table-primary fw-bold'><td class='text-center'>" . toRoman($noKategori) . "</td><td colspan='4'>" . htmlspecialchars($row['nama_kategori']) . "</td></tr>";
-                $prevKategori = $row['nama_kategori'];
-                $noPekerjaan = 1;  // Reset pekerjaan number
-            }
-
-            $idDetail = $row['id_detail_rab_upah'];
-            $subtotal = $row['sub_total'];
-            // Assume progressLalu and nilaiPengajuan are already set
-            // Get the progress and nilaiPengajuan values from database or calculations
-            $progressLalu = $row['progress_pekerjaan'];  // Assuming this comes from the query or calculations
-            $nilaiPengajuan = ($progressLalu / 100) * $subtotal;  // Calculate nilai pengajuan based on progress
-
-            // Displaying pekerjaan (job task)
-            echo "<tr>
-                    <td class='text-center'>" . $noPekerjaan++ . "</td>
-                    <td><span class='ms-3'>" . htmlspecialchars($row['uraian_pekerjaan']) . "</span></td>
-                    <td class='text-end'>" . number_format($subtotal, 0, ',', '.') . "</td>
-                    <td class='text-center'>" . number_format($progressLalu, 2, ',', '.') . "%</td>
-                    <td class='text-end fw-bold'>" . number_format($nilaiPengajuan, 0, ',', '.') . "</td>
-                </tr>";
-
-            $grandTotal += $nilaiPengajuan;  // Sum up the total nilai pengajuan
-        }
-        ?>
-    </tbody>
-    <tfoot>
-        <tr class='table-success fw-bold'>
-            <td colspan="4" class='text-end'>TOTAL KESELURUHAN</td>
-            <td id="total-keseluruhan" class='text-end'>Rp <?= number_format($grandTotal ?? 0, 0, ',', '.') ?></td>
-        </tr>
-        <tr class='table-info fw-bold'>
-            <td colspan="4" class='text-end'>TOTAL PENGAJUAN</td>
-            <td id="total-pengajuan-saat-ini" class='text-end'>Rp <?= number_format($pengajuan_info['total_pengajuan'], 0, ',', '.') ?></td>
-        </tr>
-    </tfoot>
-</table>
+      </div>
+    </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>

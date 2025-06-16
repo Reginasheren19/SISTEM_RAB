@@ -1,65 +1,94 @@
 <?php
-// FILE: delete_pengajuan_upah.php (dengan validasi status)
+// FILE: delete_pengajuan_upah.php (Final & Aman)
 
-// Sertakan file koneksi database Anda
+session_start();
 include("../config/koneksi_mysql.php");
 
-// 1. Validasi Input: Pastikan ID pengajuan ada dan merupakan angka
+// Fungsi untuk mengarahkan kembali dengan pesan pop-up
+function redirect_with_message($url, $message, $type = 'error') {
+    $_SESSION['flash_message'] = [
+        'message' => $message,
+        'type' => $type
+    ];
+    header("Location: $url");
+    exit();
+}
+
+// 1. Validasi Input
 if (!isset($_GET['id_pengajuan_upah']) || !filter_var($_GET['id_pengajuan_upah'], FILTER_VALIDATE_INT)) {
-    header("Location: pengajuan_upah.php?msg=Error: ID pengajuan tidak valid.");
-    exit;
+    redirect_with_message("pengajuan_upah.php", "ID Pengajuan tidak valid.");
 }
+$id_pengajuan_to_delete = (int)$_GET['id_pengajuan_upah'];
 
-// 2. Amankan ID dari SQL Injection
-$id_pengajuan_upah = mysqli_real_escape_string($koneksi, $_GET['id_pengajuan_upah']);
-
-// [BARU] Tambahkan validasi status di sisi server
-// Langkah A: Ambil status pengajuan saat ini dari database
-$sql_check_status = "SELECT status_pengajuan FROM pengajuan_upah WHERE id_pengajuan_upah = '$id_pengajuan_upah'";
-$result_check = mysqli_query($koneksi, $sql_check_status);
-
-if (mysqli_num_rows($result_check) > 0) {
-    $pengajuan = mysqli_fetch_assoc($result_check);
-    $status_sekarang = $pengajuan['status_pengajuan'];
-
-    // Langkah B: Jika statusnya BUKAN 'diajukan' atau 'ditolak', hentikan proses dan beri pesan error
-    if (!in_array($status_sekarang, ['diajukan', 'ditolak'])) {
-        header("Location: pengajuan_upah.php?msg=Error: Pengajuan dengan status '$status_sekarang' tidak dapat dihapus.");
-        exit;
-    }
-} else {
-    // Jika pengajuan dengan ID tersebut tidak ditemukan
-    header("Location: pengajuan_upah.php?msg=Error: Pengajuan tidak ditemukan.");
-    exit;
-}
-
-// 3. Gunakan Transaksi Database untuk Menjamin Integritas Data
+// Mulai transaksi untuk keamanan
 mysqli_begin_transaction($koneksi);
 
 try {
-    // Hapus semua baris terkait di tabel detail terlebih dahulu
-    $sql_delete_detail = "DELETE FROM detail_pengajuan_upah WHERE id_pengajuan_upah = '$id_pengajuan_upah'";
-    if (!mysqli_query($koneksi, $sql_delete_detail)) {
-        throw new Exception("Gagal menghapus detail pengajuan: " . mysqli_error($koneksi));
+    // 2. Ambil info pengajuan yang akan dihapus
+    $stmt = mysqli_prepare($koneksi, "SELECT id_rab_upah, status_pengajuan FROM pengajuan_upah WHERE id_pengajuan_upah = ?");
+    mysqli_stmt_bind_param($stmt, "i", $id_pengajuan_to_delete);
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
+    $pengajuan = mysqli_fetch_assoc($result);
+
+    if (!$pengajuan) {
+        throw new Exception("Pengajuan tidak ditemukan.");
     }
 
-    // Hapus baris utama di tabel master pengajuan
-    $sql_delete_master = "DELETE FROM pengajuan_upah WHERE id_pengajuan_upah = '$id_pengajuan_upah'";
-    if (!mysqli_query($koneksi, $sql_delete_master)) {
-        throw new Exception("Gagal menghapus pengajuan utama: " . mysqli_error($koneksi));
+    $id_rab_upah = $pengajuan['id_rab_upah'];
+    $status_pengajuan = $pengajuan['status_pengajuan'];
+
+    // 3. Validasi Status: Hanya boleh hapus jika statusnya 'diajukan' atau 'ditolak'
+    if (!in_array($status_pengajuan, ['diajukan', 'ditolak'])) {
+        throw new Exception("Pengajuan dengan status '$status_pengajuan' tidak dapat dihapus.");
     }
 
-    // 4. Jika kedua query berhasil, commit transaksi
+    // 4. Validasi Urutan: Hanya boleh hapus pengajuan terakhir
+    $stmt_last = mysqli_prepare($koneksi, "SELECT MAX(id_pengajuan_upah) AS id_terakhir FROM pengajuan_upah WHERE id_rab_upah = ?");
+    mysqli_stmt_bind_param($stmt_last, "i", $id_rab_upah);
+    mysqli_stmt_execute($stmt_last);
+    $result_last = mysqli_stmt_get_result($stmt_last);
+    $last_pengajuan = mysqli_fetch_assoc($result_last);
+    
+    if ($id_pengajuan_to_delete != $last_pengajuan['id_terakhir']) {
+        throw new Exception("Hanya pengajuan termin terakhir yang dapat dihapus.");
+    }
+
+    // 5. Hapus file-file bukti dari server
+    $stmt_files = mysqli_prepare($koneksi, "SELECT path_file FROM bukti_pengajuan_upah WHERE id_pengajuan_upah = ?");
+    mysqli_stmt_bind_param($stmt_files, "i", $id_pengajuan_to_delete);
+    mysqli_stmt_execute($stmt_files);
+    $result_files = mysqli_stmt_get_result($stmt_files);
+    while($file = mysqli_fetch_assoc($result_files)) {
+        $file_path_on_server = '../../' . $file['path_file']; 
+        if (file_exists($file_path_on_server)) {
+            unlink($file_path_on_server);
+        }
+    }
+
+    // 6. Hapus dari database (dimulai dari tabel anak/child)
+    // Hapus dari bukti_pengajuan_upah
+    $stmt_delete_bukti = mysqli_prepare($koneksi, "DELETE FROM bukti_pengajuan_upah WHERE id_pengajuan_upah = ?");
+    mysqli_stmt_bind_param($stmt_delete_bukti, "i", $id_pengajuan_to_delete);
+    mysqli_stmt_execute($stmt_delete_bukti);
+
+    // Hapus dari detail_pengajuan_upah
+    $stmt_delete_detail = mysqli_prepare($koneksi, "DELETE FROM detail_pengajuan_upah WHERE id_pengajuan_upah = ?");
+    mysqli_stmt_bind_param($stmt_delete_detail, "i", $id_pengajuan_to_delete);
+    mysqli_stmt_execute($stmt_delete_detail);
+
+    // Terakhir, hapus dari pengajuan_upah
+    $stmt_delete_main = mysqli_prepare($koneksi, "DELETE FROM pengajuan_upah WHERE id_pengajuan_upah = ?");
+    mysqli_stmt_bind_param($stmt_delete_main, "i", $id_pengajuan_to_delete);
+    mysqli_stmt_execute($stmt_delete_main);
+
+    // Jika semua berhasil, commit transaksi
     mysqli_commit($koneksi);
-
-    // 5. Redirect kembali ke halaman daftar dengan pesan sukses
-    header("Location: pengajuan_upah.php?msg=Pengajuan berhasil dihapus.");
-    exit;
+    redirect_with_message("pengajuan_upah.php", "Pengajuan berhasil dihapus.", "success");
 
 } catch (Exception $e) {
-    // 6. Jika terjadi error, batalkan semua perubahan
+    // Jika ada error, batalkan semua
     mysqli_rollback($koneksi);
-    header("Location: pengajuan_upah.php?msg=Error: Terjadi kesalahan saat menghapus data.");
-    exit;
+    redirect_with_message("pengajuan_upah.php", "Gagal menghapus: " . $e->getMessage());
 }
 ?>

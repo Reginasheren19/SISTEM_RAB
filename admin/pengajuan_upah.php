@@ -80,6 +80,13 @@ $rabUpahUntukModalResult = mysqli_query($koneksi, $rabUpahUntukModalSql);
 if (!$rabUpahUntukModalResult) {
     die("Query Error (Modal RAB): " . mysqli_error($koneksi));
 }
+
+// Ambil pesan flash dari session jika ada
+$flash_message = null;
+if (isset($_SESSION['flash_message'])) {
+    $flash_message = $_SESSION['flash_message'];
+    unset($_SESSION['flash_message']);
+}
 ?>
 
 
@@ -937,7 +944,7 @@ if (!$rabUpahUntukModalResult) {
             <td><?= htmlspecialchars($row['nama_perumahan']) . ' - ' . htmlspecialchars($row['kavling']) ?></td> <!-- Display formatted Proyek -->
             <td><?= htmlspecialchars($row['nama_mandor']) ?></td>
             <td class="text-center"><?= $tanggalFormatted ?></td>
-            <td class="text-center"><?= $totalFormatted ?></td>
+            <td class="text-center">Rp <?= $totalFormatted ?></td> <!-- Display formatted Total Pengajuan -->
             <td>
               <!-- [DIUBAH] Menambahkan class warna dari fungsi PHP -->
               <select class="form-select status-select <?= getStatusClass($row['status_pengajuan']) ?>" data-id="<?= htmlspecialchars($row['id_pengajuan_upah']) ?>">
@@ -1263,7 +1270,8 @@ $(document).ready(function() {
         });
         rejectionModal.hide();
     });
-});
+
+    
 </script>
 
 </body>
