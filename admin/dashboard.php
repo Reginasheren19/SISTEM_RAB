@@ -196,6 +196,12 @@ include("../config/koneksi_mysql.php");
                 </a>
               </li>
               <li class="nav-item">
+                <a href="distribusi_material.php">
+                  <i class="fas fa-truck"></i>
+                  <p>Distribusi Material</p>
+                </a>
+              </li>
+              <li class="nav-item">
                 <a data-bs-toggle="collapse" href="#forms">
                   <i class="fas fa-pen-square"></i>
                   <p>Forms</p>
