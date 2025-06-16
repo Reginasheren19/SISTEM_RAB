@@ -737,9 +737,6 @@ include("../config/koneksi_mysql.php");
     </div>
   </ul>
 </li>
-
-
-
               </ul>
             </div>
           </nav>

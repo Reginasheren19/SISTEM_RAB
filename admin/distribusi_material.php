@@ -1,28 +1,28 @@
 <?php
+// Selalu mulai session untuk membawa pesan feedback (notifikasi)
 session_start();
+// Sertakan file koneksi ke database
 include("../config/koneksi_mysql.php");
 
-// Query untuk mengambil data pembelian
-$sql = "SELECT 
-            p.id_pembelian,
-            p.tanggal_pembelian,
-            p.keterangan_pembelian,
-            p.bukti_pembayaran,  
-            (SELECT SUM(dp.sub_total_pp) 
-             FROM detail_pencatatan_pembelian dp  
-             WHERE dp.id_pembelian = p.id_pembelian) AS total_biaya
-        FROM 
-            pencatatan_pembelian p
-        ORDER BY 
-            p.tanggal_pembelian DESC";
-
-// Eksekusi query
+// Query SQL untuk mengambil data daftar distribusi.
+$sql = "
+    SELECT 
+        d.id_distribusi,
+        d.tanggal_distribusi,
+        d.keterangan_umum,
+        u.nama_lengkap AS nama_pj_distribusi
+    FROM 
+        distribusi_material d
+    LEFT JOIN
+        master_user u ON d.id_user_pj = u.id_user
+    ORDER BY 
+        d.id_distribusi DESC
+";
 $result = mysqli_query($koneksi, $sql);
 
-// Periksa apakah query berhasil dieksekusi
+// Pengecekan jika query gagal total
 if (!$result) {
-    echo "<div class='alert alert-danger'>Query Error: " . mysqli_error($koneksi) . "</div>";
-    exit;  // Hentikan eksekusi jika query gagal
+    die("Query Error: " . mysqli_error($koneksi));
 }
 ?>
 
@@ -31,7 +31,7 @@ if (!$result) {
 <html lang="en">
   <head>
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <title>Pencatatan Pembelian</title>
+    <title>Distribusi Material</title>
     <meta
       content="width=device-width, initial-scale=1.0, shrink-to-fit=no"
       name="viewport"
@@ -216,6 +216,12 @@ if (!$result) {
                 <a href="pencatatan_pembelian.php">
                   <i class="fas fa-pen-square"></i>
                   <p>Pencatatan Pembelian</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="distribusi_material.php">
+                  <i class="fas fa-truck"></i>
+                  <p>Distribusi Material</p>
                 </a>
               </li>
               <li class="nav-item">
@@ -757,7 +763,7 @@ if (!$result) {
     <div class="container">
         <div class="page-inner">
             <div class="page-header">
-                <h3 class="fw-bold mb-3">Pencatatan Pembelian</h3>
+                <h3 class="fw-bold mb-3">Distribusi Material</h3>
                 <ul class="breadcrumbs mb-3">
                     <li class="nav-home">
                         <a href="dashboard.php">
@@ -768,175 +774,165 @@ if (!$result) {
                         <i class="icon-arrow-right"></i>
                     </li>
                     <li class="nav-item">
-                        <a href="#">Pencatatan Pembelian</a>
+                        <a href="#">Distribusi Material</a>
                     </li>
                 </ul>
             </div>
 
-            <div class="row">
-                <div class="col-md-12">
-                    <div class="card">
-                        <div class="card-header d-flex align-items-center">
-                            <h4 class="card-title">Daftar Transaksi Pembelian</h4>
-                            <button class="btn btn-primary btn-round ms-auto" data-bs-toggle="modal" data-bs-target="#addPembelianModal">
-                                <i class="fa fa-plus"></i> Tambah Pembelian
-                            </button>
-                        </div>
-                        <div class="card-body">
-                            <?php
-                            // Menampilkan pesan sukses atau error dari proses lain (seperti hapus data)
-                            if (isset($_SESSION['pesan_sukses'])) {
-                                echo '<div class="alert alert-success" role="alert">' . $_SESSION['pesan_sukses'] . '</div>';
-                                unset($_SESSION['pesan_sukses']);
-                            }
-                            if (isset($_SESSION['error_message'])) {
-                                echo '<div class="alert alert-danger" role="alert">' . $_SESSION['error_message'] . '</div>';
-                                unset($_SESSION['error_message']);
-                            }
-                            ?>
-                            <div class="table-responsive">
-                                <table id="tabelPembelian" class="table table-striped table-hover">
-                                    <thead>
-                                        <tr>
-                                            <th>No.</th>
-                                            <th>ID Pembelian</th>
-                                            <th>Tanggal Pembelian</th>
-                                            <th>Keterangan</th>
-                                            <th>Total Biaya</th>
-                                            <th>Bukti Pembelian</th>
-                                            <th>Action</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php 
-                                        if (isset($result) && $result && mysqli_num_rows($result) > 0): 
-                                            $nomor = 1; 
-                                            while ($row = mysqli_fetch_assoc($result)): 
-                                                $tahun_pembelian = date('Y', strtotime($row['tanggal_pembelian']));
-                                                $formatted_id = 'PB' . $row['id_pembelian'] . $tahun_pembelian;
-                                        ?>
-                                                <tr>
-                                                    <td><?= $nomor ?></td>
-                                                    <td><?= htmlspecialchars($formatted_id) ?></td>
-                                                    <td><?= date("d F Y", strtotime($row['tanggal_pembelian'])) ?></td>
-                                                    <td><?= htmlspecialchars($row['keterangan_pembelian']) ?></td>
-                                                    <td><?= 'Rp ' . number_format($row['total_biaya'] ?? 0, 0, ',', '.') ?></td>
-                                                    <td>
-                                                        <?php if (!empty($row['bukti_pembayaran'])): ?>
-                                                            <a href="../uploads/bukti_pembayaran/<?= htmlspecialchars($row['bukti_pembayaran']) ?>" target="_blank">
-                                                                <img src="../uploads/bukti_pembayaran/<?= htmlspecialchars($row['bukti_pembayaran']) ?>" alt="Nota" style="width: 80px; height: auto; border-radius: 4px;">
-                                                            </a>
-                                                        <?php else: ?>
-                                                            <span>-</span>
-                                                        <?php endif; ?>
-                                                    </td>
-                                                    <td>
-                                                        <a href="detail_pembelian.php?id=<?= urlencode($row['id_pembelian']) ?>" class="btn btn-info btn-sm">Detail</a>
-                                                        <button class="btn btn-danger btn-sm btn-delete" 
-                                                                data-id="<?= $row['id_pembelian'] ?>" 
-                                                                data-bs-toggle="modal" 
-                                                                data-bs-target="#confirmDeleteModal">
-                                                            Delete
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                        <?php 
-                                            $nomor++; 
-                                            endwhile; 
-                                        else: 
-                                        ?>
-                                            <tr>
-                                                <td colspan="7" class="text-center">Belum ada data pembelian.</td>
-                                            </tr>
-                                        <?php endif; ?>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
+<div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header d-flex align-items-center">
+                    <h4 class="card-title">Daftar Transaksi Distribusi</h4>
+                    <button class="btn btn-primary btn-round ms-auto" data-bs-toggle="modal" data-bs-target="#addDistribusiModal">
+                        <i class="fa fa-plus"></i> Tambah Distribusi
+                    </button>
+                </div>
+                <div class="card-body">
+                    <?php
+                    // Blok untuk menampilkan notifikasi (kode Anda sudah bagus)
+                    if (isset($_SESSION['pesan_sukses'])) {
+                        echo '<div class="alert alert-success" role="alert">' . htmlspecialchars($_SESSION['pesan_sukses']) . '</div>';
+                        unset($_SESSION['pesan_sukses']);
+                    }
+                    if (isset($_SESSION['error_message'])) {
+                        echo '<div class="alert alert-danger" role="alert">' . htmlspecialchars($_SESSION['error_message']) . '</div>';
+                        unset($_SESSION['error_message']);
+                    }
+                    ?>
+                    <div class="table-responsive">
+                        <table id="tabelDistribusi" class="table table-striped table-hover" style="width:100%">
+                            <thead>
+                                <tr>
+                                    <th>No.</th>
+                                    <th>ID Distribusi</th>
+                                    <th>Tanggal</th>
+                                    <th>Didistribusikan Oleh</th>
+                                    <th>Keterangan</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php 
+                                // Loop PHP Anda untuk mengisi data (kode Anda sudah bagus)
+                                if ($result && mysqli_num_rows($result) > 0): 
+                                    $nomor = 1; 
+                                    while ($row = mysqli_fetch_assoc($result)):
+                                        $tahun_distribusi = date('Y', strtotime($row['tanggal_distribusi']));
+                                        $formatted_id = 'DIST' . $row['id_distribusi'] . $tahun_distribusi;
+                                ?>
+                                    <tr>
+                                        <td><?= $nomor++ ?></td>
+                                        <td><?= htmlspecialchars($formatted_id) ?></td>
+                                        <td><?= date("d F Y", strtotime($row['tanggal_distribusi'])) ?></td>
+                                        <td><?= htmlspecialchars($row['nama_pj_distribusi']) ?></td>
+                                        <td><?= htmlspecialchars($row['keterangan_umum']) ?></td>
+                                        <td>
+                                            <a href="detail_distribusi.php?id=<?= urlencode($row['id_distribusi']) ?>" class="btn btn-info btn-sm">Detail</a>
+                                            <button class="btn btn-danger btn-sm btn-delete" 
+                                                    data-id="<?= $row['id_distribusi'] ?>" 
+                                                    data-bs-toggle="modal" 
+                                                    data-bs-target="#confirmDeleteModal">
+                                                Delete
+                                            </button>
+                                        </td>
+                                    </tr>
+                                <?php 
+                                    endwhile; 
+                                else: 
+                                ?>
+                                    <tr>
+                                        <td colspan="6" class="text-center">Belum ada data distribusi.</td>
+                                    </tr>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="modal fade" id="addPembelianModal" tabindex="-1" aria-labelledby="addPembelianModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <form method="POST" action="add_pembelian.php" enctype="multipart/form-data">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="addPembelianModalLabel">Tambah Pembelian Material</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="mb-3">
-                            <label for="tanggal_pembelian" class="form-label">Tanggal Pembelian</label>
-                            <input type="date" class="form-control" id="tanggal_pembelian" name="tanggal_pembelian" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="keterangan_pembelian" class="form-label">Keterangan</label>
-                            <input type="text" class="form-control" id="keterangan_pembelian" name="keterangan_pembelian" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="bukti_pembayaran" class="form-label">Upload Nota Pembelian</label>
-                            <input type="file" class="form-control" id="bukti_pembayaran" name="bukti_pembayaran" required>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                        <button type="submit" class="btn btn-primary">Lanjut</button>
-                    </div>
-                </form>
-            </div>
+<div class="modal fade" id="addDistribusiModal" tabindex="-1" aria-labelledby="addDistribusiModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <!-- Form ini akan mengirim data ke file baru yang akan kita buat: add_distribusi.php -->
+      <form method="POST" action="add_distribusi.php">
+        <div class="modal-header">
+          <h5 class="modal-title" id="addDistribusiModalLabel">Buat Transaksi Distribusi Baru</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="tanggal_distribusi" class="form-label">Tanggal Distribusi</label>
+            <!-- Otomatis diisi tanggal hari ini -->
+            <input type="date" class="form-control" id="tanggal_distribusi" name="tanggal_distribusi" value="<?= date('Y-m-d') ?>" required>
+          </div>
+          <div class="mb-3">
+            <label for="keterangan_umum" class="form-label">Keterangan Umum (Opsional)</label>
+            <textarea class="form-control" id="keterangan_umum" name="keterangan_umum" rows="3" placeholder="Contoh: Pengambilan material untuk Pengecoran Blok A"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+          <!-- Tombol ini akan memproses dan mengarahkan ke halaman input detail -->
+          <button type="submit" class="btn btn-primary">Lanjut ke Input Detail</button>
+        </div>
+      </form>
     </div>
+  </div>
+</div>
 
-    <div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteModalLabel" aria-hidden="true">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title" id="confirmDeleteModalLabel">Konfirmasi Hapus</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <div class="modal-body">
-            <p>Apakah Anda yakin ingin menghapus data pembelian ini?</p>
-            <p class="text-danger small">Semua detail material yang terkait juga akan ikut terhapus.</p>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-            <a href="#" id="confirmDeleteLink" class="btn btn-danger">Hapus</a>
-          </div>
-        </div>
+<div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="confirmDeleteModalLabel">Konfirmasi Hapus</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <!-- Teks diubah agar sesuai dengan konteks distribusi -->
+        <p>Apakah Anda yakin ingin menghapus data distribusi ini?</p>
+        <p class="text-danger small">Aksi ini akan mengembalikan jumlah stok material yang didistribusikan. Pastikan Anda yakin.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+        <!-- Link ini akan diisi oleh JavaScript saat tombol delete di tabel diklik -->
+        <a href="#" id="confirmDeleteLink" class="btn btn-danger">Hapus</a>
       </div>
     </div>
-
+  </div>
+</div>
     <script src="assets/js/core/jquery-3.7.1.min.js"></script>
     <script src="assets/js/core/popper.min.js"></script>
     <script src="assets/js/core/bootstrap.min.js"></script>
     <script src="assets/js/plugin/datatables/datatables.min.js"></script>
 
+    <script src="assets/js/plugin/datatables/dataTables.bootstrap5.min.js"></script>
+
     <script>
     $(document).ready(function() {
-
-        // Inisialisasi DataTable tanpa properti 'order'.
-        // Ini akan menjaga urutan asli dari HTML (yang sudah diurutkan dari server/PHP).
-        $('#tabelPembelian').DataTable();
-
-        // Bagian untuk modal hapus
-        $('#tabelPembelian').on('click', '.btn-delete', function() {
-            const id = $(this).data('id');
-            const deleteUrl = `delete_pembelian.php?id=${id}`;
-            $('#confirmDeleteLink').attr('href', deleteUrl);
+        // Inisialisasi DataTable untuk tabel distribusi
+        // Dengan file CSS dan JS yang benar, ini akan otomatis membuat semua kontrol
+        $('#tabelDistribusi').DataTable({
+            "order": [] // Pengaturan Anda untuk tidak ada pengurutan awal
         });
 
-        // Bagian notifikasi otomatis hilang
+        // Script notifikasi dan modal hapus Anda sudah bagus
         const alertBox = $('.alert');
         if (alertBox.length) {
             setTimeout(function() {
                 alertBox.fadeOut('slow');
             }, 5000);
         }
-        
+
+        $('#tabelDistribusi').on('click', '.btn-delete', function() {
+            const id = $(this).data('id');
+            const deleteUrl = `delete_distribusi.php?id=${id}`;
+            $('#confirmDeleteLink').attr('href', deleteUrl);
+        });
     });
     </script>
+
 </body>
 </html>
