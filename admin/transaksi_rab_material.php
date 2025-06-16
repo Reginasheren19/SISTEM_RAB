@@ -1,20 +1,41 @@
 <?php
 include("../config/koneksi_mysql.php");
 
-// Mengatur error reporting
+
+// Mengatur error reporting untuk membantu debugging
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
-// Mengambil data user dari database
-$result = mysqli_query($koneksi, "SELECT * FROM rab_material");
-$perumahanResult = mysqli_query($koneksi, "SELECT id_perumahan, nama_perumahan, lokasi FROM master_perumahan ORDER BY nama_perumahan ASC");
+
+// Query ini mengambil SEMUA data untuk ditampilkan di tabel utama.
+$sql = "SELECT 
+          tr.id_rab_material,
+          tr.id_proyek,
+          mpe.nama_perumahan,
+          mpr.kavling,
+          mpr.type_proyek,
+          mpe.lokasi,
+          mm.nama_mandor,
+          u.nama_lengkap AS pj_proyek, -- Mengambil nama lengkap user sebagai 'pj_proyek'
+          tr.tanggal_mulai_mt,
+          tr.tanggal_selesai_mt,
+          tr.total_rab_material
+        FROM rab_material tr
+        JOIN master_proyek mpr ON tr.id_proyek = mpr.id_proyek
+        LEFT JOIN master_perumahan mpe ON mpr.id_perumahan = mpe.id_perumahan
+        LEFT JOIN master_mandor mm ON mpr.id_mandor = mm.id_mandor
+        LEFT JOIN master_user u ON mpr.id_user_pj = u.id_user
+        ORDER BY tr.id_rab_material DESC"; // Mengurutkan berdasarkan data terbaru
+
+$result = mysqli_query($koneksi, $sql);
+if (!$result) {
+    die("Query Error (rab_material): " . mysqli_error($koneksi));
+}
+
+// Query ini untuk mengisi dropdown 'Nama Perumahan' di dalam modal tambah data.
+$perumahanResult = mysqli_query($koneksi, "SELECT id_perumahan, nama_perumahan FROM master_perumahan ORDER BY nama_perumahan ASC");
 if (!$perumahanResult) {
     die("Query Error (perumahan): " . mysqli_error($koneksi));
 }
-$kavlingResult = mysqli_query($koneksi, "SELECT id_proyek, kavling, type_proyek FROM master_proyek ORDER BY type_proyek ASC");
-if (!$perumahanResult) {
-    die("Query Error (proyek): " . mysqli_error($koneksi));
-}
-
 ?>
 
 
@@ -811,6 +832,7 @@ if (!$perumahanResult) {
                 <th>Perumahan</th>
                 <th>Kavling</th>
                 <th>Mandor</th>
+                <th>Pj Proyek</th>
                 <th>Tanggal Mulai</th>
                 <th>Tanggal Selesai</th>
                 <th>Total</th>
@@ -818,269 +840,188 @@ if (!$perumahanResult) {
               </tr>
             </thead>
             <tbody>
-              <?php
-              $sql = "SELECT 
-                        tr.id_rab_material,
-                        tr.id_perumahan,
-                        tr.id_proyek,
-                        tr.id_mandor,
-                        mpe.nama_perumahan,
-                        mpr.kavling,
-                        mm.nama_mandor,
-                        tr.tanggal_mulai_mt,
-                        tr.tanggal_selesai_mt,
-                        tr.total_rab_material AS total
-                      FROM 
-                        rab_material tr
-                      JOIN master_perumahan mpe ON tr.id_perumahan = mpe.id_perumahan
-                      JOIN master_proyek mpr ON tr.id_proyek = mpr.id_proyek
-                      JOIN master_mandor mm ON tr.id_mandor = mm.id_mandor
-                      ";
+                          <?php while ($row = mysqli_fetch_assoc($result)): ?>
+                          <?php
+                            $tahun = date('Y', strtotime($row['tanggal_mulai_mt']));
+                            $bulan = date('m', strtotime($row['tanggal_mulai_mt']));
+                            $formatted_id = 'RABM' . substr($tahun, -2) . $bulan . $row['id_proyek'] . $row['id_rab_material'];
+                            $totalFormatted = 'Rp ' . number_format($row['total_rab_material'], 0, ',', '.');
+                          ?>
+                          <tr>
+                            <td><?= htmlspecialchars($formatted_id) ?></td>
+                            <td><?= htmlspecialchars($row['nama_perumahan']) ?></td>
+                            <td><?= htmlspecialchars($row['kavling']) ?></td>
+                            <td><?= htmlspecialchars($row['nama_mandor']) ?></td>
+                            <td><?= htmlspecialchars($row['pj_proyek']) ?></td>
+                            <td><?= date('d-m-Y', strtotime($row['tanggal_mulai_mt'])) ?></td>
+                            <td><?= date('d-m-Y', strtotime($row['tanggal_selesai_mt'])) ?></td>
+                            <td><?= htmlspecialchars($totalFormatted) ?></td>
+                            <td>
+                              <a href="detail_rab_material.php?id_rab_material=<?= urlencode($row['id_rab_material']) ?>" class="btn btn-info btn-sm">Detail</a>
+                              <button class="btn btn-danger btn-sm delete-btn" data-id_rab_material="<?= htmlspecialchars($row['id_rab_material']) ?>">Delete</button>
+                            </td>
+                          </tr>
+                          <?php endwhile; ?>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
 
-              $result = mysqli_query($koneksi, $sql);
-
-              if (!$result) {
-                  die("Query Error: " . mysqli_error($koneksi));
-              }
-
-              while ($row = mysqli_fetch_assoc($result)) {
-                  $id_rab = $row['id_rab_material'];
-                  $tahun = date('Y');
-                  $formatted_id = 'RABM' . $id_rab . $tahun;
-
-                  echo "<tr>
-                      <td>" . htmlspecialchars($formatted_id) . "</td>
-                      <td>" . htmlspecialchars($row['nama_perumahan']) . "</td>
-                      <td>" . htmlspecialchars($row['kavling']) . "</td>
-                      <td>" . htmlspecialchars($row['nama_mandor']) . "</td>
-                      <td>" . htmlspecialchars($row['tanggal_mulai_mt']) . "</td>
-                      <td>" . htmlspecialchars($row['tanggal_selesai_mt']) . "</td>                      
-                      <td>" . (isset($row['total']) ? number_format($row['total'], 0, ',', '.') : '0') . "</td>
-                      <td>
-                      <a href='detail_rab_material.php?id_rab_material=" . urlencode($row['id_rab_material']) . "' 
-                        class='btn btn-info btn-sm'>
-                        Detail
-                      </a>
-                        <button class='btn btn-danger btn-sm delete-btn' data-id_rab_material='" . htmlspecialchars($row['id_rab_material']) . "'>Delete</button>
-                      </td>
-                    </tr>";
-              }
-              ?>
-
-            </tbody>
-          </table>
+    <!-- Modal Tambah Data RAB Material -->
+    <div class="modal fade" id="addRABMaterialModal" tabindex="-1" aria-labelledby="addRABMaterialModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <form method="POST" action="add_rab_material.php">
+            <div class="modal-header">
+              <h5 class="modal-title" id="addRABMaterialModalLabel">Tambah Data RAB Material</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <div class="mb-3">
+                <label for="id_perumahan" class="form-label">Nama Perumahan</label>
+                <select class="form-select" id="id_perumahan" name="id_perumahan" required>
+                  <option value="" disabled selected>Pilih Perumahan</option>
+                  <?php 
+                    mysqli_data_seek($perumahanResult, 0); // Reset pointer
+                    while ($perumahan = mysqli_fetch_assoc($perumahanResult)): 
+                  ?>
+                    <option value="<?= htmlspecialchars($perumahan['id_perumahan']) ?>"><?= htmlspecialchars($perumahan['nama_perumahan']) ?></option>
+                  <?php endwhile; ?>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label for="id_proyek" class="form-label">Kavling</label>
+                <select class="form-select" id="id_proyek" name="id_proyek" required>
+                  <option value="" disabled selected>Pilih Kavling</option>
+                </select>
+              </div>
+              <div class="row">
+                <div class="col-md-6 mb-3"><label>Tipe Proyek</label><input type="text" class="form-control" id="type_proyek" readonly /></div>
+                <div class="col-md-6 mb-3"><label>Lokasi</label><input type="text" class="form-control" id="lokasi" readonly /></div>
+              </div>
+              <div class="row">
+                <div class="col-md-6 mb-3"><label>Mandor</label><input type="text" class="form-control" id="nama_mandor" readonly /></div>
+                <div class="col-md-6 mb-3"><label>PJ Proyek</label><input type="text" class="form-control" id="pj_proyek" readonly /></div>
+              </div>
+              <div class="row">
+                <div class="col-md-6 mb-3"><label>Tanggal Mulai</label><input type="date" class="form-control" id="tanggal_mulai" name="tanggal_mulai" required /></div>
+                <div class="col-md-6 mb-3"><label>Tanggal Selesai</label><input type="date" class="form-control" id="tanggal_selesai" name="tanggal_selesai" required /></div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+              <button type="submit" class="btn btn-primary" id="btn-submit-rab" disabled>Lanjut & Buat RAB</button>
+            </div>
+          </form>
         </div>
       </div>
     </div>
-  </div>
-</div>
 
-<!-- Modal Tambah Data RAB Material -->
-<div class="modal fade" id="addRABMaterialModal" tabindex="-1" aria-labelledby="addRABMaterialModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <form method="POST" action="add_rab_material.php">
-        <input type="hidden" name="action" value="add" />
-        <div class="modal-header">
-          <h5 class="modal-title" id="addRABMaterialModalLabel">Tambah Data RAB Material</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-
-          <!-- Dropdown Nama Perumahan -->
-          <div class="mb-3">
-            <label for="id_perumahan" class="form-label">Nama Perumahan</label>
-            <select class="form-select" id="id_perumahan" name="id_perumahan" required>
-              <option value="" disabled selected>Pilih Nama Perumahan</option>
-              <?php while ($perumahan = mysqli_fetch_assoc($perumahanResult)): ?>
-                <option 
-                  value="<?= htmlspecialchars($perumahan['id_perumahan']) ?>" 
-                  data-lokasi="<?= htmlspecialchars($perumahan['lokasi']) ?>"
-                >
-                  <?= htmlspecialchars($perumahan['nama_perumahan']) ?>
-                </option>
-              <?php endwhile; ?>
-            </select>
-          </div>
-
-          <!-- Dropdown Kavling (Master Proyek) -->
-          <div class="mb-3">
-            <label for="id_proyek" class="form-label">Kavling</label>
-            <select class="form-select" id="id_proyek" name="id_proyek" required>
-              <option value="" disabled selected>Pilih Kavling</option>
-              <?php while ($proyek = mysqli_fetch_assoc($kavlingResult)): ?>
-                <option 
-                  value="<?= htmlspecialchars($proyek['id_proyek']) ?>" 
-                  data-type_proyek="<?= htmlspecialchars($proyek['type_proyek']) ?>"
-                >
-                  <?= htmlspecialchars($proyek['kavling']) ?>
-                </option>
-              <?php endwhile; ?>            
-            </select>
-          </div>
-
-          <div class="mb-3">
-            <label for="type_proyek" class="form-label">Tipe Proyek</label>
-            <input type="text" class="form-control" id="type_proyek" name="type_proyek" readonly />
-          </div>
-
-                    <!-- Dropdown Mandor -->
-          <div class="mb-3">
-            <label for="id_mandor" class="form-label">Mandor</label>
-            <select class="form-select" id="id_mandor" name="id_mandor" required>
-              <option value="" disabled selected>Pilih Mandor</option>
-              <?php
-              $mandorResult = mysqli_query($koneksi, "SELECT id_mandor, nama_mandor FROM master_mandor ORDER BY nama_mandor ASC");
-              while ($mandor = mysqli_fetch_assoc($mandorResult)) {
-                  echo '<option value="' . htmlspecialchars($mandor['id_mandor']) . '">' . htmlspecialchars($mandor['nama_mandor']) . '</option>';
-              }
-              ?>
-            </select>
-          </div>
-
-          <!-- Input Tanggal Mulai -->
-          <div class="mb-3">
-            <label for="tanggal_mulai_mt" class="form-label">Tanggal Mulai</label>
-            <input type="date" class="form-control" id="tanggal_mulai_mt" name="tanggal_mulai_mt" required />
-          </div>
-          <div class="mb-3">
-            <label for="tanggal_selesai_mt" class="form-label">Tanggal Selesai</label>
-            <input type="date" class="form-control" id="tanggal_selesai_mt" name="tanggal_selesai_mt" required />
-          </div>
-
-          <div class="mb-3">
-            <label for="update_lokasi" class="form-label">Lokasi</label>
-            <input type="text" class="form-control" id="update_lokasi" name="lokasi" readonly value="<?= htmlspecialchars($row['lokasi'] ?? '') ?>" />
-          </div>
-
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-          <button type="submit" class="btn btn-primary">Lanjut</button>
-        </div>
-      </form>
-    </div>
-  </div>
-</div>
-</div>
-
-  <!-- Modal Delete Confirmation -->
-  <div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title" id="confirmDeleteModalLabel">Confirm Deletion</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-          <p>Are you sure you want to delete this user?</p>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <a href="#" id="confirmDeleteLink" class="btn btn-danger">Delete</a>
+    <!-- Modal Delete Confirmation -->
+    <div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header"><h5 class="modal-title">Konfirmasi Hapus</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+          <div class="modal-body"><p>Apakah Anda yakin ingin menghapus data ini?</p></div>
+          <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button><a href="#" id="confirmDeleteLink" class="btn btn-danger">Hapus</a></div>
         </div>
       </div>
     </div>
-  </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
 
-<script>
-  $(document).ready(function() {
-    $('#basic-datatables').DataTable();
-  });
-</script>
+    <script>
+      $(document).ready(function() {
+        // 1. INISIALISASI DATATABLES
+        $('#basic-datatables').DataTable();
 
-<script>
-  $(document).ready(function() {
-    // Ketika dropdown nama perumahan berubah
-    $('#id_perumahan').on('change', function() {
-      // Ambil data-lokasi dari option yang dipilih
-      const lokasi = $(this).find(':selected').data('lokasi') || '';
-      // Set lokasi ke input lokasi
-      $('#update_lokasi').val(lokasi);
-    });
-  });
-</script>
+        // 2. LOGIKA NOTIFIKASI
+        if ($('#alert-message').length) {
+            setTimeout(function() {
+                let bsAlert = new bootstrap.Alert($('#alert-message')[0]);
+                bsAlert.close();
+                if (window.history.replaceState) {
+                    const url = new URL(window.location.href);
+                    url.searchParams.delete('msg');
+                    window.history.replaceState({ path: url.href }, '', url.href);
+                }
+            }, 3000);
+        }
 
-<script>
-  $(document).ready(function() {
-    // Ketika dropdown nama perumahan berubah
-    $('#id_proyek').on('change', function() {
-      // Ambil data-lokasi dari option yang dipilih
-      const type_proyek = $(this).find(':selected').data('type_proyek') || '';
-      // Set lokasi ke input lokasi
-      $('#update_type_proyek').val(type_proyek);
-    });
-  });
-</script>
+        // 3. LOGIKA UNTUK MODAL TAMBAH DATA
+        const addModal = document.getElementById('addRABMaterialModal');
+        const idProyekDropdown = $('#id_proyek');
+        const submitBtn = $('#btn-submit-rab');
 
-  <script>
-    // Konfirmasi penghapusan data material 
-    document.querySelectorAll('.delete-btn').forEach(button => {
-      button.addEventListener('click', function() {
-        const idRabMaterial = this.dataset.id_rab_material;  // ambil data-id_rab_material
-        const deleteLink = document.getElementById('confirmDeleteLink');
-        deleteLink.href = 'delete_rab_material.php?id_rab_material=' + idRabMaterial;
-        const deleteModal = new bootstrap.Modal(document.getElementById('confirmDeleteModal'));
-        deleteModal.show();
-      });
-    });
-  </script>
+        // Fungsi untuk mereset field di modal
+        function resetProyekFields() {
+            idProyekDropdown.html('<option value="" disabled selected>Pilih Perumahan Dahulu</option>');
+            $('#type_proyek, #lokasi, #nama_mandor, #pj_proyek').val('');
+            submitBtn.prop('disabled', true);
+        }
 
-<script>
-$('#id_perumahan').on('change', function() {
-  const idPerumahan = $(this).val();
+        // Ketika dropdown Perumahan berubah
+        $('#id_perumahan').on('change', function() {
+            const idPerumahan = $(this).val();
+            resetProyekFields();
+            if (!idPerumahan) return;
 
-  if (!idPerumahan) {
-    $('#id_proyek').html('<option value="" disabled selected>Pilih Kavling</option>');
-    $('#type_proyek').val('');
-    return;
-  }
-
-  $.ajax({
-    url: 'get_kavling.php',
-    method: 'POST',
-    data: { id_perumahan: idPerumahan },
-    dataType: 'json',
-    success: function(response) {
-      let options = '<option value="" disabled selected>Pilih Kavling</option>';
-      if (response.length > 0) {
-        response.forEach(function(proyek) {
-          options += `<option value="${proyek.id_proyek}" data-type_proyek="${proyek.type_proyek}">${proyek.kavling}</option>`;
+            idProyekDropdown.html('<option value="">Memuat...</option>');
+            $.ajax({
+                url: 'get_kavling.php',
+                method: 'POST',
+                data: { id_perumahan: idPerumahan },
+                dataType: 'json',
+                success: function(response) {
+                    let options = '<option value="" disabled selected>Pilih Kavling</option>';
+                    if (response.length > 0) {
+                        response.forEach(function(proyek) {
+                            options += `<option value="${proyek.id_proyek}" 
+                                        data-type_proyek="${proyek.type_proyek}"
+                                        data-lokasi="${proyek.lokasi}"
+                                        data-mandor="${proyek.nama_mandor}"
+                                        data-pj_proyek="${proyek.pj_proyek}">
+                                        ${proyek.kavling}
+                                      </option>`;
+                        });
+                    } else {
+                        options = '<option value="" disabled>Tidak ada kavling</option>';
+                    }
+                    idProyekDropdown.html(options);
+                },
+                error: function() { alert('Gagal mengambil data kavling.'); resetProyekFields(); }
+            });
         });
-      } else {
-        options += '<option value="" disabled>Tidak ada kavling</option>';
-      }
-      $('#id_proyek').html(options);
-      $('#type_proyek').val(''); // clear tipe proyek kalau sebelumnya terisi
-    },
-    error: function(xhr, status, error) {
-      alert('Gagal mengambil data kavling: ' + error);
-    }
-  });
-});
 
-$('#id_proyek').on('change', function () {
-  const typeProyek = $(this).find(':selected').data('type_proyek') || '';
-  $('#type_proyek').val(typeProyek);
-});
-</script>
+        // Ketika dropdown Kavling berubah
+        idProyekDropdown.on('change', function() {
+            const selected = $(this).find(':selected');
+            $('#type_proyek').val(selected.data('type_proyek') || '');
+            $('#lokasi').val(selected.data('lokasi') || '');
+            $('#nama_mandor').val(selected.data('mandor') || '');
+            $('#pj_proyek').val(selected.data('pj_proyek') || '');
+            submitBtn.prop('disabled', !$(this).val());
+        });
+        
+        // Reset modal saat ditutup
+        $(addModal).on('hidden.bs.modal', function() {
+            $(this).find('form')[0].reset();
+            resetProyekFields();
+        });
 
-<script>
-  document.querySelectorAll('.btn-detail').forEach(button => {
-    button.addEventListener('click', function() {
-      const idRabMaterial = this.dataset.id_rab_material;
-      if(idRabMaterial) {
-        window.location.href = 'detail_rab_material.php?id_rab_material=' + encodeURIComponent(idRabMaterial);
-      }
-    });
-  });
-
-  
-</script>
-
-
+        // 4. LOGIKA UNTUK TOMBOL DELETE
+        $('#basic-datatables tbody').on('click', '.delete-btn', function() {
+            const idRabMaterial = $(this).data('id_rab_material');
+            $('#confirmDeleteLink').attr('href', 'delete_rab_material.php?id_rab_material=' + idRabMaterial);
+            let deleteModal = new bootstrap.Modal(document.getElementById('confirmDeleteModal'));
+            deleteModal.show();
+        });
+      });
+    </script>
 </body>
 </html>

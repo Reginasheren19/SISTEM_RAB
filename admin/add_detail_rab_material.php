@@ -1,9 +1,6 @@
 <?php
 include("../config/koneksi_mysql.php");
 
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-
 header('Content-Type: application/json');
 
 $id_rab_material = $_POST['id_rab_material'] ?? null;
@@ -24,18 +21,16 @@ if (!is_array($details)) {
 mysqli_begin_transaction($koneksi);
 
 try {
-    // Delete detail lama
+    // Hapus dulu detail lama untuk id_rab_material ini (jika ingin update penuh)
     $sqlDelete = "DELETE FROM detail_rab_material WHERE id_rab_material = ?";
     $stmtDelete = $koneksi->prepare($sqlDelete);
-    if (!$stmtDelete) throw new Exception("Prepare DELETE gagal: " . $koneksi->error);
     $stmtDelete->bind_param("i", $id_rab_material);
-    if (!$stmtDelete->execute()) throw new Exception("Execute DELETE gagal: " . $stmtDelete->error);
+    $stmtDelete->execute();
     $stmtDelete->close();
 
     // Insert detail baru
     $sqlInsert = "INSERT INTO detail_rab_material (id_rab_material, id_kategori, id_pekerjaan, volume, harga_satuan) VALUES (?, ?, ?, ?, ?)";
     $stmtInsert = $koneksi->prepare($sqlInsert);
-    if (!$stmtInsert) throw new Exception("Prepare INSERT gagal: " . $koneksi->error);
 
     $total_rab_material = 0;
 
@@ -47,19 +42,18 @@ try {
         $sub_total = $volume * $harga_satuan;
 
         $stmtInsert->bind_param("iiiii", $id_rab_material, $id_kategori, $id_pekerjaan, $volume, $harga_satuan);
-        if (!$stmtInsert->execute()) throw new Exception("Execute INSERT gagal: " . $stmtInsert->error);
+        $stmtInsert->execute();
 
         $total_rab_material += $sub_total;
     }
 
     $stmtInsert->close();
 
-    // Update total_rab_material
+    // Update total_rab_material di tabel rab_material
     $sqlUpdate = "UPDATE rab_material SET total_rab_material = ? WHERE id_rab_material = ?";
     $stmtUpdate = $koneksi->prepare($sqlUpdate);
-    if (!$stmtUpdate) throw new Exception("Prepare UPDATE gagal: " . $koneksi->error);
-    $stmtUpdate->bind_param("di", $total_rab_material, $id_rab_material); // "d" untuk decimal, "i" untuk integer
-    if (!$stmtUpdate->execute()) throw new Exception("Execute UPDATE gagal: " . $stmtUpdate->error);
+    $stmtUpdate->bind_param("ii", $total_rab_material, $id_rab_material);
+    $stmtUpdate->execute();
     $stmtUpdate->close();
 
     mysqli_commit($koneksi);
@@ -69,4 +63,5 @@ try {
     mysqli_rollback($koneksi);
     echo json_encode(['status' => 'error', 'message' => 'Gagal menyimpan data: ' . $e->getMessage()]);
 }
+
 ?>
