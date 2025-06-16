@@ -36,10 +36,10 @@ $sql = "SELECT
     mm.nama_mandor  -- Pastikan nama_mandor ada di sini
 FROM pengajuan_upah pu
 JOIN rab_upah ru ON pu.id_rab_upah = ru.id_rab_upah
-JOIN master_perumahan mpe ON ru.id_perumahan = mpe.id_perumahan
 JOIN master_proyek mpr ON ru.id_proyek = mpr.id_proyek
-JOIN master_mandor mm ON ru.id_mandor = mm.id_mandor
-";
+JOIN master_perumahan mpe ON mpr.id_perumahan = mpe.id_perumahan
+JOIN master_mandor mm ON mpr.id_mandor = mm.id_mandor
+ORDER BY pu.id_pengajuan_upah DESC";
 
 
 $pengajuanresult = mysqli_query($koneksi, $sql);
@@ -61,6 +61,24 @@ if (!$kavlingResult) {
 $mandorResult = mysqli_query($koneksi, "SELECT id_mandor, nama_mandor FROM master_mandor ORDER BY nama_mandor ASC");
 if (!$mandorResult) {
     die("Query Error (mandor): " . mysqli_error($koneksi));
+}
+
+$rabUpahUntukModalSql = "SELECT 
+                            ru.id_rab_upah, 
+                            ru.id_proyek,
+                            mpe.nama_perumahan, 
+                            mpr.kavling, 
+                            mm.nama_mandor,
+                            ru.total_rab_upah
+                        FROM rab_upah ru
+                        LEFT JOIN master_proyek mpr ON ru.id_proyek = mpr.id_proyek
+                        LEFT JOIN master_perumahan mpe ON mpr.id_perumahan = mpe.id_perumahan
+                        LEFT JOIN master_mandor mm ON mpr.id_mandor = mm.id_mandor
+                        ORDER BY ru.id_rab_upah DESC";
+
+$rabUpahUntukModalResult = mysqli_query($koneksi, $rabUpahUntukModalSql);
+if (!$rabUpahUntukModalResult) {
+    die("Query Error (Modal RAB): " . mysqli_error($koneksi));
 }
 ?>
 
@@ -954,79 +972,65 @@ if (!$mandorResult) {
 </div>
 
 
-<!-- Modal for selecting Proyek RAB -->
 <div class="modal fade" id="selectProyekModal" tabindex="-1" aria-labelledby="selectProyekModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
-      <form method="POST" action="add_pengajuan_upah.php">
-        <input type="hidden" name="action" value="add" />
-        <div class="modal-header">
-          <h5 class="modal-title" id="selectProyekModalLabel">Pilih Proyek RAB</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      <div class="modal-header">
+        <h5 class="modal-title" id="selectProyekModalLabel">Pilih Proyek RAB</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="table-responsive">
+          <table id="tabel-proyek-modal" class="display table table-striped table-hover" style="width:100%">
+            <thead>
+              <tr>
+                <th>ID RAB</th>
+                <th>Nama Perumahan</th>
+                <th>Kavling</th>
+                <th>Mandor</th>
+                <th class="text-end">Total RAB</th>
+                <th class="text-center">Aksi</th>
+              </tr>
+            </thead>
+            <tbody>
+              <?php
+              // Menggunakan variabel $rabUpahUntukModalResult yang sudah disiapkan di atas file
+              if (mysqli_num_rows($rabUpahUntukModalResult) > 0) {
+                  // Safety measure: Reset pointer jika variabel pernah di-loop di tempat lain
+                  mysqli_data_seek($rabUpahUntukModalResult, 0); 
+                  while ($rab = mysqli_fetch_assoc($rabUpahUntukModalResult)) {
+                      // 1. Ambil ID asli untuk digunakan di link
+                      $id_rab_asli = $rab['id_rab_upah'];
+
+                      // 2. Buat ID format untuk ditampilkan ke pengguna
+                      $tahun_2digit = date('y');
+                      $bulan = date('m');
+                      $id_proyek = $rab['id_proyek'];
+                      $id_tampilan = 'RABP' . $tahun_2digit . $bulan . $id_proyek . $id_rab_asli;
+              ?>
+                    <tr>
+                      <td><?= htmlspecialchars($id_tampilan) ?></td>
+                      <td><?= htmlspecialchars($rab['nama_perumahan']) ?></td>
+                      <td><?= htmlspecialchars($rab['kavling']) ?></td>
+                      <td><?= htmlspecialchars($rab['nama_mandor']) ?></td>
+                      <td class="text-end"><?= 'Rp ' . number_format($rab['total_rab_upah'], 0, ',', '.') ?></td>
+                      <td class="text-center">
+                        <a href="detail_pengajuan_upah.php?id_rab_upah=<?= htmlspecialchars($id_rab_asli) ?>" class="btn btn-success btn-sm">
+                          Pilih
+                        </a>
+                      </td>
+                    </tr>
+              <?php
+                  } // Akhir while
+              }
+              ?>
+            </tbody>
+          </table>
         </div>
-        <div class="modal-body">
-
-          <!-- Table for RAB Projects -->
-          <div class="table-responsive">
-            <table class="table table-striped">
-              <thead>
-                <tr>
-                  <th>ID RAB</th>
-                  <th>Nama Perumahan</th>
-                  <th>Kavling</th>
-                  <th>Mandor</th>
-                  <th>Aksi</th>
-                </tr>
-              </thead>
-              <tbody>
-                <?php
-                // Query to get existing RAB projects
-                $rabUpahResult = mysqli_query($koneksi, "SELECT 
-                    ru.id_rab_upah, 
-                    ru.id_proyek, 
-                    mpe.nama_perumahan, 
-                    mpr.kavling, 
-                    mm.nama_mandor 
-                  FROM rab_upah ru
-                  JOIN master_perumahan mpe ON ru.id_perumahan = mpe.id_perumahan
-                  JOIN master_proyek mpr ON ru.id_proyek = mpr.id_proyek
-                  JOIN master_mandor mm ON ru.id_mandor = mm.id_mandor");
-
-                // Format the ID
-                $tahun = date('Y');
-                $bulan = date('m');
-                while ($rab = mysqli_fetch_assoc($rabUpahResult)) {
-                  // Format the ID to match the 'RABPYYYYMMXXX' format
-                $tahun_2digit = substr($tahun, -2);
-                $id_proyek = $rab['id_proyek'];
-                $id_rab_upah = $rab['id_rab_upah'];
-
-                  $formatted_id = 'RABP' . $tahun_2digit . $bulan . $id_proyek . $id_rab_upah;
-                ?>
-                  <tr>
-                    <td><?= htmlspecialchars($formatted_id) ?></td> <!-- Display formatted ID -->
-                    <td><?= htmlspecialchars($rab['nama_perumahan']) ?></td>
-                    <td><?= htmlspecialchars($rab['kavling']) ?></td>
-                    <td><?= htmlspecialchars($rab['nama_mandor']) ?></td>
-                    <td>
-                      <!-- Button to select this project -->
-                      <button type="button" class="btn btn-success btn-sm selectProyekBtn" data-id="<?= htmlspecialchars($rab['id_rab_upah']) ?>" data-nama_perumahan="<?= htmlspecialchars($rab['nama_perumahan']) ?>" data-kavling="<?= htmlspecialchars($rab['kavling']) ?>">
-                        Pilih
-                      </button>
-                    </td>
-                  </tr>
-                <?php
-                } // End of while loop
-                ?>
-              </tbody>
-            </table>
-          </div>
-
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-        </div>
-      </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+      </div>
     </div>
   </div>
 </div>
@@ -1136,13 +1140,15 @@ $(document).ready(function() {
         }
     }
 
-        // [BARU] 3. Logika untuk tombol PILIH PROYEK di dalam modal
-    // Menggunakan event delegation karena tombol ada di dalam modal
-    $('#selectProyekModal').on('click', '.selectProyekBtn', function () {
-        const idRabUpah = $(this).data('id');
-        if (idRabUpah) {
-            window.location.href = 'detail_pengajuan_upah.php?id_rab_upah=' + idRabUpah;
-        }
+// [PERBAIKAN] 3. Logika untuk tombol PILIH PROYEK di dalam modal
+// Mengarahkan ke halaman form tambah pengajuan dengan membawa ID RAB yang dipilih
+    // 2. Inisialisasi DataTable untuk tabel di dalam modal
+    $('#selectProyekModal').on('shown.bs.modal', function () {
+      if (!$.fn.DataTable.isDataTable('#tabel-proyek-modal')) {
+        $('#tabel-proyek-modal').DataTable({
+          responsive: true
+        });
+      }
     });
 
     // 3. Logika untuk tombol HAPUS
