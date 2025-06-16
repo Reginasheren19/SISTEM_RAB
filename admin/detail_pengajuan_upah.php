@@ -9,7 +9,8 @@ if (!isset($_GET['id_rab_upah'])) {
 }
 $id_rab_upah = mysqli_real_escape_string($koneksi, $_GET['id_rab_upah']);
 
-// Query utama untuk mendapatkan informasi header RAB
+// [PERBAIKAN] Query utama untuk mendapatkan informasi header RAB
+// JOIN diubah agar melalui master_proyek terlebih dahulu
 $sql_rab = "SELECT 
                 tr.id_rab_upah,
                 CONCAT(mpe.nama_perumahan, ' - ', mpr.kavling) AS pekerjaan,
@@ -18,19 +19,19 @@ $sql_rab = "SELECT
                 YEAR(tr.tanggal_mulai) AS tahun,
                 mm.nama_mandor
             FROM rab_upah tr
-            JOIN master_perumahan mpe ON tr.id_perumahan = mpe.id_perumahan
             JOIN master_proyek mpr ON tr.id_proyek = mpr.id_proyek
-            JOIN master_mandor mm ON tr.id_mandor = mm.id_mandor
+            LEFT JOIN master_perumahan mpe ON mpr.id_perumahan = mpe.id_perumahan
+            LEFT JOIN master_mandor mm ON mpr.id_mandor = mm.id_mandor
             WHERE tr.id_rab_upah = '$id_rab_upah'";
 
 $rab_result = mysqli_query($koneksi, $sql_rab);
 if (!$rab_result || mysqli_num_rows($rab_result) == 0) {
-    echo "Data RAB Upah tidak ditemukan.";
-    exit;
+    // Jika query gagal atau tidak ada baris yang ditemukan, berikan pesan error yang lebih detail
+    die("Data RAB Upah dengan ID '$id_rab_upah' tidak ditemukan atau terjadi error. Query: " . mysqli_error($koneksi));
 }
 $rab_info = mysqli_fetch_assoc($rab_result);
 
-// Query detail item pekerjaan pada RAB
+// Query detail item pekerjaan pada RAB (sudah benar, tidak perlu diubah)
 $sql_detail = "SELECT 
                     d.id_detail_rab_upah, 
                     k.nama_kategori, 
@@ -43,10 +44,9 @@ $sql_detail = "SELECT
                 ORDER BY k.id_kategori, mp.uraian_pekerjaan";
 $detail_result = mysqli_query($koneksi, $sql_detail);
 
+// Fungsi getProgressLaluPersen (sudah benar, tidak perlu diubah)
 function getProgressLaluPersen($koneksi, $id_detail_rab_upah) {
     $id_detail_rab_upah = (int)$id_detail_rab_upah;
-    
-    // [PERBAIKAN] Nama tabel diubah menjadi 'detail_pengajuan_upah' dan kolom status menjadi 'status_pengajuan'
     $query = "SELECT SUM(dp.progress_pekerjaan) AS total_progress 
               FROM detail_pengajuan_upah dp
               JOIN pengajuan_upah pu ON dp.id_pengajuan_upah = pu.id_pengajuan_upah
@@ -54,24 +54,18 @@ function getProgressLaluPersen($koneksi, $id_detail_rab_upah) {
               AND pu.status_pengajuan IN ('diajukan', 'disetujui', 'ditolak', 'dibayar')"; 
 
     $result = mysqli_query($koneksi, $query);
-    
-    // [DEBUGGING] Pengecekan error query tetap dipertahankan.
     if (!$result) {
         echo "<div class='alert alert-danger'><b>Error Query SQL:</b> " . mysqli_error($koneksi) . "</div>";
         return 0;
     }
-
     if (mysqli_num_rows($result) > 0) {
         $data = mysqli_fetch_assoc($result);
         return (float)($data['total_progress'] ?? 0);
     }
-    
     return 0;
 }
 
-
-
-// Fungsi untuk mengubah angka menjadi Angka Romawi
+// Fungsi toRoman (sudah benar, tidak perlu diubah)
 function toRoman($num) {
     $map = ['M' => 1000, 'CM' => 900, 'D' => 500, 'CD' => 400, 'C' => 100, 'XC' => 90, 'L' => 50, 'XL' => 40, 'X' => 10, 'IX' => 9, 'V' => 5, 'IV' => 4, 'I' => 1];
     $result = '';
