@@ -896,10 +896,10 @@ $detail_result = mysqli_query($koneksi, $sql_detail);
         <tr>
           <th scope="col" style="width:5%;">No</th>
           <th scope="col">Uraian Pekerjaan</th>
-          <th scope="col" style="width:10%;">Satuan</th>
-          <th scope="col" style="width:10%;">Volume</th>
-          <th scope="col" style="width:15%;">Harga Satuan</th>
-          <th scope="col" style="width:15%;">Jumlah</th>
+            <th scope="col" style="width:10%; text-align: center;">Satuan</th>
+            <th scope="col" style="width:10%; text-align: center;">Volume</th>
+            <th scope="col" style="width:15%; text-align: center;">Harga Satuan</th>
+            <th scope="col" style="width:15%; text-align: center;">Jumlah</th>
           <th scope="col" style="width:15%;">Aksi</th>
         </tr>
       </thead>
@@ -914,9 +914,9 @@ $detail_result = mysqli_query($koneksi, $sql_detail);
                 echo "<tr>
                         <td>" . $no++ . "</td>
                         <td>" . htmlspecialchars($row['uraian_pekerjaan']) . "</td>
-                        <td>" . htmlspecialchars($row['nama_satuan']) . "</td>
-                        <td>" . htmlspecialchars($row['volume']) . "</td>
-                        <td>Rp " . number_format($row['harga_satuan'], 0, ',', '.') . "</td>
+                        <td class='text-center'>" . htmlspecialchars($row['nama_satuan']) . "</td>
+                        <td class='text-center'>" . htmlspecialchars($row['volume']) . "</td>
+                        <td class='text-center'>Rp " . number_format($row['harga_satuan'], 0, ',', '.') . "</td>
                         <td>Rp " . number_format($row['sub_total'], 0, ',', '.') . "</td>  
                                                                       
                         <td class='text-center'>
@@ -1096,19 +1096,15 @@ $detail_result = mysqli_query($koneksi, $sql_detail);
 
       $('#tblKategori tbody tr.total-keseluruhan').remove();
 
-      if (totalKeseluruhan === 0) return;
+if (totalKeseluruhan === 0) return;
 
-      const totalRowHtml = $(`
-        <tr class="table-success total-keseluruhan">
-          <td></td>
-          <td class="fw-bold">Total Keseluruhan</td>
-          <td></td>
-          <td></td>
-          <td></td>
-          <td class="fw-bold">Rp ${totalKeseluruhan.toLocaleString('id-ID')}</td>
-          <td></td>
-        </tr>
-      `);
+const totalRowHtml = $(`
+  <tr class="table-success total-keseluruhan">
+    <td colspan="5" class="text-end fw-bold">Total Keseluruhan</td> <!-- Merged cell for label -->
+    <td class="fw-bold text-center">Rp ${totalKeseluruhan.toLocaleString('id-ID')}</td> <!-- Total value in the 6th column -->
+    <td></td> <!-- Empty cell for alignment -->
+  </tr>
+`);
 
       $('#tblKategori tbody').append(totalRowHtml);
     }
@@ -1203,20 +1199,20 @@ $detail_result = mysqli_query($koneksi, $sql_detail);
 
       if (kategoriRow.next().hasClass('input-pekerjaan')) return;
 
-      const pekerjaanRow = $(`
-        <tr class="input-pekerjaan" data-parent-kategori-id="${kategoriId}">
-          <td>${maxNomor + 1}</td>
-          <td><input type="text" class="form-control uraian-pekerjaan" placeholder="Ketik uraian pekerjaan" autocomplete="off" /></td>
-          <td><input type="text" class="form-control satuan" placeholder="Satuan" readonly /></td>
-          <td><input type="number" class="form-control volume" placeholder="Volume" min="0" /></td>
-          <td><input type="number" class="form-control harga-satuan" placeholder="Harga Satuan" min="0" /></td>
-          <td><input type="text" class="form-control jumlah" placeholder="Jumlah" readonly /></td>
-          <td class="text-center">
-            <button type="button" class="btn btn-success btn-sm btn-simpan-pekerjaan"><i class="fa fa-check"></i></button>
-            <button type="button" class="btn btn-danger btn-sm btn-batal-pekerjaan"><i class="fa fa-times"></i></button>
-          </td>
-        </tr>
-      `);
+const pekerjaanRow = $(`
+  <tr class="input-pekerjaan" data-parent-kategori-id="${kategoriId}">
+    <td>${maxNomor + 1}</td>
+    <td><input type="text" class="form-control uraian-pekerjaan" placeholder="Ketik uraian pekerjaan" autocomplete="off" /></td>
+    <td><input type="text" class="form-control satuan text-center" placeholder="Satuan" readonly /></td>
+    <td><input type="number" class="form-control volume text-center" placeholder="Volume" min="0" /></td>
+    <td><input type="number" class="form-control harga-satuan text-center" placeholder="Harga Satuan" min="0" /></td>
+    <td><input type="text" class="form-control jumlah text-center" placeholder="Jumlah" readonly /></td>
+    <td class="text-center">
+      <button type="button" class="btn btn-success btn-sm btn-simpan-pekerjaan"><i class="fa fa-check"></i></button>
+      <button type="button" class="btn btn-danger btn-sm btn-batal-pekerjaan"><i class="fa fa-times"></i></button>
+    </td>
+  </tr>
+`);
 
       let lastPekerjaan = null;
       kategoriRow.nextAll('tr.pekerjaan, tr.input-pekerjaan').each(function() {

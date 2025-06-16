@@ -801,7 +801,6 @@ if (!$perumahanResult) {
                           <tr>
                             <th>ID RAB</th>
                             <th>Perumahan</th>
-                            <th>Kavling</th>
                             <th>Mandor</th>
                             <th>PJ Proyek</th>
                             <th>Tanggal Mulai</th>
@@ -820,8 +819,7 @@ if (!$perumahanResult) {
                           ?>
                           <tr>
                             <td><?= htmlspecialchars($formatted_id) ?></td>
-                            <td><?= htmlspecialchars($row['nama_perumahan']) ?></td>
-                            <td><?= htmlspecialchars($row['kavling']) ?></td>
+                            <td><?= htmlspecialchars($row['nama_perumahan']) . ' - ' . htmlspecialchars($row['kavling']) ?></td> <!-- Combined Column -->   
                             <td><?= htmlspecialchars($row['nama_mandor']) ?></td>
                             <td><?= htmlspecialchars($row['pj_proyek']) ?></td>
                             <td><?= date('d-m-Y', strtotime($row['tanggal_mulai'])) ?></td>
