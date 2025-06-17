@@ -18,7 +18,7 @@ $sql = "SELECT
            mpe.lokasi,
             YEAR(tr.tanggal_mulai_mt) AS tahun,
             mm.nama_mandor,
-                       tr.tanggal_mulai_mt
+                       tr.tanggal_mulai_mt,
            tr.tanggal_selesai_mt,
             u.nama_lengkap AS pj_proyek
         FROM rab_material tr
