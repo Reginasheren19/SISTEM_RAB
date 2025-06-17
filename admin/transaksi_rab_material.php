@@ -907,8 +907,8 @@ if (!$perumahanResult) {
                 <div class="col-md-6 mb-3"><label>PJ Proyek</label><input type="text" class="form-control" id="pj_proyek" readonly /></div>
               </div>
               <div class="row">
-                <div class="col-md-6 mb-3"><label>Tanggal Mulai</label><input type="date" class="form-control" id="tanggal_mulai" name="tanggal_mulai" required /></div>
-                <div class="col-md-6 mb-3"><label>Tanggal Selesai</label><input type="date" class="form-control" id="tanggal_selesai" name="tanggal_selesai" required /></div>
+                <div class="col-md-6 mb-3"><label>Tanggal Mulai</label><input type="date" class="form-control" id="tanggal_mulai_mt" name="tanggal_mulai_mt" required /></div>
+                <div class="col-md-6 mb-3"><label>Tanggal Selesai</label><input type="date" class="form-control" id="tanggal_selesai_mt" name="tanggal_selesai_mt" required /></div>
               </div>
             </div>
             <div class="modal-footer">

@@ -3,8 +3,8 @@ include("../config/koneksi_mysql.php");
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $id_proyek = mysqli_real_escape_string($koneksi, $_POST['id_proyek']);
-    $tanggal_mulai = mysqli_real_escape_string($koneksi, $_POST['tanggal_mulai_mt']);
-        $tanggal_selesai = mysqli_real_escape_string($koneksi, $_POST['tanggal_selesai_mt']);
+    $tanggal_mulai_mt = mysqli_real_escape_string($koneksi, $_POST['tanggal_mulai_mt']);
+        $tanggal_selesai_mt = mysqli_real_escape_string($koneksi, $_POST['tanggal_selesai_mt']);
 
     // Insert the new record
     $sql = "INSERT INTO rab_material (id_proyek, tanggal_mulai_mt, tanggal_selesai_mt) 

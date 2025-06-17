@@ -12,14 +12,20 @@ $id_rab_material = mysqli_real_escape_string($koneksi, $_GET['id_rab_material'])
 $sql = "SELECT 
             tr.id_rab_material,
             CONCAT(mpe.nama_perumahan, ' - ', mpr.kavling) AS pekerjaan,
-            mpr.type_proyek,
-            mpe.lokasi,
+           mpe.nama_perumahan,
+           mpr.kavling,
+           mpr.type_proyek,            
+           mpe.lokasi,
             YEAR(tr.tanggal_mulai_mt) AS tahun,
-            mm.nama_mandor
+            mm.nama_mandor,
+                       tr.tanggal_mulai_mt
+           tr.tanggal_selesai_mt,
+            u.nama_lengkap AS pj_proyek
         FROM rab_material tr
-        JOIN master_perumahan mpe ON tr.id_perumahan = mpe.id_perumahan
         JOIN master_proyek mpr ON tr.id_proyek = mpr.id_proyek
-        JOIN master_mandor mm ON tr.id_mandor = mm.id_mandor
+        LEFT JOIN master_perumahan mpe ON mpr.id_perumahan = mpe.id_perumahan
+        LEFT JOIN master_mandor mm ON mpr.id_mandor = mm.id_mandor
+        LEFT JOIN master_user u ON mpr.id_user_pj = u.id_user
         WHERE tr.id_rab_material = '$id_rab_material'";
 
 $result = mysqli_query($koneksi, $sql);
@@ -799,42 +805,71 @@ $detail_result = mysqli_query($koneksi, $sql_detail);
             </div>
             <div class="card-body">
               <div class="row row-cols-1 row-cols-md-2 g-3">
-                <div class="col">
-                  <div class="d-flex">
+            <!-- ID RAB -->
+            <div class="col">
+                <div class="d-flex">
                     <span class="fw-semibold me-2" style="min-width: 120px;">ID RAB</span>
                     <span>: <?= htmlspecialchars($data['id_rab_material']) ?></span>
-                  </div>
                 </div>
-                <div class="col">
-                  <div class="d-flex">
-                    <span class="fw-semibold me-2" style="min-width: 120px;">Pekerjaan</span>
-                    <span>: <?= htmlspecialchars($data['pekerjaan']) ?></span>
-                  </div>
-                </div>
-                <div class="col">
-                  <div class="d-flex">
-                    <span class="fw-semibold me-2" style="min-width: 120px;">Type Proyek</span>
-                    <span>: <?= htmlspecialchars($data['type_proyek']) ?></span>
-                  </div>
-                </div>
-                <div class="col">
-                  <div class="d-flex">
-                    <span class="fw-semibold me-2" style="min-width: 120px;">Lokasi</span>
-                    <span>: <?= htmlspecialchars($data['lokasi']) ?></span>
-                  </div>
-                </div>
-                <div class="col">
-                  <div class="d-flex">
-                    <span class="fw-semibold me-2" style="min-width: 120px;">Tahun</span>
-                    <span>: <?= htmlspecialchars($data['tahun']) ?></span>
-                  </div>
-                </div>
-                <div class="col">
-                  <div class="d-flex">
+            </div>
+
+
+                        <!-- Mandor -->
+            <div class="col">
+                <div class="d-flex">
                     <span class="fw-semibold me-2" style="min-width: 120px;">Mandor</span>
                     <span>: <?= htmlspecialchars($data['nama_mandor']) ?></span>
-                  </div>
                 </div>
+            </div>
+
+            <!-- Type Proyek -->
+            <div class="col">
+                <div class="d-flex">
+                    <span class="fw-semibold me-2" style="min-width: 120px;">Type Proyek</span>
+                    <span>: <?= htmlspecialchars($data['type_proyek']) ?></span>
+                </div>
+            </div>
+
+                        <!-- PJ Proyek -->
+            <div class="col">
+                <div class="d-flex">
+                    <span class="fw-semibold me-2" style="min-width: 120px;">PJ Proyek</span>
+                    <span>: <?= htmlspecialchars($data['pj_proyek']) ?></span>
+                </div>
+            </div>
+
+            <!-- Pekerjaan -->
+            <div class="col">
+                <div class="d-flex">
+                    <span class="fw-semibold me-2" style="min-width: 120px;">Pekerjaan</span>
+                    <span>: <?= htmlspecialchars($data['pekerjaan']) ?></span>
+                </div>
+            </div>
+
+            <!-- Tanggal Mulai -->
+            <div class="col">
+                <div class="d-flex">
+                    <span class="fw-semibold me-2" style="min-width: 120px;">Tanggal Mulai</span>
+                    <span>: <?= htmlspecialchars($data['tanggal_mulai_mt']) ?></span>
+                </div>
+            </div>
+
+            <!-- Lokasi -->
+            <div class="col">
+                <div class="d-flex">
+                    <span class="fw-semibold me-2" style="min-width: 120px;">Lokasi</span>
+                    <span>: <?= htmlspecialchars($data['lokasi']) ?></span>
+                </div>
+            </div>
+
+            <!-- Tanggal Selesai -->
+            <div class="col">
+                <div class="d-flex">
+                    <span class="fw-semibold me-2" style="min-width: 120px;">Tanggal Selesai</span>
+                    <span>: <?= htmlspecialchars($data['tanggal_selesai_mt']) ?></span>
+                </div>
+            </div>
+
               </div>
             </div>
           </div>
@@ -948,16 +983,12 @@ if ($detail_result && mysqli_num_rows($detail_result) > 0) {
 }
 ?>
         </tbody>
-        <tfoot>
-          <tr class='table-success fw-bold'>
-            <td></td>
-            <td></td>
-            <td></td>
-            <td></td>
-            <td class='text-end'>TOTAL KESELURUHAN</td>
-            <td class='text-end'>Rp <?= number_format($grandTotal ?? 0, 0, ',', '.') ?></td>
-          </tr>
-        </tfoot>
+  <tfoot>
+    <tr class='table-success fw-bold'>
+      <td colspan="5" class='text-end'>TOTAL KESELURUHAN</td> <!-- Merged cell for label -->
+      <td class='text-end'>Rp <?= number_format($grandTotal ?? 0, 0, ',', '.') ?></td> <!-- Total value in the 6th column -->
+    </tr>
+  </tfoot>
       </table>
     </div>
   </div>
