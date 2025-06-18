@@ -1,6 +1,20 @@
 <?php
-
+session_start();
 include("../config/koneksi_mysql.php");
+
+// =========================================================================
+// [DIUBAH] Nama session disesuaikan dengan file login.php Anda
+$logged_in_user_id = $_SESSION['id_user'] ?? 0; 
+$user_role = $_SESSION['role'] ?? 'guest'; 
+
+// Jika pengguna tidak login, Anda bisa arahkan ke halaman login
+if ($logged_in_user_id === 0) {
+    // Arahkan ke halaman login jika tidak ada session aktif
+    header("Location: ../index.php?pesan=belum_login");
+    exit();
+}
+// =========================================================================
+
 
 // Mengatur error reporting
 error_reporting(E_ALL);
@@ -17,19 +31,25 @@ function getStatusClass($status) {
     }
 }
 
-// Query utama dengan semua logika yang dibutuhkan
+// Query utama dengan filter dinamis yang sederhana
 $sql = "SELECT 
     pu.id_pengajuan_upah, pu.tanggal_pengajuan, pu.total_pengajuan, pu.status_pengajuan, pu.keterangan,
     ru.id_rab_upah, mpe.nama_perumahan, mpr.kavling, mm.nama_mandor, pu.bukti_bayar,
-    (SELECT COUNT(bp.id_bukti) FROM bukti_pengajuan_upah bp WHERE bp.id_pengajuan_upah = pu.id_pengajuan_upah) AS jumlah_bukti,
     (SELECT MAX(p.id_pengajuan_upah) FROM pengajuan_upah p WHERE p.id_rab_upah = ru.id_rab_upah) AS id_pengajuan_terakhir
 FROM pengajuan_upah pu
 LEFT JOIN rab_upah ru ON pu.id_rab_upah = ru.id_rab_upah
 LEFT JOIN master_proyek mpr ON ru.id_proyek = mpr.id_proyek
 LEFT JOIN master_perumahan mpe ON mpr.id_perumahan = mpe.id_perumahan
 LEFT JOIN master_mandor mm ON mpr.id_mandor = mm.id_mandor
-GROUP BY pu.id_pengajuan_upah
-ORDER BY pu.id_pengajuan_upah DESC";
+";
+
+// [DIUBAH] Tambahkan klausa WHERE jika yang login adalah 'pj proyek'
+if (strtolower($user_role) === 'pj proyek') {
+    $safe_user_id = (int) $logged_in_user_id;
+    $sql .= " WHERE mpr.id_user_pj = $safe_user_id";
+}
+
+$sql .= " GROUP BY pu.id_pengajuan_upah ORDER BY pu.id_pengajuan_upah DESC";
 
 
 $pengajuanresult = mysqli_query($koneksi, $sql);
@@ -37,22 +57,8 @@ if (!$pengajuanresult) {
     die("Query Error: " . mysqli_error($koneksi));
 }
 
-// Jika membutuhkan data master perumahan, proyek, atau mandor, bisa dipanggil secara terpisah (jika ada kebutuhan lebih lanjut)
-$perumahanResult = mysqli_query($koneksi, "SELECT id_perumahan, nama_perumahan, lokasi FROM master_perumahan ORDER BY nama_perumahan ASC");
-if (!$perumahanResult) {
-    die("Query Error (perumahan): " . mysqli_error($koneksi));
-}
 
-$kavlingResult = mysqli_query($koneksi, "SELECT id_proyek, kavling, type_proyek FROM master_proyek ORDER BY type_proyek ASC");
-if (!$kavlingResult) {
-    die("Query Error (proyek): " . mysqli_error($koneksi));
-}
-
-$mandorResult = mysqli_query($koneksi, "SELECT id_mandor, nama_mandor FROM master_mandor ORDER BY nama_mandor ASC");
-if (!$mandorResult) {
-    die("Query Error (mandor): " . mysqli_error($koneksi));
-}
-
+// Query untuk modal juga difilter dengan cara sederhana
 $rabUpahUntukModalSql = "SELECT 
                             ru.id_rab_upah, 
                             ru.id_proyek,
@@ -64,7 +70,15 @@ $rabUpahUntukModalSql = "SELECT
                         LEFT JOIN master_proyek mpr ON ru.id_proyek = mpr.id_proyek
                         LEFT JOIN master_perumahan mpe ON mpr.id_perumahan = mpe.id_perumahan
                         LEFT JOIN master_mandor mm ON mpr.id_mandor = mm.id_mandor
-                        ORDER BY ru.id_rab_upah DESC";
+                        ";
+
+// Tambahkan klausa WHERE jika yang login adalah 'pj proyek'
+if (strtolower($user_role) === 'pj proyek') {
+    $safe_user_id = (int) $logged_in_user_id;
+    $rabUpahUntukModalSql .= " WHERE mpr.id_user_pj = $safe_user_id";
+}
+
+$rabUpahUntukModalSql .= " ORDER BY ru.id_rab_upah DESC";
 
 $rabUpahUntukModalResult = mysqli_query($koneksi, $rabUpahUntukModalSql);
 if (!$rabUpahUntukModalResult) {
@@ -897,7 +911,7 @@ if (isset($_SESSION['flash_message'])) {
                                             <th style="width: 10%;">Mandor</th>
                                             <th style="width: 10%;">Tanggal</th>
                                             <th style="width: 15%;">Total Pengajuan</th>
-                                            <th style="width: 10%;">Status</th>
+                                            <th style="width: 15%;">Status</th>
                                             <th style="width: 20%;" class="text-center">Aksi</th>
                                         </tr>                                        </tr>
                                         </thead>
@@ -912,11 +926,11 @@ if (isset($_SESSION['flash_message'])) {
                                                 <td><?= htmlspecialchars($row['nama_mandor']) ?></td>
                                                 <td class="text-center"><?= date('d-m-Y', strtotime($row['tanggal_pengajuan'])) ?></td>
                                                 <td class="text-end">Rp <?= number_format($row['total_pengajuan'], 0, ',', '.') ?></td>
-                                                <td>
-                                                    <select class="form-select status-select <?= getStatusClass($row['status_pengajuan']) ?>" 
+                                                <td>                                                    
+                                                  <select class="form-select status-select <?= getStatusClass($row['status_pengajuan']) ?>" 
                                                             data-id="<?= htmlspecialchars($row['id_pengajuan_upah']) ?>" 
                                                             data-current-status="<?= $row['status_pengajuan'] ?>" 
-                                                            <?= ($row['status_pengajuan'] == 'dibayar') ? 'disabled' : '' ?>>
+                                                            <?= ($row['status_pengajuan'] == 'dibayar' || strtolower($user_role) === 'pj proyek') ? 'disabled' : '' ?>>
                                                         
                                                         <option value="diajukan" <?= $row['status_pengajuan'] == 'diajukan' ? 'selected' : '' ?> 
                                                                 <?= !in_array($row['status_pengajuan'], ['diajukan', 'ditolak']) ? 'disabled' : '' ?>>Diajukan</option>
