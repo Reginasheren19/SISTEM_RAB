@@ -891,8 +891,15 @@ if (isset($_SESSION['flash_message'])) {
                                     <table id="basic-datatables" class="display table table-striped table-hover">
                                         <thead>
                                         <tr>
-                                            <th>ID</th><th>Proyek</th><th>Mandor</th><th>Tanggal</th><th>Total Pengajuan</th><th>Status</th><th class="text-center">Action</th>
-                                        </tr>
+                                        <tr>
+                                            <th style="width: 5%;">ID</th>
+                                            <th style="width: 20%;">Proyek</th>
+                                            <th style="width: 10%;">Mandor</th>
+                                            <th style="width: 10%;">Tanggal</th>
+                                            <th style="width: 15%;">Total Pengajuan</th>
+                                            <th style="width: 10%;">Status</th>
+                                            <th style="width: 20%;" class="text-center">Aksi</th>
+                                        </tr>                                        </tr>
                                         </thead>
                                         <tbody>
                                         <?php if (mysqli_num_rows($pengajuanresult) > 0): ?>
@@ -925,11 +932,11 @@ if (isset($_SESSION['flash_message'])) {
                                                     </select>
                                                 </td>
                                                 <td class="text-center">
-                                                    <a href="get_pengajuan_upah.php?id_pengajuan_upah=<?= urlencode($row['id_pengajuan_upah']) ?>" class="btn btn-info btn-sm" title="Lihat Detail">Detail</a>
+                                                    <a href="get_pengajuan_upah.php?id_pengajuan_upah=<?= urlencode($row['id_pengajuan_upah']) ?>" class="btn btn-info btn-sm mx-1" title="Lihat Detail">Detail</a>
                                                     <?php if (in_array($row['status_pengajuan'], ['diajukan', 'ditolak'])): ?>
-                                                        <a href="update_pengajuan_upah.php?id_pengajuan_upah=<?= urlencode($row['id_pengajuan_upah']) ?>" class="btn btn-warning btn-sm" title="Update">Update</a>
+                                                        <a href="update_pengajuan_upah.php?id_pengajuan_upah=<?= urlencode($row['id_pengajuan_upah']) ?>" class="btn btn-warning btn-sm mx-1" title="Update">Update</a>
                                                         <?php if($is_deletable): ?>
-                                                            <button class="btn btn-danger btn-sm delete-btn" data-id="<?= htmlspecialchars($row['id_pengajuan_upah']) ?>" title="Hapus">Delete</button>
+                                                            <button class="btn btn-danger btn-sm delete-btn mx-1" data-id="<?= htmlspecialchars($row['id_pengajuan_upah']) ?>" title="Hapus">Delete</button>
                                                         <?php endif; ?>
                                                     <?php endif; ?>
                                                 </td>
