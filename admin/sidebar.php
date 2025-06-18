@@ -99,18 +99,7 @@ function can_access($allowed_roles, $current_role) {
         <!-- MENU UNTUK PJ PROYEK                           -->
         <!-- ============================================== -->
         <?php if (can_access(['PJ Proyek', 'Super Admin', 'Direktur', 'Admin'], $user_role)): ?>
-        <li class="nav-item">
-          <a href="dashboard_pjproyek.php">
-            <i class="fas fa-pen-square"></i>
-            <p>Pengajuah Upah</p>
-          </a>
-        </li>
-        <li class="nav-item">
-          <a href="pengajuan_upah.php">
-            <i class="fas fa-pen-square"></i>
-            <p>Pengajuah Upah</p>
-          </a>
-        </li>
+
         <?php endif; ?>
 
         <div class="sidebar-wrapper scrollbar scrollbar-inner">
@@ -177,6 +166,13 @@ function can_access($allowed_roles, $current_role) {
                   <p>Pencatatan Pembelian</p>
                 </a>
               </li>
+              <li class="nav-item">
+                <a href="distribusi_material.php">
+                  <i class="fas fa-truck"></i>
+                  <p>Distribusi Material</p>
+                </a>
+              </li>
+
               <li class="nav-item">
                 <a data-bs-toggle="collapse" href="#forms">
                   <i class="fas fa-pen-square"></i>
