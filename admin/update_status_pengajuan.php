@@ -45,7 +45,7 @@ try {
         }
 
         $file = $_FILES['bukti_bayar'];
-        $upload_dir = '../../uploads/bukti_bayar/'; // Path relatif dari folder 'pages'
+        $upload_dir = '../uploads/bukti_bayar/'; // Path relatif dari folder 'pages'
         
         // Buat direktori jika belum ada
         if (!is_dir($upload_dir) && !mkdir($upload_dir, 0775, true)) {

@@ -913,7 +913,7 @@ function toRoman($num) {
                             <div class="col-md-7">
                                 <div class="mb-3">
                                     <label class="form-label fw-bold">Upload Bukti Progress Pekerjaan</label>
-                                    <div id="upload-card" class="upload-card"><label for="file-input" class="upload-label"><i class="fas fa-cloud-upload-alt upload-icon mb-2"></i><h6 class="fw-bold">Seret & lepas file di sini</h6><p class="text-muted small mb-0">atau klik untuk memilih file</p></label><input type="file" id="file-input" name="bukti_pekerjaan[]" multiple accept="image/*,application/pdf" class="d-none"></div>
+                                    <div id="upload-card" class="upload-card"><label for="file-input" class="upload-label"><i class="fas fa-cloud-upload-alt upload-icon mb-2"></i><h6 class="fw-bold">Seret & lepas file di sini</h6><p class="text-muted small mb-0">atau klik untuk memilih file</p></label><input type="file" id="file-input" name="bukti_pengajuan[]" multiple accept="image/*,application/pdf" class="d-none"></div>
                                 </div>
                                 <div id="preview-container"></div>
                             </div>

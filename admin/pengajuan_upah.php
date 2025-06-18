@@ -891,7 +891,7 @@ if (isset($_SESSION['flash_message'])) {
                                     <table id="basic-datatables" class="display table table-striped table-hover">
                                         <thead>
                                         <tr>
-                                            <th>ID</th><th>Proyek</th><th>Mandor</th><th>Tanggal</th><th>Total</th><th>Status</th><th class="text-center">Action</th>
+                                            <th>ID</th><th>Proyek</th><th>Mandor</th><th>Tanggal</th><th>Total Pengajuan</th><th>Status</th><th class="text-center">Action</th>
                                         </tr>
                                         </thead>
                                         <tbody>
@@ -909,11 +909,19 @@ if (isset($_SESSION['flash_message'])) {
                                                     <select class="form-select status-select <?= getStatusClass($row['status_pengajuan']) ?>" 
                                                             data-id="<?= htmlspecialchars($row['id_pengajuan_upah']) ?>" 
                                                             data-current-status="<?= $row['status_pengajuan'] ?>" 
-                                                            <?= in_array($row['status_pengajuan'], ['dibayar']) ? 'disabled' : '' ?>>
-                                                        <option value="diajukan" <?= $row['status_pengajuan'] == 'diajukan' ? 'selected' : '' ?>>Diajukan</option>
-                                                        <option value="disetujui" <?= $row['status_pengajuan'] == 'disetujui' ? 'selected' : '' ?>>Disetujui</option>
-                                                        <option value="ditolak" <?= $row['status_pengajuan'] == 'ditolak' ? 'selected' : '' ?>>Ditolak</option>
-                                                        <option value="dibayar" <?= $row['status_pengajuan'] == 'dibayar' ? 'selected' : '' ?> <?= $row['status_pengajuan'] != 'disetujui' ? 'disabled' : '' ?>>Dibayar</option>
+                                                            <?= ($row['status_pengajuan'] == 'dibayar') ? 'disabled' : '' ?>>
+                                                        
+                                                        <option value="diajukan" <?= $row['status_pengajuan'] == 'diajukan' ? 'selected' : '' ?> 
+                                                                <?= !in_array($row['status_pengajuan'], ['diajukan', 'ditolak']) ? 'disabled' : '' ?>>Diajukan</option>
+                                                        
+                                                        <option value="disetujui" <?= $row['status_pengajuan'] == 'disetujui' ? 'selected' : '' ?> 
+                                                                <?= !in_array($row['status_pengajuan'], ['diajukan', 'ditolak']) ? 'disabled' : '' ?>>Disetujui</option>
+                                                        
+                                                        <option value="ditolak" <?= $row['status_pengajuan'] == 'ditolak' ? 'selected' : '' ?> 
+                                                                <?= !in_array($row['status_pengajuan'], ['diajukan', 'ditolak']) ? 'disabled' : '' ?>>Ditolak</option>
+
+                                                        <option value="dibayar" <?= $row['status_pengajuan'] == 'dibayar' ? 'selected' : '' ?> 
+                                                                <?= $row['status_pengajuan'] !== 'disetujui' ? 'disabled' : '' ?>>Dibayar</option>
                                                     </select>
                                                 </td>
                                                 <td class="text-center">

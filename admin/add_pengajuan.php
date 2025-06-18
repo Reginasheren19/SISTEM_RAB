@@ -1,13 +1,12 @@
 <?php
-// FILE: add_pengajuan.php (Telah diperbaiki dengan logika upload file)
+// FILE: add_pengajuan.php
 
 session_start();
 include("../config/koneksi_mysql.php");
 
-// Fungsi untuk mengarahkan kembali dengan pesan
+// Fungsi untuk mengarahkan kembali dengan pesan flash
 function redirect_with_message($url, $message, $type = 'error') {
-    $_SESSION['message'] = $message;
-    $_SESSION['message_type'] = $type;
+    $_SESSION['flash_message'] = ['message' => $message, 'type' => $type];
     header("Location: $url");
     exit();
 }
@@ -17,7 +16,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     // Ambil data dari form dan lakukan sanitasi dasar
     $id_rab_upah = isset($_POST['id_rab_upah']) ? (int)$_POST['id_rab_upah'] : 0;
-    $tanggal_pengajuan = $_POST['tanggal_pengajuan'] ?? null;
+    $tanggal_pengajuan = $_POST['tanggal_pengajuan'] ?? date('Y-m-d');
     $total_pengajuan_final = isset($_POST['nominal_pengajuan_final']) ? (float)str_replace(['.', ','], ['', '.'], $_POST['nominal_pengajuan_final']) : 0;
     $keterangan = $_POST['keterangan'] ?? null;
     $all_progress_data = $_POST['progress'] ?? [];
@@ -35,11 +34,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         redirect_with_message("detail_pengajuan_upah.php?id_rab_upah=$id_rab_upah", "Tidak ada progress pekerjaan yang diisi.");
     }
 
-    // Mulai transaksi
+    // Mulai transaksi database
     mysqli_begin_transaction($koneksi);
 
     try {
-        // 1. Hitung total nilai progress dari detail (Kode Anda sudah bagus, saya pertahankan)
+        // 1. Hitung total nilai progress dari detail
         $total_nilai_progress = 0;
         $detail_to_insert = [];
 
@@ -89,14 +88,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             }
         }
         
-        // 4. [DITAMBAHKAN] Proses upload dan simpan file bukti
-        $upload_dir = '../uploads/bukti_pengajuan/';
+        // 4. Proses upload dan simpan file bukti pekerjaan
+        $upload_dir = '../uploads/bukti_pengajuan/'; 
         if (!is_dir($upload_dir)) {
             if (!mkdir($upload_dir, 0775, true)) {
                 throw new Exception("Gagal membuat folder upload. Pastikan folder `uploads/` dapat ditulis oleh server.");
             }
         }
         
+        // [FIXED] Menggunakan nama 'bukti_pengajuan' sesuai dengan permintaan standardisasi
         if (isset($_FILES['bukti_pengajuan']) && count(array_filter($_FILES['bukti_pengajuan']['name'])) > 0) {
             $stmt_bukti = mysqli_prepare($koneksi, "INSERT INTO bukti_pengajuan_upah (id_pengajuan_upah, nama_file, path_file) VALUES (?, ?, ?)");
             
@@ -109,15 +109,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     $file_original_name = basename($files['name'][$i]);
                     $file_ext = strtolower(pathinfo($file_original_name, PATHINFO_EXTENSION));
                     
-                    // Buat nama file unik dan aman
                     $file_new_name = "bukti_" . $id_pengajuan_upah . "_" . uniqid() . "." . $file_ext;
                     $file_destination = $upload_dir . $file_new_name;
 
                     if (move_uploaded_file($file_tmp_name, $file_destination)) {
-                        $path_for_db = '../uploads/bukti_pengajuan/' . $file_new_name;
+                        $path_for_db = 'uploads/bukti_pengajuan/' . $file_new_name;
+                        
                         mysqli_stmt_bind_param($stmt_bukti, "iss", $id_pengajuan_upah, $file_original_name, $path_for_db);
                         if (!mysqli_stmt_execute($stmt_bukti)) {
-                            unlink($file_destination); // Hapus file jika gagal simpan ke DB
+                            unlink($file_destination);
                             throw new Exception("Gagal menyimpan data file '$file_original_name' ke database.");
                         }
                     } else {
@@ -127,7 +127,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             }
         }
         
-        // 5. Jika semua query dan upload berhasil, commit transaksi
+        // 5. Jika semua berhasil, commit transaksi
         mysqli_commit($koneksi);
         redirect_with_message("pengajuan_upah.php", "Pengajuan upah berhasil dikirim.", "success");
 
@@ -138,6 +138,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
 
 } else {
+    // Jika bukan POST, arahkan ke halaman utama
     header("Location: index.php");
     exit();
 }

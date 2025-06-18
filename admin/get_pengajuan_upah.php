@@ -67,12 +67,9 @@ if (!$detail_result) {
     die("Error query detail pengajuan: " . mysqli_error($koneksi));
 }
 
-// Query untuk mengambil semua file bukti
-$sql_bukti = "SELECT nama_file, path_file FROM bukti_pengajuan_upah WHERE id_pengajuan_upah = $id_pengajuan_upah";
-$bukti_result = mysqli_query($koneksi, $sql_bukti);
-if (!$bukti_result) {
-    die("Error query bukti: " . mysqli_error($koneksi));
-}
+// Query untuk mengambil bukti pekerjaan dari tabel bukti_pengajuan_upah
+$sql_bukti_pekerjaan = "SELECT nama_file, path_file FROM bukti_pengajuan_upah WHERE id_pengajuan_upah = $id_pengajuan_upah";
+$bukti_pekerjaan_result = mysqli_query($koneksi, $sql_bukti_pekerjaan);
 
 // Query untuk menghitung termin pengajuan
 $id_rab_upah = $pengajuan_info['id_rab_upah'];
@@ -924,47 +921,41 @@ function toRoman($num) {
               </div>
                 <!-- [DIUBAH] Layout Bukti Pembayaran & Bukti Pekerjaan -->
                 <div class="row">
-                                      <!-- Kolom Bukti Pekerjaan -->
+                <!-- Layout galeri bukti -->
+                <div class="row">
+                    <!-- Kolom Bukti Pembayaran -->
                     <div class="col-md-6">
-                        <div class="card shadow-sm mb-4">
-                             <div class="card-header bg-light"><h4 class="card-title mb-0">Bukti Pekerjaan Terlampir</h4></div>
-                             <div class="card-body">
-                                <?php if ($bukti_result && mysqli_num_rows($bukti_result) > 0): ?>
-                                    <div class="row g-2">
-                                        <?php while($bukti = mysqli_fetch_assoc($bukti_result)): ?>
-                                            <div class="col-6 col-lg-4">
-                                                <a href="../<?= htmlspecialchars($bukti['path_file']) ?>" target="_blank" title="<?= htmlspecialchars($bukti['nama_file']) ?>">
-                                                    <img src="../<?= htmlspecialchars($bukti['path_file']) ?>" class="img-thumbnail" alt="<?= htmlspecialchars($bukti['nama_file']) ?>" style="width: 100%; height: 120px; object-fit: cover;" onerror="this.onerror=null;this.src='https://placehold.co/600x400/EEE/31343C?text=Gagal\nMuat';">
-                                                </a>
-                                            </div>
-                                        <?php endwhile; ?>
+                        <div class="card shadow-sm mb-4" style="min-height: 250px;">
+                            <div class="card-header bg-light"><h4 class="card-title mb-0">Bukti Pembayaran</h4></div>
+                            <div class="card-body">
+                                <?php if (!empty($pengajuan_info['bukti_bayar'])):
+                                    $path_bayar = "../" . htmlspecialchars($pengajuan_info['bukti_bayar']);
+                                ?>
+                                    <div class="col-12">
+                                        <a href="../<?= $path_bayar ?>" target="_blank" title="Lihat Bukti Pembayaran">
+                                            <img src="../<?= $path_bayar ?>" class="img-thumbnail" style="width: 100%; height: auto; max-height: 240px; object-fit: contain;" onerror="this.onerror=null;this.src='https://placehold.co/600x400/EEE/31343C?text=File Tidak Ditemukan';">
+                                        </a>
                                     </div>
                                 <?php else: ?>
-                                    <p class="text-muted text-center py-3">Tidak ada bukti pekerjaan yang dilampirkan.</p>
+                                    <p class="text-muted text-center py-3">Tidak ada bukti pembayaran yang dilampirkan.</p>
                                 <?php endif; ?>
                             </div>
                         </div>
                     </div>
                     <!-- Kolom Bukti Pembayaran -->
                     <div class="col-md-6">
-                        <div class="card shadow-sm mb-4">
+                        <div class="card shadow-sm mb-4" style="min-height: 250px;">
                             <div class="card-header bg-light"><h4 class="card-title mb-0">Bukti Pembayaran</h4></div>
                             <div class="card-body">
                                 <?php if (!empty($pengajuan_info['bukti_bayar'])):
-                                    $bukti_bayar_path = "../" . htmlspecialchars($pengajuan_info['bukti_bayar']);
-                                    $file_ext = strtolower(pathinfo($bukti_bayar_path, PATHINFO_EXTENSION));
-                                    $is_image = in_array($file_ext, ['jpg', 'jpeg', 'png', 'gif']);
+                                    // [FIXED] Path dibangun dengan benar sekali saja.
+                                    $path_bayar = "../" . htmlspecialchars($pengajuan_info['bukti_bayar']);
                                 ?>
-                                    <a href="../<?= $bukti_bayar_path ?>" target="_blank" title="Lihat Bukti Pembayaran">
-                                        <?php if($is_image): ?>
-                                            <img src="../<?= $bukti_bayar_path ?>" class="img-thumbnail" alt="Bukti Pembayaran" style="width: 100%; height: auto; max-height: 240px; object-fit: contain;" onerror="this.onerror=null;this.src='https://placehold.co/600x400/EEE/31343C?text=Gagal\nMuat';">
-                                        <?php else: ?>
-                                            <div class="text-center py-5">
-                                                <i class="far fa-file-pdf fa-4x text-danger"></i>
-                                                <p class="mt-2">Lihat File PDF</p>
-                                            </div>
-                                        <?php endif; ?>
-                                    </a>
+                                    <div class="col-12">
+                                        <a href="<?= $path_bayar ?>" target="_blank" title="Lihat Bukti Pembayaran">
+                                            <img src="<?= $path_bayar ?>" class="img-thumbnail" style="width: 100%; height: auto; max-height: 240px; object-fit: contain;" onerror="this.onerror=null;this.src='https://placehold.co/600x400/EEE/31343C?text=File';">
+                                        </a>
+                                    </div>
                                 <?php else: ?>
                                     <p class="text-muted text-center py-3">Tidak ada bukti pembayaran yang dilampirkan.</p>
                                 <?php endif; ?>
