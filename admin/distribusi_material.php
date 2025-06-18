@@ -919,6 +919,27 @@ if (!isset($_SESSION['id_user'])) {
   </div>
 </div>
 
+<div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="confirmDeleteModalLabel">Konfirmasi Hapus</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p>Apakah Anda yakin ingin menghapus data distribusi ini?</p>
+        <p class="text-danger small">
+            <strong>Peringatan:</strong> Aksi ini akan menghapus semua detail material yang terkait dan **mengembalikan jumlah stoknya** ke gudang.
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+        <a href="#" id="confirmDeleteLink" class="btn btn-danger">Ya, Hapus</a>
+      </div>
+    </div>
+  </div>
+</div>
+
     <script src="assets/js/core/jquery-3.7.1.min.js"></script>
     <script src="assets/js/core/popper.min.js"></script>
     <script src="assets/js/core/bootstrap.min.js"></script>
