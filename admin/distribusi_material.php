@@ -329,6 +329,17 @@ if (!isset($_SESSION['id_user'])) {
                 </button>
             </div>
             <div class="card-body">
+                <?php
+                // Blok notifikasi (sudah benar)
+                if (isset($_SESSION['pesan_sukses'])) {
+                    echo '<div class="alert alert-success" role="alert">' . htmlspecialchars($_SESSION['pesan_sukses']) . '</div>';
+                    unset($_SESSION['pesan_sukses']);
+                }
+                if (isset($_SESSION['error_message'])) {
+                    echo '<div class="alert alert-danger" role="alert">' . htmlspecialchars($_SESSION['error_message']) . '</div>';
+                    unset($_SESSION['error_message']);
+                }
+                ?>
                 <div class="table-responsive">
                     <table id="tabelDistribusi" class="table table-striped table-hover" style="width:100%">
                         <thead>
@@ -360,18 +371,19 @@ if (!isset($_SESSION['id_user'])) {
                                     <td>
                                         <a href="detail_distribusi.php?id=<?= urlencode($row['id_distribusi']) ?>" class="btn btn-info btn-sm">Detail</a>
                                         <button class="btn btn-danger btn-sm btn-delete" 
-                                                data-id="<?= $row['id_distribusi'] ?>" 
-                                                data-bs-toggle="modal" 
-                                                data-bs-target="#confirmDeleteModal">
+                                                data-id="<?= $row['id_distribusi'] ?>">
                                             Delete
                                         </button>
                                     </td>
                                 </tr>
                             <?php 
                                 endwhile; 
-                            // ... else ...
-                            endif; 
+                            else: 
                             ?>
+                                <tr>
+                                    <td colspan="7" class="text-center">Belum ada data distribusi.</td>
+                                </tr>
+                            <?php endif; ?>
                         </tbody>
                     </table>
                 </div>
@@ -381,100 +393,97 @@ if (!isset($_SESSION['id_user'])) {
 </div>
 
 <div class="modal fade" id="addDistribusiModal" tabindex="-1" aria-labelledby="addDistribusiModalLabel" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <form method="POST" action="add_distribusi.php">
-        <div class="modal-header">
-          <h5 class="modal-title" id="addDistribusiModalLabel">Buat Transaksi Distribusi Baru</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="add_distribusi.php">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addDistribusiModalLabel">Buat Transaksi Distribusi Baru</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="id_proyek" class="form-label">Proyek Tujuan</label>
+                        <select class="form-select" id="id_proyek" name="id_proyek" required>
+                            <option value="" disabled selected>-- Pilih Proyek --</option>
+                            <?php
+                            if ($proyek_result && mysqli_num_rows($proyek_result) > 0) {
+                                mysqli_data_seek($proyek_result, 0); 
+                                while ($proyek = mysqli_fetch_assoc($proyek_result)) {
+                                    echo '<option value="' . htmlspecialchars($proyek['id_proyek']) . '">' . htmlspecialchars($proyek['nama_proyek_lengkap']) . '</option>';
+                                }
+                            }
+                            ?>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="tanggal_distribusi" class="form-label">Tanggal Distribusi</label>
+                        <input type="date" class="form-control" id="tanggal_distribusi" name="tanggal_distribusi" value="<?= date('Y-m-d') ?>" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="keterangan_umum" class="form-label">Keterangan Umum (Opsional)</label>
+                        <textarea class="form-control" id="keterangan_umum" name="keterangan_umum" rows="3" placeholder="Contoh: Pengambilan material untuk Pengecoran Blok A"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-primary">Lanjut ke Input Detail</button>
+                </div>
+            </form>
         </div>
-        <div class="modal-body">
-
-          <div class="mb-3">
-            <label for="id_proyek" class="form-label">Proyek Tujuan</label>
-            <select class="form-select" id="id_proyek" name="id_proyek" required>
-              <option value="" disabled selected>-- Pilih Proyek --</option>
-              <?php
-              if ($proyek_result && mysqli_num_rows($proyek_result) > 0) {
-                  // Reset pointer hasil query untuk memastikan loop berjalan
-                  mysqli_data_seek($proyek_result, 0); 
-                  while ($proyek = mysqli_fetch_assoc($proyek_result)) {
-                      echo '<option value="' . htmlspecialchars($proyek['id_proyek']) . '">' . htmlspecialchars($proyek['nama_proyek_lengkap']) . '</option>';
-                  }
-              }
-              ?>
-            </select>
-          </div>
-
-          <div class="mb-3">
-            <label for="tanggal_distribusi" class="form-label">Tanggal Distribusi</label>
-            <input type="date" class="form-control" id="tanggal_distribusi" name="tanggal_distribusi" value="<?= date('Y-m-d') ?>" required>
-          </div>
-          
-          <div class="mb-3">
-            <label for="keterangan_umum" class="form-label">Keterangan Umum (Opsional)</label>
-            <textarea class="form-control" id="keterangan_umum" name="keterangan_umum" rows="3" placeholder="Contoh: Pengambilan material untuk Pengecoran Blok A"></textarea>
-          </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-          <button type="submit" class="btn btn-primary">Lanjut ke Input Detail</button>
-        </div>
-      </form>
     </div>
-  </div>
 </div>
 
 <div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteModalLabel" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="confirmDeleteModalLabel">Konfirmasi Hapus</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <p>Apakah Anda yakin ingin menghapus data distribusi ini?</p>
-        <p class="text-danger small">
-            <strong>Peringatan:</strong> Aksi ini akan menghapus semua detail material yang terkait dan **mengembalikan jumlah stoknya** ke gudang.
-        </p>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-        <a href="#" id="confirmDeleteLink" class="btn btn-danger">Ya, Hapus</a>
-      </div>
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="confirmDeleteModalLabel">Konfirmasi Hapus</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Apakah Anda yakin ingin menghapus data distribusi ini?</p>
+                <p class="text-danger small"><strong>Peringatan:</strong> Stok material akan dikembalikan.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                <a href="#" id="confirmDeleteLink" class="btn btn-danger">Ya, Hapus</a>
+            </div>
+        </div>
     </div>
-  </div>
 </div>
 
-    <script src="assets/js/core/jquery-3.7.1.min.js"></script>
-    <script src="assets/js/core/popper.min.js"></script>
-    <script src="assets/js/core/bootstrap.min.js"></script>
-    <script src="assets/js/plugin/datatables/datatables.min.js"></script>
+<script src="assets/js/core/jquery-3.7.1.min.js"></script>
+<script src="assets/js/core/popper.min.js"></script>
+<script src="assets/js/core/bootstrap.min.js"></script>
+<script src="assets/js/plugin/datatables/datatables.min.js"></script>
+<script src="assets/js/plugin/datatables/dataTables.bootstrap5.min.js"></script>
 
-    <script src="assets/js/plugin/datatables/dataTables.bootstrap5.min.js"></script>
+<script>
+$(document).ready(function() {
+    // Inisialisasi DataTable
+    $('#tabelDistribusi').DataTable({ "order": [] });
 
-    <script>
-    $(document).ready(function() {
-        // Inisialisasi DataTable untuk tabel distribusi
-        // Dengan file CSS dan JS yang benar, ini akan otomatis membuat semua kontrol
-        $('#tabelDistribusi').DataTable({
-            "order": [] // Pengaturan Anda untuk tidak ada pengurutan awal
-        });
+    // Script notifikasi
+    const alertBox = $('.alert');
+    if (alertBox.length) {
+        setTimeout(function() {
+            alertBox.fadeOut('slow');
+        }, 5000);
+    }
 
-        // Script notifikasi dan modal hapus Anda sudah bagus
-        const alertBox = $('.alert');
-        if (alertBox.length) {
-            setTimeout(function() {
-                alertBox.fadeOut('slow');
-            }, 5000);
-        }
+    // JAVASCRIPT FINAL UNTUK MODAL DELETE
+    $('#tabelDistribusi').on('click', '.btn-delete', function() {
+        // 1. Ambil ID dari tombol
+        const id = $(this).data('id');
+        const deleteUrl = `delete_distribusi.php?id=${id}`;
 
-        $('#tabelDistribusi').on('click', '.btn-delete', function() {
-            const id = $(this).data('id');
-            const deleteUrl = `delete_distribusi.php?id=${id}`;
-            $('#confirmDeleteLink').attr('href', deleteUrl);
-        });
+        // 2. Isi link di tombol "Ya, Hapus" di dalam modal
+        $('#confirmDeleteLink').attr('href', deleteUrl);
+        
+        // 3. Perintahkan modal untuk muncul secara manual (INI KUNCINYA)
+        $('#confirmDeleteModal').modal('show'); 
     });
-    </script>
-
+});
+</script>
 </body>
 </html>
