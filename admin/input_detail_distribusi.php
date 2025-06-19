@@ -838,7 +838,7 @@ $materials_result = mysqli_query($koneksi, $material_sql);
                                   </div>
                                   <div class="col-md-6">
                                       <p><strong>Tanggal:</strong> <?= date("d F Y", strtotime($distribusi['tanggal_distribusi'])) ?></p>
-                                      <p><strong>Didistribusikan Oleh:</strong> <?= htmlspecialchars($distribusi['nama_pj_distribusi']) ?></p>
+                                      <p><strong>PJ Proyek:</strong> <?= htmlspecialchars($distribusi['nama_pj_distribusi']) ?></p>
                                   </div>
                                   <div class="col-12 mt-2">
                                       <p><strong>Keterangan:</strong> <?= nl2br(htmlspecialchars($distribusi['keterangan_umum'])) ?></p>
