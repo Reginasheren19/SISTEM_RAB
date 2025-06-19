@@ -3,22 +3,20 @@ session_start();
 include("../config/koneksi_mysql.php");
 
 // =========================================================================
-// [DIUBAH] Nama session disesuaikan dengan file login.php Anda
-$logged_in_user_id = $_SESSION['id_user'] ?? 0; 
-$user_role = $_SESSION['role'] ?? 'guest'; 
+// [PENTING] Nama session disesuaikan dengan file login.php Anda
+$logged_in_user_id = $_SESSION['id_user'] ?? 0;
+$user_role = strtolower($_SESSION['role'] ?? 'guest');
 
-// Jika pengguna tidak login, Anda bisa arahkan ke halaman login
+// Daftar peran yang bisa melihat semua data
+$can_see_all_roles = ['admin', 'super admin', 'direktur'];
+$is_editor_role = in_array($user_role, $can_see_all_roles);
+
+// Jika pengguna tidak login, arahkan ke halaman login
 if ($logged_in_user_id === 0) {
-    // Arahkan ke halaman login jika tidak ada session aktif
     header("Location: ../index.php?pesan=belum_login");
     exit();
 }
 // =========================================================================
-
-
-// Mengatur error reporting
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
 
 // Fungsi helper untuk warna dropdown
 function getStatusClass($status) {
@@ -31,7 +29,7 @@ function getStatusClass($status) {
     }
 }
 
-// Query utama dengan filter dinamis yang sederhana
+// [DIUBAH] Query utama dengan filter hak akses yang lebih baik
 $sql = "SELECT 
     pu.id_pengajuan_upah, pu.tanggal_pengajuan, pu.total_pengajuan, pu.status_pengajuan, pu.keterangan,
     ru.id_rab_upah, mpe.nama_perumahan, mpr.kavling, mm.nama_mandor, pu.bukti_bayar,
@@ -43,14 +41,15 @@ LEFT JOIN master_perumahan mpe ON mpr.id_perumahan = mpe.id_perumahan
 LEFT JOIN master_mandor mm ON mpr.id_mandor = mm.id_mandor
 ";
 
-// [DIUBAH] Tambahkan klausa WHERE jika yang login adalah 'pj proyek'
-if (strtolower($user_role) === 'pj proyek') {
+if ($user_role === 'pj proyek') {
     $safe_user_id = (int) $logged_in_user_id;
     $sql .= " WHERE mpr.id_user_pj = $safe_user_id";
+} 
+else if (!in_array($user_role, ['super admin', 'admin', 'direktur'])) {
+     $sql .= " WHERE 1=0"; // Kondisi yang selalu salah untuk role lain
 }
 
 $sql .= " GROUP BY pu.id_pengajuan_upah ORDER BY pu.id_pengajuan_upah DESC";
-
 
 $pengajuanresult = mysqli_query($koneksi, $sql);
 if (!$pengajuanresult) {
@@ -58,22 +57,16 @@ if (!$pengajuanresult) {
 }
 
 
-// Query untuk modal juga difilter dengan cara sederhana
+// Query untuk modal juga difilter
 $rabUpahUntukModalSql = "SELECT 
-                            ru.id_rab_upah, 
-                            ru.id_proyek,
-                            mpe.nama_perumahan, 
-                            mpr.kavling, 
-                            mm.nama_mandor,
-                            ru.total_rab_upah
+                            ru.id_rab_upah, ru.id_proyek,
+                            mpe.nama_perumahan, mpr.kavling, mm.nama_mandor, ru.total_rab_upah
                         FROM rab_upah ru
                         LEFT JOIN master_proyek mpr ON ru.id_proyek = mpr.id_proyek
                         LEFT JOIN master_perumahan mpe ON mpr.id_perumahan = mpe.id_perumahan
-                        LEFT JOIN master_mandor mm ON mpr.id_mandor = mm.id_mandor
-                        ";
+                        LEFT JOIN master_mandor mm ON mpr.id_mandor = mm.id_mandor ";
 
-// Tambahkan klausa WHERE jika yang login adalah 'pj proyek'
-if (strtolower($user_role) === 'pj proyek') {
+if ($user_role === 'pj proyek') {
     $safe_user_id = (int) $logged_in_user_id;
     $rabUpahUntukModalSql .= " WHERE mpr.id_user_pj = $safe_user_id";
 }
@@ -85,7 +78,7 @@ if (!$rabUpahUntukModalResult) {
     die("Query Error (Modal RAB): " . mysqli_error($koneksi));
 }
 
-// Ambil pesan flash dari session untuk pop-up notifikasi
+// Ambil pesan flash dari session
 $flash_message = null;
 if (isset($_SESSION['flash_message'])) {
     $flash_message = $_SESSION['flash_message'];
@@ -926,25 +919,42 @@ if (isset($_SESSION['flash_message'])) {
                                                 <td><?= htmlspecialchars($row['nama_mandor']) ?></td>
                                                 <td class="text-center"><?= date('d-m-Y', strtotime($row['tanggal_pengajuan'])) ?></td>
                                                 <td class="text-end">Rp <?= number_format($row['total_pengajuan'], 0, ',', '.') ?></td>
-                                                <td>                                                    
-                                                  <select class="form-select status-select <?= getStatusClass($row['status_pengajuan']) ?>" 
-                                                            data-id="<?= htmlspecialchars($row['id_pengajuan_upah']) ?>" 
-                                                            data-current-status="<?= $row['status_pengajuan'] ?>" 
-                                                            <?= ($row['status_pengajuan'] == 'dibayar' || strtolower($user_role) === 'pj proyek') ? 'disabled' : '' ?>>
-                                                        
-                                                        <option value="diajukan" <?= $row['status_pengajuan'] == 'diajukan' ? 'selected' : '' ?> 
-                                                                <?= !in_array($row['status_pengajuan'], ['diajukan', 'ditolak']) ? 'disabled' : '' ?>>Diajukan</option>
-                                                        
-                                                        <option value="disetujui" <?= $row['status_pengajuan'] == 'disetujui' ? 'selected' : '' ?> 
-                                                                <?= !in_array($row['status_pengajuan'], ['diajukan', 'ditolak']) ? 'disabled' : '' ?>>Disetujui</option>
-                                                        
-                                                        <option value="ditolak" <?= $row['status_pengajuan'] == 'ditolak' ? 'selected' : '' ?> 
-                                                                <?= !in_array($row['status_pengajuan'], ['diajukan', 'ditolak']) ? 'disabled' : '' ?>>Ditolak</option>
+<td>
+    <?php
+    // [LOGIKA BARU] Tentukan apakah dropdown bisa diedit.
+    // Bisa diedit jika role-nya adalah editor DAN statusnya belum 'dibayar'.
+    $is_editable = $is_editor_role && strtolower($row['status_pengajuan']) !== 'dibayar';
+    ?>
+    <select class="form-select status-select <?= getStatusClass($row['status_pengajuan']) ?>" 
+            data-id="<?= htmlspecialchars($row['id_pengajuan_upah']) ?>" 
+            data-current-status="<?= strtolower($row['status_pengajuan']) ?>" 
+            <?= !$is_editable ? 'disabled' : '' ?>
+    >
+        
+        <?php $current_status = strtolower($row['status_pengajuan']); ?>
 
-                                                        <option value="dibayar" <?= $row['status_pengajuan'] == 'dibayar' ? 'selected' : '' ?> 
-                                                                <?= $row['status_pengajuan'] !== 'disetujui' ? 'disabled' : '' ?>>Dibayar</option>
-                                                    </select>
-                                                </td>
+        <option value="diajukan" <?= $current_status == 'diajukan' ? 'selected' : '' ?>
+            <?= !in_array($current_status, ['diajukan', 'ditolak']) ? 'disabled' : '' ?>>
+            Diajukan
+        </option>
+        
+        <option value="disetujui" <?= $current_status == 'disetujui' ? 'selected' : '' ?>
+            <?= !in_array($current_status, ['diajukan', 'ditolak']) ? 'disabled' : '' ?>>
+            Disetujui
+        </option>
+        
+        <option value="ditolak" <?= $current_status == 'ditolak' ? 'selected' : '' ?>
+            <?= !in_array($current_status, ['diajukan', 'ditolak']) ? 'disabled' : '' ?>>
+            Ditolak
+        </option>
+        
+        <option value="dibayar" <?= $current_status == 'dibayar' ? 'selected' : '' ?>
+            <?= $current_status !== 'disetujui' ? 'disabled' : '' ?>>
+            Dibayar
+        </option>
+
+    </select>
+</td>
                                                 <td class="text-center">
                                                     <a href="get_pengajuan_upah.php?id_pengajuan_upah=<?= urlencode($row['id_pengajuan_upah']) ?>" class="btn btn-info btn-sm mx-1" title="Lihat Detail">Detail</a>
                                                     <?php if (in_array($row['status_pengajuan'], ['diajukan', 'ditolak'])): ?>

@@ -39,7 +39,7 @@ $sql = "SELECT
         LEFT JOIN master_proyek mpr ON ru.id_proyek = mpr.id_proyek
         LEFT JOIN master_perumahan mpe ON mpr.id_perumahan = mpe.id_perumahan
         LEFT JOIN master_mandor mm ON mpr.id_mandor = mm.id_mandor
-        WHERE 1=1"; // Klausa WHERE awal untuk memudahkan penambahan kondisi
+        WHERE 1=1";
 
 // Tambahkan filter ke query
 if ($status_filter !== 'semua') {
@@ -75,6 +75,15 @@ function getStatusBadge($status) {
     }
     return "<span class='badge {$badge_class} {$text_class}'>" . ucwords($status) . "</span>";
 }
+
+// Bangun query string untuk link download
+$download_query_string = http_build_query([
+    'status' => $status_filter,
+    'proyek' => $proyek_filter,
+    'mandor' => $mandor_filter,
+    'tanggal_mulai' => $tanggal_mulai,
+    'tanggal_selesai' => $tanggal_selesai,
+]);
 
 ?>
 
@@ -295,7 +304,10 @@ function getStatusBadge($status) {
                     <div class="card">
                         <div class="card-header"><h4 class="card-title">Filter Laporan</h4></div>
                         <div class="card-body">
-                            <form method="GET" action="">
+                            <form id="filter-form" method="GET" action="">
+                                <!-- [DIUBAH] Hidden input untuk menyimpan status yang dipilih -->
+                                <input type="hidden" name="status" id="status-input" value="<?= htmlspecialchars($status_filter) ?>">
+                                
                                 <div class="row g-3">
                                     <div class="col-md-3">
                                         <label for="filter-proyek" class="form-label">Proyek</label>
@@ -332,22 +344,16 @@ function getStatusBadge($status) {
                             </form>
                             <hr>
                             <div class="d-flex justify-content-between align-items-center">
-                                <div class="btn-group">
-                                    <a href="?status=semua" class="btn btn-outline-primary filter-btn <?= $status_filter == 'semua' ? 'active' : '' ?>">Semua</a>
-                                    <a href="?status=diajukan" class="btn btn-outline-primary filter-btn <?= $status_filter == 'diajukan' ? 'active' : '' ?>">Diajukan</a>
-                                    <a href="?status=disetujui" class="btn btn-outline-primary filter-btn <?= $status_filter == 'disetujui' ? 'active' : '' ?>">Disetujui</a>
-                                    <a href="?status=ditolak" class="btn btn-outline-primary filter-btn <?= $status_filter == 'ditolak' ? 'active' : '' ?>">Ditolak</a>
-                                    <a href="?status=dibayar" class="btn btn-outline-primary filter-btn <?= $status_filter == 'dibayar' ? 'active' : '' ?>">Dibayar</a>
+                                <div id="status-buttons" class="btn-group">
+                                    <button type="button" data-status="semua" class="btn btn-outline-primary filter-btn <?= $status_filter == 'semua' ? 'active' : '' ?>">Semua</button>
+                                    <button type="button" data-status="diajukan" class="btn btn-outline-primary filter-btn <?= $status_filter == 'diajukan' ? 'active' : '' ?>">Diajukan</button>
+                                    <button type="button" data-status="disetujui" class="btn btn-outline-primary filter-btn <?= $status_filter == 'disetujui' ? 'active' : '' ?>">Disetujui</button>
+                                    <button type="button" data-status="ditolak" class="btn btn-outline-primary filter-btn <?= $status_filter == 'ditolak' ? 'active' : '' ?>">Ditolak</button>
+                                    <button type="button" data-status="dibayar" class="btn btn-outline-primary filter-btn <?= $status_filter == 'dibayar' ? 'active' : '' ?>">Dibayar</button>
                                 </div>
-                                <div class="btn-group">
-                                    <button type="button" class="btn btn-success dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                                        <i class="fas fa-download"></i> Unduh Laporan
-                                    </button>
-                                    <ul class="dropdown-menu">
-                                        <li><a class="dropdown-item" href="#">PDF</a></li>
-                                        <li><a class="dropdown-item" href="#">Excel</a></li>
-                                    </ul>
-                                </div>
+                                <a href="cetak_lap_upah.php?jenis=rekap&<?= $download_query_string ?>" target="_blank" class="btn btn-success">
+                                    <i class="fas fa-download"></i> Unduh Laporan (PDF)
+                                </a>
                             </div>
                         </div>
                     </div>
@@ -380,7 +386,7 @@ function getStatusBadge($status) {
                                                 <td class="text-end">Rp <?= number_format($row['total_pengajuan'], 0, ',', '.') ?></td>
                                                 <td class="text-center"><?= getStatusBadge($row['status_pengajuan']) ?></td>
                                                 <td class="text-center">
-                                                    <a href="cetak_pengajuan.php?id=<?= $row['id_pengajuan_upah'] ?>" target="_blank" class="btn btn-success btn-sm" title="Cetak Laporan">
+                                                    <a href="cetak_lap_upah.php?id=<?= $row['id_pengajuan_upah'] ?>" target="_blank" class="btn btn-success btn-sm" title="Cetak Laporan">
                                                         <i class="fas fa-print"></i>
                                                     </a>
                                                 </td>
@@ -418,6 +424,13 @@ function getStatusBadge($status) {
     <script>
         $(document).ready(function() {
             $('#report-table').DataTable();
+
+            // [BARU] Logika untuk membuat tombol status memfilter form
+            $('#status-buttons .filter-btn').on('click', function() {
+                var status = $(this).data('status');
+                $('#status-input').val(status);
+                $('#filter-form').submit();
+            });
         });
     </script>
 </body>

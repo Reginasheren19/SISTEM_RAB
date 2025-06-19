@@ -334,13 +334,9 @@ $download_query_string = http_build_query([
                             <div class="d-flex align-items-center">
                                 <h4 class="card-title">Perbandingan Anggaran vs Realisasi per Proyek</h4>
                                 <div class="ms-auto btn-group">
-                                    <button type="button" class="btn btn-success dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                                        <i class="fas fa-download"></i> Unduh Laporan
-                                    </button>
-                                    <ul class="dropdown-menu">
-                                        <li><a class="dropdown-item" href="cetak_laporan_realisasi_pdf.php?<?= $download_query_string ?>" target="_blank">PDF</a></li>
-                                        <li><a class="dropdown-item" href="cetak_laporan_realisasi_excel.php?<?= $download_query_string ?>">Excel</a></li>
-                                    </ul>
+                                <a href="cetak_lap_upah.php?jenis=rekap&<?= $download_query_string ?>" target="_blank" class="btn btn-success">
+                                    <i class="fas fa-download"></i> Unduh Laporan
+                                </a>
                                 </div>
                             </div>
                         </div>
