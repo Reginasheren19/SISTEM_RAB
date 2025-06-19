@@ -2,65 +2,53 @@
 session_start();
 include("../config/koneksi_mysql.php");
 
-$sql = "
+// 1. Ambil ID Distribusi dari URL
+if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
+    $_SESSION['error_message'] = "ID Distribusi tidak valid.";
+    header("Location: distribusi_material.php");
+    exit();
+}
+$id_distribusi = $_GET['id'];
+
+// 2. Query untuk Data Header Distribusi
+$header_sql = "
     SELECT 
-        d.id_distribusi,
-        d.tanggal_distribusi,
-        d.keterangan_umum,
+        d.id_distribusi, d.tanggal_distribusi, d.keterangan_umum,
         u.nama_lengkap AS nama_pj_distribusi,
-        -- Menggabungkan nama perumahan dan kavling untuk membuat nama proyek yang lengkap
         CONCAT(pr.nama_perumahan, ' - Kavling ', p.kavling) AS nama_proyek_lengkap
-    FROM 
-        distribusi_material d
-    LEFT JOIN
-        master_user u ON d.id_user_pj = u.id_user
-    LEFT JOIN
-        master_proyek p ON d.id_proyek = p.id_proyek 
-    LEFT JOIN
-        master_perumahan pr ON p.id_perumahan = pr.id_perumahan
-    ORDER BY 
-        d.id_distribusi DESC
+    FROM distribusi_material d
+    LEFT JOIN master_user u ON d.id_user_pj = u.id_user
+    LEFT JOIN master_proyek p ON d.id_proyek = p.id_proyek 
+    LEFT JOIN master_perumahan pr ON p.id_perumahan = pr.id_perumahan
+    WHERE d.id_distribusi = ?
 ";
-$result = mysqli_query($koneksi, $sql);
+$stmt_header = mysqli_prepare($koneksi, $header_sql);
+mysqli_stmt_bind_param($stmt_header, "i", $id_distribusi);
+mysqli_stmt_execute($stmt_header);
+$header_result = mysqli_stmt_get_result($stmt_header);
+$distribusi = mysqli_fetch_assoc($header_result);
 
-if (!$result) {
-    die("Query Error: " . mysqli_error($koneksi));
+if (!$distribusi) {
+    $_SESSION['error_message'] = "Data Distribusi tidak ditemukan.";
+    header("Location: distribusi_material.php");
+    exit();
 }
 
-// Pastikan user sudah login sebelum mengambil daftar proyek
-if (!isset($_SESSION['id_user'])) {
-    // Jika user belum login, kita buat variabel $proyek_result sebagai array kosong
-    // agar tidak terjadi error di bagian HTML.
-    $proyek_result = [];
-    // Idealnya, jika belum login, user seharusnya diarahkan ke halaman login.
-    // header("Location: login.php"); exit();
-} else {
-    // Ambil ID user yang sedang login dari session
-    $logged_in_user_id = $_SESSION['id_user'];
+// 3. Query untuk Daftar Item yang Sudah Didistribusikan
+$detail_sql = "
+    SELECT dd.id_detail, m.nama_material, dd.jumlah_distribusi, s.nama_satuan AS satuan
+    FROM detail_distribusi dd
+    JOIN master_material m ON dd.id_material = m.id_material
+    LEFT JOIN master_satuan s ON m.id_satuan = s.id_satuan
+    WHERE dd.id_distribusi = ?
+    ORDER BY dd.id_detail ASC
+";
+$stmt_detail = mysqli_prepare($koneksi, $detail_sql);
+mysqli_stmt_bind_param($stmt_detail, "i", $id_distribusi);
+mysqli_stmt_execute($stmt_detail);
+$detail_items = mysqli_stmt_get_result($stmt_detail);
 
-    // Query ini hanya akan mengambil proyek yang PJ-nya adalah user yang sedang login
-    $proyek_sql = "
-        SELECT 
-            p.id_proyek,
-            CONCAT(pr.nama_perumahan, ' - Kavling ', p.kavling) AS nama_proyek_lengkap
-        FROM 
-            master_proyek p
-        LEFT JOIN 
-            master_perumahan pr ON p.id_perumahan = pr.id_perumahan
-        WHERE 
-            p.id_user_pj = ?
-        ORDER BY 
-            nama_proyek_lengkap ASC
-    ";
-
-    // Gunakan Prepared Statement untuk keamanan
-    $stmt_proyek = mysqli_prepare($koneksi, $proyek_sql);
-    mysqli_stmt_bind_param($stmt_proyek, "i", $logged_in_user_id);
-    mysqli_stmt_execute($stmt_proyek);
-    $proyek_result = mysqli_stmt_get_result($stmt_proyek);
-}
 ?>
-
 
 <!DOCTYPE html>
 <html lang="en">
@@ -794,8 +782,7 @@ if (!isset($_SESSION['id_user'])) {
           <!-- End Navbar -->
         </div>
 
-        
-    <div class="container">
+            <div class="container">
         <div class="page-inner">
             <div class="page-header">
                 <h3 class="fw-bold mb-3">Distribusi Material</h3>
@@ -809,167 +796,77 @@ if (!isset($_SESSION['id_user'])) {
                         <i class="icon-arrow-right"></i>
                     </li>
                     <li class="nav-item">
-                        <a href="#">Distribusi Material</a>
+                        <a href="distribusi_material.php">Distribusi Material</a>
                     </li>
+                    <li class="separator">
+                        <i class="icon-arrow-right"></i>
+                    </li>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#">Detail Distribusi Material</a>
+                    </li>
+
                 </ul>
             </div>
 
-<div class="row">
-    <div class="col-md-12">
-        <div class="card">
-            <div class="card-header d-flex align-items-center">
-                <h4 class="card-title">Daftar Transaksi Distribusi</h4>
-                <button class="btn btn-primary btn-round ms-auto" data-bs-toggle="modal" data-bs-target="#addDistribusiModal">
-                    <i class="fa fa-plus"></i> Tambah Distribusi
-                </button>
-            </div>
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table id="tabelDistribusi" class="table table-striped table-hover" style="width:100%">
-                        <thead>
-                            <tr>
-                                <th>No.</th>
-                                <th>ID Distribusi</th>
-                                <th>Tanggal</th>
-                                <th>Proyek Tujuan</th>
-                                <th>PJ Proyek</th>
-                                <th>Keterangan</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php 
-                            if ($result && mysqli_num_rows($result) > 0): 
-                                $nomor = 1; 
-                                while ($row = mysqli_fetch_assoc($result)):
-                                    $tahun_distribusi = date('Y', strtotime($row['tanggal_distribusi']));
-                                    $formatted_id = 'DIST' . $row['id_distribusi'] . $tahun_distribusi;
-                            ?>
-                                <tr>
-                                    <td><?= $nomor++ ?></td>
-                                    <td><?= htmlspecialchars($formatted_id) ?></td>
-                                    <td><?= date("d F Y", strtotime($row['tanggal_distribusi'])) ?></td>
-                                    <td><?= htmlspecialchars($row['nama_proyek_lengkap']) ?></td>
-                                    <td><?= htmlspecialchars($row['nama_pj_distribusi']) ?></td>
-                                    <td><?= htmlspecialchars($row['keterangan_umum']) ?></td>
-                                    <td>
-                                        <a href="detail_distribusi.php?id=<?= urlencode($row['id_distribusi']) ?>" class="btn btn-info btn-sm">Detail</a>
-                                        <button class="btn btn-danger btn-sm btn-delete" 
-                                                data-id="<?= $row['id_distribusi'] ?>" 
-                                                data-bs-toggle="modal" 
-                                                data-bs-target="#confirmDeleteModal">
-                                            Delete
-                                        </button>
-                                    </td>
-                                </tr>
-                            <?php 
-                                endwhile; 
-                            // ... else ...
-                            endif; 
-                            ?>
-                        </tbody>
-                    </table>
+                    <div class="card mb-4">
+                        <div class="card-header"><h4 class="card-title">Informasi Transaksi</h4></div>
+                          <div class="card-body">
+                              <div class="row">
+                                  <div class="col-md-6">
+                                      <p><strong>ID Distribusi:</strong> DIST<?= htmlspecialchars($distribusi['id_distribusi']) . date('Y', strtotime($distribusi['tanggal_distribusi'])) ?></p>
+                                      <p><strong>Proyek Tujuan:</strong> <?= htmlspecialchars($distribusi['nama_proyek_lengkap']) ?></p>
+                                  </div>
+                                  <div class="col-md-6">
+                                      <p><strong>Tanggal:</strong> <?= date("d F Y", strtotime($distribusi['tanggal_distribusi'])) ?></p>
+                                      <p><strong>PJ Proyek:</strong> <?= htmlspecialchars($distribusi['nama_pj_distribusi']) ?></p>
+                                  </div>
+                                  <div class="col-12 mt-2">
+                                      <p><strong>Keterangan:</strong> <?= nl2br(htmlspecialchars($distribusi['keterangan_umum'])) ?></p>
+                                  </div>
+                              </div>
+                          </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header"><h4 class="card-title">Rincian Material Didistribusikan</h4></div>
+                        <div class="card-body">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>No.</th>
+                                        <th>Nama Material</th>
+                                        <th>Jumlah</th>
+                                        <th>Satuan</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php $no = 1; if(mysqli_num_rows($detail_items) > 0): ?>
+                                        <?php while($item = mysqli_fetch_assoc($detail_items)): ?>
+                                            <tr>
+                                                <td><?= $no++ ?></td>
+                                                <td><?= htmlspecialchars($item['nama_material']) ?></td>
+                                                <td><?= htmlspecialchars($item['jumlah_distribusi']) ?></td>
+                                                <td><?= htmlspecialchars($item['satuan']) ?></td>
+                                            </tr>
+                                        <?php endwhile; ?>
+                                    <?php else: ?>
+                                        <tr>
+                                            <td colspan="4" class="text-center">Tidak ada rincian material untuk transaksi ini.</td>
+                                        </tr>
+                                    <?php endif; ?>
+                                </tbody>
+                            </table>
+                            <div class="text-end mt-4">
+                                <a href="distribusi_material.php" class="btn btn-secondary">Kembali ke Daftar</a>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
             </div>
         </div>
     </div>
-</div>
 
-<div class="modal fade" id="addDistribusiModal" tabindex="-1" aria-labelledby="addDistribusiModalLabel" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <form method="POST" action="add_distribusi.php">
-        <div class="modal-header">
-          <h5 class="modal-title" id="addDistribusiModalLabel">Buat Transaksi Distribusi Baru</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-
-          <div class="mb-3">
-            <label for="id_proyek" class="form-label">Proyek Tujuan</label>
-            <select class="form-select" id="id_proyek" name="id_proyek" required>
-              <option value="" disabled selected>-- Pilih Proyek --</option>
-              <?php
-              if ($proyek_result && mysqli_num_rows($proyek_result) > 0) {
-                  // Reset pointer hasil query untuk memastikan loop berjalan
-                  mysqli_data_seek($proyek_result, 0); 
-                  while ($proyek = mysqli_fetch_assoc($proyek_result)) {
-                      echo '<option value="' . htmlspecialchars($proyek['id_proyek']) . '">' . htmlspecialchars($proyek['nama_proyek_lengkap']) . '</option>';
-                  }
-              }
-              ?>
-            </select>
-          </div>
-
-          <div class="mb-3">
-            <label for="tanggal_distribusi" class="form-label">Tanggal Distribusi</label>
-            <input type="date" class="form-control" id="tanggal_distribusi" name="tanggal_distribusi" value="<?= date('Y-m-d') ?>" required>
-          </div>
-          
-          <div class="mb-3">
-            <label for="keterangan_umum" class="form-label">Keterangan Umum (Opsional)</label>
-            <textarea class="form-control" id="keterangan_umum" name="keterangan_umum" rows="3" placeholder="Contoh: Pengambilan material untuk Pengecoran Blok A"></textarea>
-          </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-          <button type="submit" class="btn btn-primary">Lanjut ke Input Detail</button>
-        </div>
-      </form>
-    </div>
-  </div>
-</div>
-
-<div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteModalLabel" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="confirmDeleteModalLabel">Konfirmasi Hapus</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <p>Apakah Anda yakin ingin menghapus data distribusi ini?</p>
-        <p class="text-danger small">
-            <strong>Peringatan:</strong> Aksi ini akan menghapus semua detail material yang terkait dan **mengembalikan jumlah stoknya** ke gudang.
-        </p>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-        <a href="#" id="confirmDeleteLink" class="btn btn-danger">Ya, Hapus</a>
-      </div>
-    </div>
-  </div>
-</div>
-
-    <script src="assets/js/core/jquery-3.7.1.min.js"></script>
-    <script src="assets/js/core/popper.min.js"></script>
-    <script src="assets/js/core/bootstrap.min.js"></script>
-    <script src="assets/js/plugin/datatables/datatables.min.js"></script>
-
-    <script src="assets/js/plugin/datatables/dataTables.bootstrap5.min.js"></script>
-
-    <script>
-    $(document).ready(function() {
-        // Inisialisasi DataTable untuk tabel distribusi
-        // Dengan file CSS dan JS yang benar, ini akan otomatis membuat semua kontrol
-        $('#tabelDistribusi').DataTable({
-            "order": [] // Pengaturan Anda untuk tidak ada pengurutan awal
-        });
-
-        // Script notifikasi dan modal hapus Anda sudah bagus
-        const alertBox = $('.alert');
-        if (alertBox.length) {
-            setTimeout(function() {
-                alertBox.fadeOut('slow');
-            }, 5000);
-        }
-
-        $('#tabelDistribusi').on('click', '.btn-delete', function() {
-            const id = $(this).data('id');
-            const deleteUrl = `delete_distribusi.php?id=${id}`;
-            $('#confirmDeleteLink').attr('href', deleteUrl);
-        });
-    });
-    </script>
-
-</body>
+    </body>
 </html>
