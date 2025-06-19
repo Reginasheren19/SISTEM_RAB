@@ -1,6 +1,101 @@
 <?php
-session_start(); 
+session_start();
 include("../config/koneksi_mysql.php");
+
+// =========================================================================
+// Pastikan nama session ini sesuai dengan file login.php Anda
+$logged_in_user_id = $_SESSION['id_user'] ?? 0;
+$user_role = strtolower($_SESSION['role'] ?? 'guest');
+
+// Jika tidak ada session, kembali ke halaman login
+if ($logged_in_user_id === 0) {
+    header("Location: ../index.php?pesan=belum_login");
+    exit();
+}
+// =========================================================================
+
+// Ambil nama file saat ini untuk menandai menu yang aktif
+$current_page = basename($_SERVER['PHP_SELF']);
+
+// Persiapan filter query jika yang login adalah PJ Proyek
+$where_clause_proyek = "";
+$where_clause_pengajuan = "";
+if ($user_role === 'pj proyek') {
+    $safe_user_id = (int) $logged_in_user_id;
+    $where_clause_proyek = " WHERE id_user_pj = $safe_user_id";
+    $where_clause_pengajuan = " WHERE mpr.id_user_pj = $safe_user_id";
+}
+
+// 1. Query Total Proyek Aktif
+$sql_total_proyek = "SELECT COUNT(id_proyek) as total FROM master_proyek" . $where_clause_proyek;
+$total_proyek = mysqli_fetch_assoc(mysqli_query($koneksi, $sql_total_proyek))['total'] ?? 0;
+
+// 2. Query Pengajuan yang berstatus 'diajukan'
+$sql_diajukan = "SELECT COUNT(pu.id_pengajuan_upah) as total FROM pengajuan_upah pu LEFT JOIN rab_upah ru ON pu.id_rab_upah = ru.id_rab_upah LEFT JOIN master_proyek mpr ON ru.id_proyek = mpr.id_proyek WHERE pu.status_pengajuan = 'diajukan'" . ($where_clause_pengajuan ? " AND " . substr($where_clause_pengajuan, 7) : "");
+$total_diajukan = mysqli_fetch_assoc(mysqli_query($koneksi, $sql_diajukan))['total'] ?? 0;
+
+// 3. Query Pengajuan yang berstatus 'ditolak'
+$sql_ditolak = "SELECT COUNT(pu.id_pengajuan_upah) as total FROM pengajuan_upah pu LEFT JOIN rab_upah ru ON pu.id_rab_upah = ru.id_rab_upah LEFT JOIN master_proyek mpr ON ru.id_proyek = mpr.id_proyek WHERE pu.status_pengajuan = 'ditolak'" . ($where_clause_pengajuan ? " AND " . substr($where_clause_pengajuan, 7) : "");
+$total_ditolak = mysqli_fetch_assoc(mysqli_query($koneksi, $sql_ditolak))['total'] ?? 0;
+
+// 4. Query Total Nilai Pengajuan yang sudah 'dibayar'
+$sql_dibayar_rp = "SELECT SUM(pu.total_pengajuan) as total FROM pengajuan_upah pu LEFT JOIN rab_upah ru ON pu.id_rab_upah = ru.id_rab_upah LEFT JOIN master_proyek mpr ON ru.id_proyek = mpr.id_proyek WHERE pu.status_pengajuan = 'dibayar'" . ($where_clause_pengajuan ? " AND " . substr($where_clause_pengajuan, 7) : "");
+$total_dibayar_rp = mysqli_fetch_assoc(mysqli_query($koneksi, $sql_dibayar_rp))['total'] ?? 0;
+
+// 5. Query untuk 5 Pengajuan Terbaru
+$sql_terbaru = "SELECT pu.id_pengajuan_upah, pu.total_pengajuan, pu.status_pengajuan, CONCAT(mpe.nama_perumahan, ' - ', mpr.kavling) AS nama_proyek
+                FROM pengajuan_upah pu
+                LEFT JOIN rab_upah ru ON pu.id_rab_upah = ru.id_rab_upah
+                LEFT JOIN master_proyek mpr ON ru.id_proyek = mpr.id_proyek
+                LEFT JOIN master_perumahan mpe ON mpr.id_perumahan = mpe.id_perumahan
+                $where_clause_pengajuan
+                ORDER BY pu.id_pengajuan_upah DESC LIMIT 5";
+$result_terbaru = mysqli_query($koneksi, $sql_terbaru);
+
+// 6. Query untuk data chart status pengajuan (Donut Chart)
+$sql_status_chart = "SELECT status_pengajuan, COUNT(id_pengajuan_upah) as jumlah 
+                    FROM pengajuan_upah pu 
+                    LEFT JOIN rab_upah ru ON pu.id_rab_upah = ru.id_rab_upah 
+                    LEFT JOIN master_proyek mpr ON ru.id_proyek = mpr.id_proyek 
+                    $where_clause_pengajuan 
+                    GROUP BY status_pengajuan";
+$result_status_chart = mysqli_query($koneksi, $sql_status_chart);
+$chart_status_labels = [];
+$chart_status_counts = [];
+$chart_status_colors = [];
+$status_color_map = [
+    'diajukan'  => '#ffc107',
+    'disetujui' => '#28a745',
+    'ditolak'   => '#dc3545',
+    'dibayar'   => '#0d6efd'
+];
+if ($result_status_chart) {
+    while ($row = mysqli_fetch_assoc($result_status_chart)) {
+        $chart_status_labels[] = ucwords($row['status_pengajuan']);
+        $chart_status_counts[] = $row['jumlah'];
+        $chart_status_colors[] = $status_color_map[strtolower($row['status_pengajuan'])] ?? '#6c757d';
+    }
+}
+
+// 7. Query untuk data chart pengajuan per proyek (Bar Chart)
+$sql_proyek_chart = "SELECT CONCAT(mpe.nama_perumahan, ' - ', mpr.kavling) AS nama_proyek, SUM(pu.total_pengajuan) as total_diajukan 
+                    FROM pengajuan_upah pu
+                    LEFT JOIN rab_upah ru ON pu.id_rab_upah = ru.id_rab_upah
+                    LEFT JOIN master_proyek mpr ON ru.id_proyek = mpr.id_proyek
+                    LEFT JOIN master_perumahan mpe ON mpr.id_perumahan = mpe.id_perumahan
+                    $where_clause_pengajuan
+                    GROUP BY ru.id_proyek 
+                    ORDER BY total_diajukan DESC LIMIT 5";
+$result_proyek_chart = mysqli_query($koneksi, $sql_proyek_chart);
+$chart_proyek_labels = [];
+$chart_proyek_values = [];
+if($result_proyek_chart){
+    while ($row = mysqli_fetch_assoc($result_proyek_chart)) {
+        $chart_proyek_labels[] = $row['nama_proyek'];
+        $chart_proyek_values[] = $row['total_diajukan'];
+    }
+}
+
 ?>
 
 <!DOCTYPE html>
@@ -71,36 +166,24 @@ include("../config/koneksi_mysql.php");
                 <span class="sidebar-mini-icon">
                   <i class="fa fa-ellipsis-h"></i>
                 </span>
-                <h4 class="text-section">Transaksi RAB Material</h4>
-              </li>
-                            <li class="nav-item">
-                <a href="transaksi_rab_material.php">
-                  <i class="fas fa-pen-square"></i>
-                  <p>Rancang RAB Material</p>
-                </a>
-              </li>
-              <li class="nav-item">
-                <a href="pencatatan_pembelian.php">
-                  <i class="fas fa-pen-square"></i>
-                  <p>Pencatatan Pembelian</p>
-                </a>
-              </li>
-              <li class="nav-item">
-                <a href="distribusi_material.php">
-                  <i class="fas fa-truck"></i>
-                  <p>Distribusi Material</p>
-                </a>
-              </li>
-              <li class="nav-section">
-                <span class="sidebar-mini-icon">
-                  <i class="fa fa-ellipsis-h"></i>
-                </span>
                 <h4 class="text-section">Laporan</h4>
               </li>
-              <li class="nav-item">
-                <a href="#">
+                            <li class="nav-item">
+                <a href="lap_pengajuan_upah.php">
                   <i class="fas fa-file"></i>
-                  <p>Laporan RAB Upah</p>
+                  <p>Pengajuan Upah</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="lap_realisasi_anggaran.php">
+                  <i class="fas fa-file"></i>
+                  <p>Realisasi Anggaran</p>
+                </a>
+              </li>
+                            <li class="nav-item">
+                <a href="lap_rekapitulasi_proyek.php">
+                  <i class="fas fa-file"></i>
+                  <p>Rekapitulasi Proyek</p>
                 </a>
               </li>
               <li class="nav-section">
@@ -140,15 +223,9 @@ include("../config/koneksi_mysql.php");
   </a>
 </li>
 <li class="nav-item">
-  <a href="master_pekerjaan.php">
+  <a href="#" class="disabled">
     <i class="fas fa-database"></i>
     <p>Master Pekerjaan</p>
-  </a>
-</li>
-<li class="nav-item">
-  <a href="master_material.php">
-    <i class="fas fa-database"></i>
-    <p>Master Material</p>
   </a>
 </li>
 <li class="nav-item">
@@ -223,299 +300,154 @@ include("../config/koneksi_mysql.php");
                 <!-- End Navbar -->
             </div>
 
-        <div class="container">
-          <div class="page-inner">
-            <div
-              class="d-flex align-items-left align-items-md-center flex-column flex-md-row pt-2 pb-4"
-            >
-              <div>
-                <h3 class="fw-bold mb-3">Dashboard PJ Proyek</h3>
-                <h6 class="op-7 mb-2">Free Bootstrap 5 Admin Dashboard</h6>
-              </div>
-              <div class="ms-md-auto py-2 py-md-0">
-                <a href="#" class="btn btn-label-info btn-round me-2">Manage</a>
-                <a href="#" class="btn btn-primary btn-round">Add Customer</a>
-              </div>
+            <div class="container">
+                <div class="page-inner">
+                    <div class="d-flex align-items-left align-items-md-center flex-column flex-md-row pt-2 pb-4">
+                        <div>
+                            <h3 class="fw-bold mb-3">Dashboard PJ Proyek</h3>
+                            <h6 class="op-7 mb-2">Selamat Datang, <?= htmlspecialchars($_SESSION['nama_lengkap'] ?? 'Pengguna') ?>!</h6>
+                        </div>
+                    </div>
+                    <!-- [DIUBAH] Kartu Statistik dengan Data Dinamis -->
+                    <div class="row">
+                        <div class="col-sm-6 col-md-3">
+                            <div class="card card-stats card-round">
+                                <div class="card-body">
+                                    <div class="row align-items-center">
+                                        <div class="col-icon"><div class="icon-big text-center icon-primary bubble-shadow-small"><i class="fas fa-building"></i></div></div>
+                                        <div class="col col-stats ms-3 ms-sm-0">
+                                            <div class="numbers">
+                                                <p class="card-category">Proyek Aktif Saya</p>
+                                                <h4 class="card-title"><?= $total_proyek ?></h4>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6 col-md-3">
+                            <div class="card card-stats card-round">
+                                <div class="card-body">
+                                    <div class="row align-items-center">
+                                        <div class="col-icon"><div class="icon-big text-center icon-info bubble-shadow-small"><i class="fas fa-hourglass-half"></i></div></div>
+                                        <div class="col col-stats ms-3 ms-sm-0">
+                                            <div class="numbers">
+                                                <p class="card-category">Pengajuan Diajukan</p>
+                                                <h4 class="card-title"><?= $total_diajukan ?></h4>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6 col-md-3">
+                            <div class="card card-stats card-round">
+                                <div class="card-body">
+                                    <div class="row align-items-center">
+                                        <div class="col-icon"><div class="icon-big text-center icon-danger bubble-shadow-small"><i class="fas fa-times-circle"></i></div></div>
+                                        <div class="col col-stats ms-3 ms-sm-0">
+                                            <div class="numbers">
+                                                <p class="card-category">Pengajuan Ditolak</p>
+                                                <h4 class="card-title"><?= $total_ditolak ?></h4>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6 col-md-3">
+                            <div class="card card-stats card-round">
+                                <div class="card-body">
+                                    <div class="row align-items-center">
+                                        <div class="col-icon"><div class="icon-big text-center icon-success bubble-shadow-small"><i class="fas fa-money-check-alt"></i></div></div>
+                                        <div class="col col-stats ms-3 ms-sm-0">
+                                            <div class="numbers">
+                                                <p class="card-category">Total Pengajuan Dibayar</p>
+                                                <h4 class="card-title">Rp <?= number_format($total_dibayar_rp, 0, ',', '.') ?></h4>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- [BARU] Baris untuk Statistik Visual -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card card-round">
+                                <div class="card-header"><div class="card-title">Komposisi Status Pengajuan</div></div>
+                                <div class="card-body">
+                                    <div class="chart-container" style="min-height: 300px">
+                                        <canvas id="statusDonutChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                         <div class="col-md-6">
+                            <div class="card card-round">
+                                <div class="card-header"><div class="card-title">Top 5 Pengajuan per Proyek</div></div>
+                                <div class="card-body">
+                                    <div class="chart-container" style="min-height: 300px">
+                                        <canvas id="proyekBarChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-12">
+                             <div class="card card-round">
+                                <div class="card-header">
+                                    <div class="card-head-row">
+                                        <div class="card-title">5 Pengajuan Upah Terbaru</div>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th scope="col">ID</th>
+                                                    <th scope="col">Proyek</th>
+                                                    <th scope="col">Total</th>
+                                                    <th scope="col" class="text-center">Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <?php if($result_terbaru && mysqli_num_rows($result_terbaru) > 0): ?>
+                                                    <?php while($row = mysqli_fetch_assoc($result_terbaru)): ?>
+                                                    <tr>
+                                                        <td><?= htmlspecialchars($row['id_pengajuan_upah']) ?></td>
+                                                        <td><?= htmlspecialchars($row['nama_proyek']) ?></td>
+                                                        <td>Rp <?= number_format($row['total_pengajuan'], 0, ',', '.') ?></td>
+                                                        <td class="text-center">
+                                                            <span class="badge bg-<?php 
+                                                                switch(strtolower($row['status_pengajuan'])){
+                                                                    case 'diajukan': echo 'warning text-dark'; break;
+                                                                    case 'disetujui': echo 'success'; break;
+                                                                    case 'ditolak': echo 'danger'; break;
+                                                                    case 'dibayar': echo 'primary'; break;
+                                                                    default: echo 'secondary';
+                                                                }
+                                                            ?>"><?= ucwords($row['status_pengajuan']) ?></span>
+                                                        </td>
+                                                    </tr>
+                                                    <?php endwhile; ?>
+                                                <?php else: ?>
+                                                    <tr>
+                                                        <td colspan="4" class="text-center text-muted">Belum ada data pengajuan.</td>
+                                                    </tr>
+                                                <?php endif; ?>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="row">
-              <div class="col-sm-6 col-md-3">
-                <div class="card card-stats card-round">
-                  <div class="card-body">
-                    <div class="row align-items-center">
-                      <div class="col-icon">
-                        <div
-                          class="icon-big text-center icon-primary bubble-shadow-small"
-                        >
-                          <i class="fas fa-users"></i>
-                        </div>
-                      </div>
-                      <div class="col col-stats ms-3 ms-sm-0">
-                        <div class="numbers">
-                          <p class="card-category">Visitors</p>
-                          <h4 class="card-title">1,294</h4>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="col-sm-6 col-md-3">
-                <div class="card card-stats card-round">
-                  <div class="card-body">
-                    <div class="row align-items-center">
-                      <div class="col-icon">
-                        <div
-                          class="icon-big text-center icon-info bubble-shadow-small"
-                        >
-                          <i class="fas fa-user-check"></i>
-                        </div>
-                      </div>
-                      <div class="col col-stats ms-3 ms-sm-0">
-                        <div class="numbers">
-                          <p class="card-category">Subscribers</p>
-                          <h4 class="card-title">1303</h4>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="col-sm-6 col-md-3">
-                <div class="card card-stats card-round">
-                  <div class="card-body">
-                    <div class="row align-items-center">
-                      <div class="col-icon">
-                        <div
-                          class="icon-big text-center icon-success bubble-shadow-small"
-                        >
-                          <i class="fas fa-luggage-cart"></i>
-                        </div>
-                      </div>
-                      <div class="col col-stats ms-3 ms-sm-0">
-                        <div class="numbers">
-                          <p class="card-category">Sales</p>
-                          <h4 class="card-title">$ 1,345</h4>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="col-sm-6 col-md-3">
-                <div class="card card-stats card-round">
-                  <div class="card-body">
-                    <div class="row align-items-center">
-                      <div class="col-icon">
-                        <div
-                          class="icon-big text-center icon-secondary bubble-shadow-small"
-                        >
-                          <i class="far fa-check-circle"></i>
-                        </div>
-                      </div>
-                      <div class="col col-stats ms-3 ms-sm-0">
-                        <div class="numbers">
-                          <p class="card-category">Order</p>
-                          <h4 class="card-title">576</h4>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div class="row">
-              <div class="col-md-8">
-                <div class="card card-round">
-                  <div class="card-header">
-                    <div class="card-head-row">
-                      <div class="card-title">User Statistics</div>
-                      <div class="card-tools">
-                        <a
-                          href="#"
-                          class="btn btn-label-success btn-round btn-sm me-2"
-                        >
-                          <span class="btn-label">
-                            <i class="fa fa-pencil"></i>
-                          </span>
-                          Export
-                        </a>
-                        <a href="#" class="btn btn-label-info btn-round btn-sm">
-                          <span class="btn-label">
-                            <i class="fa fa-print"></i>
-                          </span>
-                          Print
-                        </a>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="card-body">
-                    <div class="chart-container" style="min-height: 375px">
-                      <canvas id="statisticsChart"></canvas>
-                    </div>
-                    <div id="myChartLegend"></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div class="row">
-              <div class="col-md-8">
-                <div class="card card-round">
-                  <div class="card-header">
-                    <div class="card-head-row card-tools-still-right">
-                      <div class="card-title">Transaction History</div>
-                      <div class="card-tools">
-                        <div class="dropdown">
-                          <button
-                            class="btn btn-icon btn-clean me-0"
-                            type="button"
-                            id="dropdownMenuButton"
-                            data-bs-toggle="dropdown"
-                            aria-haspopup="true"
-                            aria-expanded="false"
-                          >
-                            <i class="fas fa-ellipsis-h"></i>
-                          </button>
-                          <div
-                            class="dropdown-menu"
-                            aria-labelledby="dropdownMenuButton"
-                          >
-                            <a class="dropdown-item" href="#">Action</a>
-                            <a class="dropdown-item" href="#">Another action</a>
-                            <a class="dropdown-item" href="#"
-                              >Something else here</a
-                            >
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="card-body p-0">
-                    <div class="table-responsive">
-                      <!-- Projects table -->
-                      <table class="table align-items-center mb-0">
-                        <thead class="thead-light">
-                          <tr>
-                            <th scope="col">Payment Number</th>
-                            <th scope="col" class="text-end">Date & Time</th>
-                            <th scope="col" class="text-end">Amount</th>
-                            <th scope="col" class="text-end">Status</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          <tr>
-                            <th scope="row">
-                              <button
-                                class="btn btn-icon btn-round btn-success btn-sm me-2"
-                              >
-                                <i class="fa fa-check"></i>
-                              </button>
-                              Payment from #10231
-                            </th>
-                            <td class="text-end">Mar 19, 2020, 2.45pm</td>
-                            <td class="text-end">$250.00</td>
-                            <td class="text-end">
-                              <span class="badge badge-success">Completed</span>
-                            </td>
-                          </tr>
-                          <tr>
-                            <th scope="row">
-                              <button
-                                class="btn btn-icon btn-round btn-success btn-sm me-2"
-                              >
-                                <i class="fa fa-check"></i>
-                              </button>
-                              Payment from #10231
-                            </th>
-                            <td class="text-end">Mar 19, 2020, 2.45pm</td>
-                            <td class="text-end">$250.00</td>
-                            <td class="text-end">
-                              <span class="badge badge-success">Completed</span>
-                            </td>
-                          </tr>
-                          <tr>
-                            <th scope="row">
-                              <button
-                                class="btn btn-icon btn-round btn-success btn-sm me-2"
-                              >
-                                <i class="fa fa-check"></i>
-                              </button>
-                              Payment from #10231
-                            </th>
-                            <td class="text-end">Mar 19, 2020, 2.45pm</td>
-                            <td class="text-end">$250.00</td>
-                            <td class="text-end">
-                              <span class="badge badge-success">Completed</span>
-                            </td>
-                          </tr>
-                          <tr>
-                            <th scope="row">
-                              <button
-                                class="btn btn-icon btn-round btn-success btn-sm me-2"
-                              >
-                                <i class="fa fa-check"></i>
-                              </button>
-                              Payment from #10231
-                            </th>
-                            <td class="text-end">Mar 19, 2020, 2.45pm</td>
-                            <td class="text-end">$250.00</td>
-                            <td class="text-end">
-                              <span class="badge badge-success">Completed</span>
-                            </td>
-                          </tr>
-                          <tr>
-                            <th scope="row">
-                              <button
-                                class="btn btn-icon btn-round btn-success btn-sm me-2"
-                              >
-                                <i class="fa fa-check"></i>
-                              </button>
-                              Payment from #10231
-                            </th>
-                            <td class="text-end">Mar 19, 2020, 2.45pm</td>
-                            <td class="text-end">$250.00</td>
-                            <td class="text-end">
-                              <span class="badge badge-success">Completed</span>
-                            </td>
-                          </tr>
-                          <tr>
-                            <th scope="row">
-                              <button
-                                class="btn btn-icon btn-round btn-success btn-sm me-2"
-                              >
-                                <i class="fa fa-check"></i>
-                              </button>
-                              Payment from #10231
-                            </th>
-                            <td class="text-end">Mar 19, 2020, 2.45pm</td>
-                            <td class="text-end">$250.00</td>
-                            <td class="text-end">
-                              <span class="badge badge-success">Completed</span>
-                            </td>
-                          </tr>
-                          <tr>
-                            <th scope="row">
-                              <button
-                                class="btn btn-icon btn-round btn-success btn-sm me-2"
-                              >
-                                <i class="fa fa-check"></i>
-                              </button>
-                              Payment from #10231
-                            </th>
-                            <td class="text-end">Mar 19, 2020, 2.45pm</td>
-                            <td class="text-end">$250.00</td>
-                            <td class="text-end">
-                              <span class="badge badge-success">Completed</span>
-                            </td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
 
         <footer class="footer">
           <div class="container-fluid d-flex justify-content-between">
@@ -790,6 +722,59 @@ include("../config/koneksi_mysql.php");
         lineColor: "#ffa534",
         fillColor: "rgba(255, 165, 52, .14)",
       });
+    </script>
+        <!-- [DIUBAH] Skrip untuk menampilkan chart -->
+    <script>
+        $(document).ready(function() {
+            <?php if (!empty($chart_status_labels)): ?>
+            var ctxDonut = document.getElementById('statusDonutChart').getContext('2d');
+            new Chart(ctxDonut, {
+                type: 'doughnut',
+                data: {
+                    datasets: [{
+                        data: <?= json_encode(array_values($chart_status_counts)); ?>,
+                        backgroundColor: <?= json_encode(array_values($chart_status_colors)); ?>
+                    }],
+                    labels: <?= json_encode($chart_status_labels); ?>
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { color: '#9a9a9a' } }
+                    }
+                }
+            });
+            <?php endif; ?>
+
+            <?php if (!empty($chart_proyek_labels)): ?>
+            var ctxBar = document.getElementById('proyekBarChart').getContext('2d');
+            new Chart(ctxBar, {
+                type: 'bar',
+                data: {
+                    labels: <?= json_encode($chart_proyek_labels); ?>,
+                    datasets: [{
+                        label: "Total Diajukan",
+                        backgroundColor: "#3498db",
+                        borderColor: '#2980b9',
+                        data: <?= json_encode($chart_proyek_values); ?>,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true, ticks: { color: '#9a9a9a', callback: function(value) { return 'Rp ' + new Intl.NumberFormat('id-ID').format(value/1000) + 'k'; } } },
+                        x: { ticks: { color: '#9a9a9a' } }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { callbacks: { label: function(context) { return ' Rp ' + new Intl.NumberFormat('id-ID').format(context.raw); } } }
+                    }
+                }
+            });
+            <?php endif; ?>
+        });
     </script>
   </body>
 </html>
