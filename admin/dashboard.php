@@ -57,13 +57,13 @@ include("../config/koneksi_mysql.php");
               </li>
               <li class="nav-item">
                 <a href="transaksi_rab_upah.php">
-                  <i class="fas fa-pen-square"></i>
+                  <i class="fas fa-calculator"></i>
                   <p>Rancang RAB Upah</p>
                 </a>
               </li>
                             <li class="nav-item">
                 <a href="pengajuan_upah.php">
-                  <i class="fas fa-pen-square"></i>
+                  <i class="fas fa-hand-holding-usd"></i>
                   <p>Pengajuah Upah</p>
                 </a>
               </li>
@@ -190,7 +190,7 @@ include("../config/koneksi_mysql.php");
                                         <img src="../uploads/user_photos/<?= !empty($_SESSION['profile_pic']) ? htmlspecialchars($_SESSION['profile_pic']) : 'default.jpg' ?>" alt="Foto Profil" class="avatar-img rounded-circle" onerror="this.onerror=null; this.src='assets/img/profile.jpg';">
                                     </div>
                                     <span class="profile-username">
-                                        <span class="op-7">Hi,</span>
+                                        <span class="op-7">Selamat Datang,</span>
                                         <span class="fw-bold"><?= htmlspecialchars($_SESSION['nama_lengkap'] ?? 'Guest') ?></span>
                                     </span>
                                 </a>
