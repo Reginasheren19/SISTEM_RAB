@@ -74,6 +74,8 @@ function tampilkan_header_detail($koneksi, $id_proyek) {
 <head>
     <meta charset="UTF-8">
     <title>Cetak Laporan</title>
+        <link rel="stylesheet" href="assets/css/bootstrap.min.css" />
+
     <style>
         body { font-family: 'Times New Roman', Times, serif; font-size: 12px; color: #000; }
         .container { max-width: 800px; margin: auto; }

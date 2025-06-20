@@ -3,99 +3,63 @@ session_start();
 include("../config/koneksi_mysql.php");
 
 // =========================================================================
-// Pastikan nama session ini sesuai dengan file login.php Anda
 $logged_in_user_id = $_SESSION['id_user'] ?? 0;
 $user_role = strtolower($_SESSION['role'] ?? 'guest');
 
-// Jika tidak ada session, kembali ke halaman login
 if ($logged_in_user_id === 0) {
     header("Location: ../index.php?pesan=belum_login");
     exit();
 }
 // =========================================================================
 
-// Ambil nama file saat ini untuk menandai menu yang aktif
-$current_page = basename($_SERVER['PHP_SELF']);
+// --- [PERBAIKAN] LOGIKA FILTER YANG LEBIH AMAN ---
+$pj_proyek_filter_proyek = ''; // Untuk filter di tabel master_proyek
+$pj_proyek_filter_join = '';   // Untuk filter di query yang sudah di-JOIN
 
-// Persiapan filter query jika yang login adalah PJ Proyek
-$where_clause_proyek = "";
-$where_clause_pengajuan = "";
 if ($user_role === 'pj proyek') {
     $safe_user_id = (int) $logged_in_user_id;
-    $where_clause_proyek = " WHERE id_user_pj = $safe_user_id";
-    $where_clause_pengajuan = " WHERE mpr.id_user_pj = $safe_user_id";
+    $pj_proyek_filter_proyek = " WHERE id_user_pj = $safe_user_id";
+    $pj_proyek_filter_join = " AND mpr.id_user_pj = $safe_user_id";
 }
 
-// 1. Query Total Proyek Aktif
-$sql_total_proyek = "SELECT COUNT(id_proyek) as total FROM master_proyek" . $where_clause_proyek;
-$total_proyek = mysqli_fetch_assoc(mysqli_query($koneksi, $sql_total_proyek))['total'] ?? 0;
+// Fungsi bantu untuk membuat query KPI lebih aman
+function get_kpi_value($koneksi, $sql) {
+    $result = mysqli_query($koneksi, $sql);
+    if ($result) {
+        return mysqli_fetch_assoc($result)['total'] ?? 0;
+    }
+    // Jika query gagal, ini akan membantu debugging di log server
+    error_log("Dashboard Query Failed: " . mysqli_error($koneksi));
+    return 0;
+}
 
-// 2. Query Pengajuan yang berstatus 'diajukan'
-$sql_diajukan = "SELECT COUNT(pu.id_pengajuan_upah) as total FROM pengajuan_upah pu LEFT JOIN rab_upah ru ON pu.id_rab_upah = ru.id_rab_upah LEFT JOIN master_proyek mpr ON ru.id_proyek = mpr.id_proyek WHERE pu.status_pengajuan = 'diajukan'" . ($where_clause_pengajuan ? " AND " . substr($where_clause_pengajuan, 7) : "");
-$total_diajukan = mysqli_fetch_assoc(mysqli_query($koneksi, $sql_diajukan))['total'] ?? 0;
+// --- 1. PENGAMBILAN DATA UNTUK KARTU KPI (DENGAN QUERY BARU) ---
+$total_proyek = get_kpi_value($koneksi, "SELECT COUNT(id_proyek) as total FROM master_proyek" . $pj_proyek_filter_proyek);
+$total_diajukan = get_kpi_value($koneksi, "SELECT COUNT(pu.id_pengajuan_upah) as total FROM pengajuan_upah pu LEFT JOIN rab_upah ru ON pu.id_rab_upah = ru.id_rab_upah LEFT JOIN master_proyek mpr ON ru.id_proyek = mpr.id_proyek WHERE pu.status_pengajuan = 'diajukan'" . $pj_proyek_filter_join);
+$total_ditolak = get_kpi_value($koneksi, "SELECT COUNT(pu.id_pengajuan_upah) as total FROM pengajuan_upah pu LEFT JOIN rab_upah ru ON pu.id_rab_upah = ru.id_rab_upah LEFT JOIN master_proyek mpr ON ru.id_proyek = mpr.id_proyek WHERE pu.status_pengajuan = 'ditolak'" . $pj_proyek_filter_join);
+$total_dibayar_rp = get_kpi_value($koneksi, "SELECT SUM(pu.total_pengajuan) as total FROM pengajuan_upah pu LEFT JOIN rab_upah ru ON pu.id_rab_upah = ru.id_rab_upah LEFT JOIN master_proyek mpr ON ru.id_proyek = mpr.id_proyek WHERE pu.status_pengajuan = 'dibayar'" . $pj_proyek_filter_join);
 
-// 3. Query Pengajuan yang berstatus 'ditolak'
-$sql_ditolak = "SELECT COUNT(pu.id_pengajuan_upah) as total FROM pengajuan_upah pu LEFT JOIN rab_upah ru ON pu.id_rab_upah = ru.id_rab_upah LEFT JOIN master_proyek mpr ON ru.id_proyek = mpr.id_proyek WHERE pu.status_pengajuan = 'ditolak'" . ($where_clause_pengajuan ? " AND " . substr($where_clause_pengajuan, 7) : "");
-$total_ditolak = mysqli_fetch_assoc(mysqli_query($koneksi, $sql_ditolak))['total'] ?? 0;
 
-// 4. Query Total Nilai Pengajuan yang sudah 'dibayar'
-$sql_dibayar_rp = "SELECT SUM(pu.total_pengajuan) as total FROM pengajuan_upah pu LEFT JOIN rab_upah ru ON pu.id_rab_upah = ru.id_rab_upah LEFT JOIN master_proyek mpr ON ru.id_proyek = mpr.id_proyek WHERE pu.status_pengajuan = 'dibayar'" . ($where_clause_pengajuan ? " AND " . substr($where_clause_pengajuan, 7) : "");
-$total_dibayar_rp = mysqli_fetch_assoc(mysqli_query($koneksi, $sql_dibayar_rp))['total'] ?? 0;
+// --- 2. PENGAMBILAN DATA UNTUK GRAFIK & TABEL (DENGAN QUERY BARU) ---
+$where_clause_untuk_join = ltrim($pj_proyek_filter_join, ' AND'); // Menghilangkan ' AND' jika ada
 
-// 5. Query untuk 5 Pengajuan Terbaru
-$sql_terbaru = "SELECT pu.id_pengajuan_upah, pu.total_pengajuan, pu.status_pengajuan, CONCAT(mpe.nama_perumahan, ' - ', mpr.kavling) AS nama_proyek
-                FROM pengajuan_upah pu
-                LEFT JOIN rab_upah ru ON pu.id_rab_upah = ru.id_rab_upah
-                LEFT JOIN master_proyek mpr ON ru.id_proyek = mpr.id_proyek
-                LEFT JOIN master_perumahan mpe ON mpr.id_perumahan = mpe.id_perumahan
-                $where_clause_pengajuan
-                ORDER BY pu.id_pengajuan_upah DESC LIMIT 5";
+// Data untuk Tabel Pengajuan Terbaru
+$pengajuan_terbaru = [];
+$sql_terbaru = "SELECT pu.id_pengajuan_upah, pu.total_pengajuan, pu.status_pengajuan, CONCAT(mpe.nama_perumahan, ' - ', mpr.kavling) AS nama_proyek FROM pengajuan_upah pu LEFT JOIN rab_upah ru ON pu.id_rab_upah = ru.id_rab_upah LEFT JOIN master_proyek mpr ON ru.id_proyek = mpr.id_proyek LEFT JOIN master_perumahan mpe ON mpr.id_perumahan = mpe.id_perumahan" . ($where_clause_untuk_join ? " WHERE " . $where_clause_untuk_join : "") . " ORDER BY pu.id_pengajuan_upah DESC LIMIT 5";
 $result_terbaru = mysqli_query($koneksi, $sql_terbaru);
+if($result_terbaru) { while($row = mysqli_fetch_assoc($result_terbaru)) { $pengajuan_terbaru[] = $row; } }
 
-// 6. Query untuk data chart status pengajuan (Donut Chart)
-$sql_status_chart = "SELECT status_pengajuan, COUNT(id_pengajuan_upah) as jumlah 
-                    FROM pengajuan_upah pu 
-                    LEFT JOIN rab_upah ru ON pu.id_rab_upah = ru.id_rab_upah 
-                    LEFT JOIN master_proyek mpr ON ru.id_proyek = mpr.id_proyek 
-                    $where_clause_pengajuan 
-                    GROUP BY status_pengajuan";
+// Data untuk Donut Chart Status
+$chart_status_data = [];
+$sql_status_chart = "SELECT status_pengajuan, COUNT(id_pengajuan_upah) as jumlah FROM pengajuan_upah pu LEFT JOIN rab_upah ru ON pu.id_rab_upah = ru.id_rab_upah LEFT JOIN master_proyek mpr ON ru.id_proyek = mpr.id_proyek" . ($where_clause_untuk_join ? " WHERE " . $where_clause_untuk_join : "") . " GROUP BY status_pengajuan";
 $result_status_chart = mysqli_query($koneksi, $sql_status_chart);
-$chart_status_labels = [];
-$chart_status_counts = [];
-$chart_status_colors = [];
-$status_color_map = [
-    'diajukan'  => '#ffc107',
-    'disetujui' => '#28a745',
-    'ditolak'   => '#dc3545',
-    'dibayar'   => '#0d6efd'
-];
-if ($result_status_chart) {
-    while ($row = mysqli_fetch_assoc($result_status_chart)) {
-        $chart_status_labels[] = ucwords($row['status_pengajuan']);
-        $chart_status_counts[] = $row['jumlah'];
-        $chart_status_colors[] = $status_color_map[strtolower($row['status_pengajuan'])] ?? '#6c757d';
-    }
-}
+if ($result_status_chart) { while ($row = mysqli_fetch_assoc($result_status_chart)) { $chart_status_data[$row['status_pengajuan']] = $row['jumlah']; } }
 
-// 7. Query untuk data chart pengajuan per proyek (Bar Chart)
-$sql_proyek_chart = "SELECT CONCAT(mpe.nama_perumahan, ' - ', mpr.kavling) AS nama_proyek, SUM(pu.total_pengajuan) as total_diajukan 
-                    FROM pengajuan_upah pu
-                    LEFT JOIN rab_upah ru ON pu.id_rab_upah = ru.id_rab_upah
-                    LEFT JOIN master_proyek mpr ON ru.id_proyek = mpr.id_proyek
-                    LEFT JOIN master_perumahan mpe ON mpr.id_perumahan = mpe.id_perumahan
-                    $where_clause_pengajuan
-                    GROUP BY ru.id_proyek 
-                    ORDER BY total_diajukan DESC LIMIT 5";
-$result_proyek_chart = mysqli_query($koneksi, $sql_proyek_chart);
-$chart_proyek_labels = [];
-$chart_proyek_values = [];
-if($result_proyek_chart){
-    while ($row = mysqli_fetch_assoc($result_proyek_chart)) {
-        $chart_proyek_labels[] = $row['nama_proyek'];
-        $chart_proyek_values[] = $row['total_diajukan'];
-    }
-}
-
+// Data untuk Tabel Progres Proyek
+$proyek_progres = [];
+$sql_proyek_progres = "SELECT CONCAT(mpe.nama_perumahan, ' - ', mpr.kavling) as nama_proyek, ru.total_rab_upah as total_rab, COALESCE((SELECT SUM(pu.total_pengajuan) FROM pengajuan_upah pu WHERE pu.id_rab_upah = ru.id_rab_upah AND pu.status_pengajuan = 'dibayar'), 0) as total_realisasi FROM rab_upah ru JOIN master_proyek mpr ON ru.id_proyek = mpr.id_proyek JOIN master_perumahan mpe ON mpr.id_perumahan = mpe.id_perumahan" . ($where_clause_untuk_join ? " WHERE " . $where_clause_untuk_join : "") . " GROUP BY ru.id_rab_upah ORDER BY nama_proyek ASC";
+$result_proyek_progres = mysqli_query($koneksi, $sql_proyek_progres);
+if ($result_proyek_progres) { while($row = mysqli_fetch_assoc($result_proyek_progres)) { $proyek_progres[] = $row; } }
 ?>
 
 <!DOCTYPE html>
@@ -308,137 +272,75 @@ if($result_proyek_chart){
                             <h6 class="op-7 mb-2">Selamat Datang, <?= htmlspecialchars($_SESSION['nama_lengkap'] ?? 'Pengguna') ?>!</h6>
                         </div>
                     </div>
-                    <!-- [DIUBAH] Kartu Statistik dengan Data Dinamis -->
+
+                    <!-- Kartu Statistik -->
                     <div class="row">
-                        <div class="col-sm-6 col-md-3">
-                            <div class="card card-stats card-round">
-                                <div class="card-body">
-                                    <div class="row align-items-center">
-                                        <div class="col-icon"><div class="icon-big text-center icon-primary bubble-shadow-small"><i class="fas fa-building"></i></div></div>
-                                        <div class="col col-stats ms-3 ms-sm-0">
-                                            <div class="numbers">
-                                                <p class="card-category">Proyek Aktif Saya</p>
-                                                <h4 class="card-title"><?= $total_proyek ?></h4>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-sm-6 col-md-3">
-                            <div class="card card-stats card-round">
-                                <div class="card-body">
-                                    <div class="row align-items-center">
-                                        <div class="col-icon"><div class="icon-big text-center icon-info bubble-shadow-small"><i class="fas fa-hourglass-half"></i></div></div>
-                                        <div class="col col-stats ms-3 ms-sm-0">
-                                            <div class="numbers">
-                                                <p class="card-category">Pengajuan Diajukan</p>
-                                                <h4 class="card-title"><?= $total_diajukan ?></h4>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-sm-6 col-md-3">
-                            <div class="card card-stats card-round">
-                                <div class="card-body">
-                                    <div class="row align-items-center">
-                                        <div class="col-icon"><div class="icon-big text-center icon-danger bubble-shadow-small"><i class="fas fa-times-circle"></i></div></div>
-                                        <div class="col col-stats ms-3 ms-sm-0">
-                                            <div class="numbers">
-                                                <p class="card-category">Pengajuan Ditolak</p>
-                                                <h4 class="card-title"><?= $total_ditolak ?></h4>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-sm-6 col-md-3">
-                            <div class="card card-stats card-round">
-                                <div class="card-body">
-                                    <div class="row align-items-center">
-                                        <div class="col-icon"><div class="icon-big text-center icon-success bubble-shadow-small"><i class="fas fa-money-check-alt"></i></div></div>
-                                        <div class="col col-stats ms-3 ms-sm-0">
-                                            <div class="numbers">
-                                                <p class="card-category">Total Pengajuan Dibayar</p>
-                                                <h4 class="card-title">Rp <?= number_format($total_dibayar_rp, 0, ',', '.') ?></h4>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                        <div class="col-sm-6 col-md-3"><div class="card card-stats card-round"><div class="card-body"><div class="row align-items-center"><div class="col-icon"><div class="icon-big text-center icon-primary bubble-shadow-small"><i class="fas fa-building"></i></div></div><div class="col col-stats ms-3 ms-sm-0"><div class="numbers"><p class="card-category">Proyek Saya</p><h4 class="card-title"><?= $total_proyek ?></h4></div></div></div></div></div></div>
+                        <div class="col-sm-6 col-md-3"><div class="card card-stats card-round"><div class="card-body"><div class="row align-items-center"><div class="col-icon"><div class="icon-big text-center icon-warning bubble-shadow-small"><i class="fas fa-hourglass-half"></i></div></div><div class="col col-stats ms-3 ms-sm-0"><div class="numbers"><p class="card-category">Menunggu Persetujuan</p><h4 class="card-title"><?= $total_diajukan ?></h4></div></div></div></div></div></div>
+                        <div class="col-sm-6 col-md-3"><div class="card card-stats card-round"><div class="card-body"><div class="row align-items-center"><div class="col-icon"><div class="icon-big text-center icon-danger bubble-shadow-small"><i class="fas fa-times-circle"></i></div></div><div class="col col-stats ms-3 ms-sm-0"><div class="numbers"><p class="card-category">Pengajuan Ditolak</p><h4 class="card-title"><?= $total_ditolak ?></h4></div></div></div></div></div></div>
+                        <div class="col-sm-6 col-md-3"><div class="card card-stats card-round"><div class="card-body"><div class="row align-items-center"><div class="col-icon"><div class="icon-big text-center icon-success bubble-shadow-small"><i class="fas fa-money-check-alt"></i></div></div><div class="col col-stats ms-3 ms-sm-0"><div class="numbers"><p class="card-category">Dana Telah Cair</p><h4 class="card-title">Rp <?= number_format($total_dibayar_rp, 0, ',', '.') ?></h4></div></div></div></div></div></div>
                     </div>
-                    <!-- [BARU] Baris untuk Statistik Visual -->
+                    
+                    <!-- [DIUBAH] Status Chart dan Tabel Pengajuan -->
                     <div class="row">
-                        <div class="col-md-6">
-                            <div class="card card-round">
-                                <div class="card-header"><div class="card-title">Komposisi Status Pengajuan</div></div>
-                                <div class="card-body">
-                                    <div class="chart-container" style="min-height: 300px">
-                                        <canvas id="statusDonutChart"></canvas>
-                                    </div>
-                                </div>
+                        <div class="col-md-5">
+                             <div class="card">
+                                <div class="card-header"><div class="card-title">Status Pengajuan Saya</div></div>
+                                <div class="card-body"><div class="chart-container" style="min-height: 300px"><canvas id="statusDonutChart"></canvas></div></div>
                             </div>
                         </div>
-                         <div class="col-md-6">
+                        <div class="col-md-7">
                             <div class="card card-round">
-                                <div class="card-header"><div class="card-title">Top 5 Pengajuan per Proyek</div></div>
-                                <div class="card-body">
-                                    <div class="chart-container" style="min-height: 300px">
-                                        <canvas id="proyekBarChart"></canvas>
-                                    </div>
-                                </div>
+                                <div class="card-header"><div class="card-title">5 Pengajuan Terakhir Saya</div></div>
+                                <div class="card-body"><div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead><tr><th>ID</th><th>Proyek</th><th>Total</th><th class="text-center">Status</th></tr></thead>
+                                        <tbody>
+                                        <?php if(empty($pengajuan_terbaru)): ?>
+                                            <tr><td colspan="4" class="text-center text-muted">Belum ada data pengajuan.</td></tr>
+                                        <?php else: foreach($pengajuan_terbaru as $row): ?>
+                                            <tr>
+                                                <td><?= htmlspecialchars($row['id_pengajuan_upah']) ?></td>
+                                                <td><?= htmlspecialchars($row['nama_proyek']) ?></td>
+                                                <td>Rp <?= number_format($row['total_pengajuan'], 0, ',', '.') ?></td>
+                                                <td class="text-center"><span class="badge bg-<?= strtolower($row['status_pengajuan']) == 'diajukan' ? 'warning text-dark' : (strtolower($row['status_pengajuan']) == 'disetujui' ? 'success' : (strtolower($row['status_pengajuan']) == 'ditolak' ? 'danger' : 'primary')) ?>"><?= ucwords($row['status_pengajuan']) ?></span></td>
+                                            </tr>
+                                        <?php endforeach; endif; ?>
+                                        </tbody>
+                                    </table>
+                                </div></div>
                             </div>
                         </div>
                     </div>
 
+                                        <!-- [DIUBAH] Monitoring Progres Proyek -->
                     <div class="row">
                         <div class="col-md-12">
-                             <div class="card card-round">
-                                <div class="card-header">
-                                    <div class="card-head-row">
-                                        <div class="card-title">5 Pengajuan Upah Terbaru</div>
-                                    </div>
-                                </div>
+                            <div class="card">
+                                <div class="card-header"><div class="card-title">Monitoring Progres Proyek Saya</div></div>
                                 <div class="card-body">
                                     <div class="table-responsive">
-                                        <table class="table table-hover">
-                                            <thead>
-                                                <tr>
-                                                    <th scope="col">ID</th>
-                                                    <th scope="col">Proyek</th>
-                                                    <th scope="col">Total</th>
-                                                    <th scope="col" class="text-center">Status</th>
-                                                </tr>
-                                            </thead>
+                                        <table class="table table-striped mt-3">
+                                            <thead><tr><th>Nama Proyek</th><th class="text-end">Anggaran</th><th class="text-end">Realisasi</th><th style="width: 30%;">Progres Pembayaran</th></tr></thead>
                                             <tbody>
-                                                <?php if($result_terbaru && mysqli_num_rows($result_terbaru) > 0): ?>
-                                                    <?php while($row = mysqli_fetch_assoc($result_terbaru)): ?>
-                                                    <tr>
-                                                        <td><?= htmlspecialchars($row['id_pengajuan_upah']) ?></td>
-                                                        <td><?= htmlspecialchars($row['nama_proyek']) ?></td>
-                                                        <td>Rp <?= number_format($row['total_pengajuan'], 0, ',', '.') ?></td>
-                                                        <td class="text-center">
-                                                            <span class="badge bg-<?php 
-                                                                switch(strtolower($row['status_pengajuan'])){
-                                                                    case 'diajukan': echo 'warning text-dark'; break;
-                                                                    case 'disetujui': echo 'success'; break;
-                                                                    case 'ditolak': echo 'danger'; break;
-                                                                    case 'dibayar': echo 'primary'; break;
-                                                                    default: echo 'secondary';
-                                                                }
-                                                            ?>"><?= ucwords($row['status_pengajuan']) ?></span>
-                                                        </td>
-                                                    </tr>
-                                                    <?php endwhile; ?>
-                                                <?php else: ?>
-                                                    <tr>
-                                                        <td colspan="4" class="text-center text-muted">Belum ada data pengajuan.</td>
-                                                    </tr>
-                                                <?php endif; ?>
+                                            <?php if (empty($proyek_progres)): ?>
+                                                <tr><td colspan="4" class="text-center text-muted py-3">Belum ada proyek dengan RAB.</td></tr>
+                                            <?php else: foreach ($proyek_progres as $p): 
+                                                $total_rab_p = (float) $p['total_rab'];
+                                                $total_realisasi_p = (float) $p['total_realisasi'];
+                                                $persentase = ($total_rab_p > 0) ? ($total_realisasi_p / $total_rab_p) * 100 : 0;
+                                            ?>
+                                                <tr>
+                                                    <td><?= htmlspecialchars($p['nama_proyek']) ?></td>
+                                                    <td class="text-end">Rp <?= number_format($total_rab_p, 0, ',', '.') ?></td>
+                                                    <td class="text-end">Rp <?= number_format($total_realisasi_p, 0, ',', '.') ?></td>
+                                                    <td>
+                                                        <div class="progress" style="height: 22px;">
+                                                            <div class="progress-bar" role="progressbar" style="width: <?= $persentase ?>%;" aria-valuenow="<?= $persentase ?>" aria-valuemin="0" aria-valuemax="100"><?= number_format($persentase, 1) ?>%</div>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            <?php endforeach; endif; ?>
                                             </tbody>
                                         </table>
                                     </div>
@@ -725,56 +627,27 @@ if($result_proyek_chart){
     </script>
         <!-- [DIUBAH] Skrip untuk menampilkan chart -->
     <script>
-        $(document).ready(function() {
-            <?php if (!empty($chart_status_labels)): ?>
+        // Data dari PHP untuk Donut Chart
+        const statusLabels = <?= json_encode(array_keys($chart_status_data)); ?>;
+        const statusCounts = <?= json_encode(array_values($chart_status_data)); ?>;
+        const statusColors = ['#ffc107', '#28a745', '#dc3545', '#0d6efd', '#6c757d']; // Warna default untuk status tak dikenal
+
+        // Inisialisasi Donut Chart
+        if (statusLabels.length > 0) {
             var ctxDonut = document.getElementById('statusDonutChart').getContext('2d');
             new Chart(ctxDonut, {
                 type: 'doughnut',
                 data: {
-                    datasets: [{
-                        data: <?= json_encode(array_values($chart_status_counts)); ?>,
-                        backgroundColor: <?= json_encode(array_values($chart_status_colors)); ?>
-                    }],
-                    labels: <?= json_encode($chart_status_labels); ?>
+                    labels: statusLabels.map(label => label.charAt(0).toUpperCase() + label.slice(1)), // Membuat huruf awal besar
+                    datasets: [{ data: statusCounts, backgroundColor: statusColors }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: {
-                        legend: { position: 'bottom', labels: { color: '#9a9a9a' } }
-                    }
+                    plugins: { legend: { position: 'bottom' } }
                 }
             });
-            <?php endif; ?>
-
-            <?php if (!empty($chart_proyek_labels)): ?>
-            var ctxBar = document.getElementById('proyekBarChart').getContext('2d');
-            new Chart(ctxBar, {
-                type: 'bar',
-                data: {
-                    labels: <?= json_encode($chart_proyek_labels); ?>,
-                    datasets: [{
-                        label: "Total Diajukan",
-                        backgroundColor: "#3498db",
-                        borderColor: '#2980b9',
-                        data: <?= json_encode($chart_proyek_values); ?>,
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: { beginAtZero: true, ticks: { color: '#9a9a9a', callback: function(value) { return 'Rp ' + new Intl.NumberFormat('id-ID').format(value/1000) + 'k'; } } },
-                        x: { ticks: { color: '#9a9a9a' } }
-                    },
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: { callbacks: { label: function(context) { return ' Rp ' + new Intl.NumberFormat('id-ID').format(context.raw); } } }
-                    }
-                }
-            });
-            <?php endif; ?>
-        });
+        }
     </script>
   </body>
 </html>
