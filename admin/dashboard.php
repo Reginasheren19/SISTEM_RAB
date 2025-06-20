@@ -73,15 +73,15 @@ include("../config/koneksi_mysql.php");
                 </span>
                 <h4 class="text-section">Transaksi RAB Material</h4>
               </li>
-                            <li class="nav-item">
+              <li class="nav-item">
                 <a href="transaksi_rab_material.php">
-                  <i class="fas fa-pen-square"></i>
+                  <i class="fas fa-calculator"></i>
                   <p>Rancang RAB Material</p>
                 </a>
               </li>
               <li class="nav-item">
                 <a href="pencatatan_pembelian.php">
-                  <i class="fas fa-pen-square"></i>
+                  <i class="fas fa-file-invoice-dollar"></i>
                   <p>Pencatatan Pembelian</p>
                 </a>
               </li>
