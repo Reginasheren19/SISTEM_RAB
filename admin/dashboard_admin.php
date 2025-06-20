@@ -1,310 +1,233 @@
 <?php
-session_start(); 
+session_start();
 include("../config/koneksi_mysql.php");
+
+// Proteksi Halaman: Pastikan hanya direktur yang bisa mengakses
+$user_role = strtolower($_SESSION['role'] ?? 'guest');
+if ($user_role !== 'direktur') {
+    // Arahkan ke dashboard lain atau halaman error jika bukan direktur
+    // Misalnya, header("Location: dashboard_umum.php");
+    die("Akses ditolak. Halaman ini khusus untuk Direktur.");
+}
+// =========================================================================
+
+// --- 1. PENGAMBILAN DATA UNTUK KARTU KPI ---
+
+// Jumlah Proyek Aktif (asumsi ada kolom status di master_proyek)
+$q_proyek_aktif = mysqli_query($koneksi, "SELECT COUNT(id_proyek) as total FROM master_proyek");
+$proyek_aktif = mysqli_fetch_assoc($q_proyek_aktif)['total'] ?? 0;
+
+// Total Anggaran (RAB) dari semua proyek
+$q_total_rab = mysqli_query($koneksi, "SELECT SUM(total_rab_upah) as total FROM rab_upah");
+$total_rab = mysqli_fetch_assoc($q_total_rab)['total'] ?? 0;
+
+// Total Realisasi (yang sudah dibayar)
+$q_total_realisasi = mysqli_query($koneksi, "SELECT SUM(total_pengajuan) as total FROM pengajuan_upah WHERE status_pengajuan = 'dibayar'");
+$total_realisasi = mysqli_fetch_assoc($q_total_realisasi)['total'] ?? 0;
+
+// Pengajuan perlu persetujuan
+$q_perlu_setuju = mysqli_query($koneksi, "SELECT COUNT(id_pengajuan_upah) as total FROM pengajuan_upah WHERE status_pengajuan = 'diajukan'");
+$perlu_setuju = mysqli_fetch_assoc($q_perlu_setuju)['total'] ?? 0;
+
+// --- 2. PENGAMBILAN DATA UNTUK GRAFIK ---
+
+// Data untuk Grafik Realisasi per Bulan (6 bulan terakhir)
+$realisasi_per_bulan = [];
+$labels_bulan = [];
+for ($i = 5; $i >= 0; $i--) {
+    $bulan = date('m', strtotime("-$i month"));
+    $tahun = date('Y', strtotime("-$i month"));
+    $labels_bulan[] = date('M Y', strtotime("-$i month"));
+    
+    $q_realisasi_bulan = mysqli_query($koneksi, "SELECT SUM(total_pengajuan) as total FROM pengajuan_upah WHERE status_pengajuan = 'dibayar' AND MONTH(tanggal_pengajuan) = '$bulan' AND YEAR(tanggal_pengajuan) = '$tahun'");
+    $realisasi_per_bulan[] = (int)(mysqli_fetch_assoc($q_realisasi_bulan)['total'] ?? 0);
+}
+
+// Data untuk Grafik Status Pengajuan
+$q_status_pie = mysqli_query($koneksi, "SELECT status_pengajuan, COUNT(*) as jumlah FROM pengajuan_upah GROUP BY status_pengajuan");
+$data_status_pie = [];
+while ($row = mysqli_fetch_assoc($q_status_pie)) {
+    $data_status_pie[ucwords($row['status_pengajuan'])] = $row['jumlah'];
+}
+
+// --- 3. PENGAMBILAN DATA UNTUK TABEL AKSI ---
+
+// Proyek Kritis (Realisasi > 85%)
+$proyek_kritis = [];
+$q_proyek_kritis = mysqli_query($koneksi, "
+    SELECT 
+        p.nama_proyek, 
+        p.total_rab, 
+        COALESCE(SUM(p.total_dibayar), 0) as total_realisasi,
+        (COALESCE(SUM(p.total_dibayar), 0) / p.total_rab) * 100 as persentase
+    FROM (
+        SELECT 
+            CONCAT(mpe.nama_perumahan, ' - ', mpr.kavling) as nama_proyek,
+            ru.total_rab_upah as total_rab,
+            pu.total_pengajuan as total_dibayar
+        FROM rab_upah ru
+        JOIN master_proyek mpr ON ru.id_proyek = mpr.id_proyek
+        JOIN master_perumahan mpe ON mpr.id_perumahan = mpe.id_perumahan
+        LEFT JOIN pengajuan_upah pu ON ru.id_rab_upah = pu.id_rab_upah AND pu.status_pengajuan = 'dibayar'
+    ) as p
+    WHERE p.total_rab > 0
+    GROUP BY p.nama_proyek, p.total_rab
+    HAVING persentase > 85
+    ORDER BY persentase DESC
+");
+if ($q_proyek_kritis) {
+    while($row = mysqli_fetch_assoc($q_proyek_kritis)) {
+        $proyek_kritis[] = $row;
+    }
+}
+
+
+// Pengajuan terbaru perlu persetujuan
+$pengajuan_terbaru = [];
+$q_pengajuan_terbaru = mysqli_query($koneksi, "SELECT pu.id_pengajuan_upah, CONCAT(mpe.nama_perumahan, ' - ', mpr.kavling) as nama_proyek, pu.tanggal_pengajuan, pu.total_pengajuan FROM pengajuan_upah pu JOIN rab_upah ru ON pu.id_rab_upah = ru.id_rab_upah JOIN master_proyek mpr ON ru.id_proyek = mpr.id_proyek JOIN master_perumahan mpe ON mpr.id_perumahan = mpe.id_perumahan WHERE pu.status_pengajuan = 'diajukan' ORDER BY pu.tanggal_pengajuan DESC LIMIT 5");
+if ($q_pengajuan_terbaru) {
+    while($row = mysqli_fetch_assoc($q_pengajuan_terbaru)) {
+        $pengajuan_terbaru[] = $row;
+    }
+}
 ?>
 
 <!DOCTYPE html>
 <html lang="en">
-  <head>
+<head>
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <title>Admin Dashboard</title>
-    <meta
-      content="width=device-width, initial-scale=1.0, shrink-to-fit=no"
-      name="viewport"
-    />
-    <link
-      rel="icon"
-      href="assets/img/logo/LOGO PT.jpg"
-      type="image/x-icon"
-    />
+    <title>Dashboard - Kaiadmin</title>
+    <meta content="width=device-width, initial-scale=1.0, shrink-to-fit=no" name="viewport" />
+    <link rel="icon" href="assets/img/logo/LOGO PT.jpg" type="image/x-icon" />
 
     <!-- Fonts and icons -->
     <script src="assets/js/plugin/webfont/webfont.min.js"></script>
     <script>
-      WebFont.load({
-        google: { families: ["Public Sans:300,400,500,600,700"] },
-        custom: {
-          families: [
-            "Font Awesome 5 Solid",
-            "Font Awesome 5 Regular",
-            "Font Awesome 5 Brands",
-            "simple-line-icons",
-          ],
-          urls: ["assets/css/fonts.min.css"],
-        },
-        active: function () {
-          sessionStorage.fonts = true;
-        },
-      });
+        WebFont.load({
+            google: { families: ["Public Sans:300,400,500,600,700"] },
+            custom: {
+                families: [ "Font Awesome 5 Solid", "Font Awesome 5 Regular", "Font Awesome 5 Brands", "simple-line-icons" ],
+                urls: ["assets/css/fonts.min.css"],
+            },
+        });
     </script>
 
     <!-- CSS Files -->
     <link rel="stylesheet" href="assets/css/bootstrap.min.css" />
     <link rel="stylesheet" href="assets/css/plugins.min.css" />
     <link rel="stylesheet" href="assets/css/kaiadmin.min.css" />
-
-    <!-- CSS Just for demo purpose, don't include it in your project -->
-    <link rel="stylesheet" href="assets/css/demo.css" />
-    
-  </head>
-  <body>
+</head>
+<body>
     <div class="wrapper">
-      <!-- Sidebar -->
-      <div class="sidebar" data-background-color="dark">
-        <div class="sidebar-logo">
-          <!-- Logo Header -->
-          <div class="logo-header" data-background-color="dark">
-            <a href="" class="logo">
-              <img
-                src="assets/img/logo/LOGO PT.jpg"
-                alt="Logo PT"
-                class="navbar-brand"
-                height="20"
-              />
-            </a>
-            <div class="nav-toggle">
-              <button class="btn btn-toggle toggle-sidebar">
-                <i class="gg-menu-right"></i>
-              </button>
-              <button class="btn btn-toggle sidenav-toggler">
-                <i class="gg-menu-left"></i>
-              </button>
+        <!-- Sidebar -->
+        <div class="sidebar" data-background-color="dark">
+            <div class="sidebar-logo">
+                <div class="logo-header" data-background-color="dark">
+                    <a href="dashboard.php" class="logo">
+                        <img src="assets/img/logo/LOGO PT.jpg" alt="Logo PT" class="navbar-brand" height="30" />
+                    </a>
+                    <button class="topbar-toggler more"><i class="gg-more-vertical-alt"></i></button>
+                </div>
             </div>
-            <button class="topbar-toggler more">
-              <i class="gg-more-vertical-alt"></i>
-            </button>
-          </div>
-          <!-- End Logo Header -->
-        </div>
-        <div class="sidebar-wrapper scrollbar scrollbar-inner">
-          <div class="sidebar-content">
-            <ul class="nav nav-secondary">
-              <li class="nav-item active">
-                <a
-                  data-bs-toggle="collapse"
-                  href="#dashboard"
-                  class="collapsed"
-                  aria-expanded="false"
-                >
+            <div class="sidebar-wrapper scrollbar scrollbar-inner">
+                <div class="sidebar-content">
+                    <ul class="nav nav-secondary">
+              <li class="nav-item">
+                <a href="dashboard.php">
                   <i class="fas fa-home"></i>
                   <p>Dashboard</p>
-                  <span class="caret"></span>
                 </a>
-                <div class="collapse" id="dashboard">
-                  <ul class="nav nav-collapse">
-                    <li>
-                      <a href="../admin/dashboard.php">
-                        <span class="sub-item">Dashboard Admin</span>
-                      </a>
-                    </li>
-                  </ul>
-                </div>
               </li>
               <li class="nav-section">
                 <span class="sidebar-mini-icon">
                   <i class="fa fa-ellipsis-h"></i>
                 </span>
-                <h4 class="text-section">Components</h4>
+                <h4 class="text-section">Transaksi RAB Upah</h4>
               </li>
-
               <li class="nav-item">
-                <a data-bs-toggle="collapse" href="#sidebarLayouts">
-                  <i class="fas fa-th-list"></i>
-                  <p>Rancang RAB</p>
-                  <span class="caret"></span>
+                <a href="transaksi_rab_upah.php">
+                  <i class="fas fa-calculator"></i>
+                  <p>Rancang RAB Upah</p>
                 </a>
-                <div class="collapse" id="sidebarLayouts">
-                  <ul class="nav nav-collapse">
-                    <li>
-                      <a href="transaksi_rab_upah.php">
-                        <span class="sub-item">RAB Upah</span>
-                      </a>
-                    </li>
-                    <li>
-                      <a href="transaksi_rab_material.php">
-                        <span class="sub-item">RAB Material</span>
-                      </a>
-                    </li>
-                  </ul>
-                </div>
               </li>
-              <li class="nav-item">
+                            <li class="nav-item">
                 <a href="pengajuan_upah.php">
-                  <i class="fas fa-pen-square"></i>
+                  <i class="fas fa-hand-holding-usd"></i>
                   <p>Pengajuah Upah</p>
                 </a>
               </li>
-              <li class="nav-item">
-                <a href="pencatatan_pembelian.php">
-                  <i class="fas fa-pen-square"></i>
-                  <p>Pencatatan Pembelian</p>
-                </a>
+              <li class="nav-section">
+                <span class="sidebar-mini-icon">
+                  <i class="fa fa-ellipsis-h"></i>
+                </span>
+                <h4 class="text-section">Laporan</h4>
               </li>
-              <li class="nav-item">
-                <a data-bs-toggle="collapse" href="#forms">
-                  <i class="fas fa-pen-square"></i>
-                  <p>Forms</p>
-                  <span class="caret"></span>
-                </a>
-                <div class="collapse" id="forms">
-                  <ul class="nav nav-collapse">
-                    <li>
-                      <a href="forms/forms.html">
-                        <span class="sub-item">Basic Form</span>
-                      </a>
-                    </li>
-                  </ul>
-                </div>
-              </li>
-              <li class="nav-item">
-                <a data-bs-toggle="collapse" href="#tables">
-                  <i class="fas fa-table"></i>
-                  <p>Tables</p>
-                  <span class="caret"></span>
-                </a>
-                <div class="collapse" id="tables">
-                  <ul class="nav nav-collapse">
-                    <li>
-                      <a href="tables/tables.html">
-                        <span class="sub-item">Basic Table</span>
-                      </a>
-                    </li>
-                    <li>
-                      <a href="tables/datatables.html">
-                        <span class="sub-item">Datatables</span>
-                      </a>
-                    </li>
-                  </ul>
-                </div>
-              </li>
-              <li class="nav-item">
-                <a data-bs-toggle="collapse" href="#maps">
-                  <i class="fas fa-map-marker-alt"></i>
-                  <p>Maps</p>
-                  <span class="caret"></span>
-                </a>
-                <div class="collapse" id="maps">
-                  <ul class="nav nav-collapse">
-                    <li>
-                      <a href="maps/googlemaps.html">
-                        <span class="sub-item">Google Maps</span>
-                      </a>
-                    </li>
-                    <li>
-                      <a href="maps/jsvectormap.html">
-                        <span class="sub-item">Jsvectormap</span>
-                      </a>
-                    </li>
-                  </ul>
-                </div>
-              </li>
-              <li class="nav-item">
-                <a data-bs-toggle="collapse" href="#charts">
-                  <i class="far fa-chart-bar"></i>
-                  <p>Charts</p>
-                  <span class="caret"></span>
-                </a>
-                <div class="collapse" id="charts">
-                  <ul class="nav nav-collapse">
-                    <li>
-                      <a href="charts/charts.html">
-                        <span class="sub-item">Chart Js</span>
-                      </a>
-                    </li>
-                    <li>
-                      <a href="charts/sparkline.html">
-                        <span class="sub-item">Sparkline</span>
-                      </a>
-                    </li>
-                  </ul>
-                </div>
-              </li>
-              <li class="nav-item">
-                <a href="widgets.html">
-                  <i class="fas fa-desktop"></i>
-                  <p>Widgets</p>
-                  <span class="badge badge-success">4</span>
-                </a>
-              </li>
-              <li class="nav-item">
-                <a href="../../documentation/index.html">
+                            <li class="nav-item">
+                <a href="lap_pengajuan_upah.php">
                   <i class="fas fa-file"></i>
-                  <p>Documentation</p>
-                  <span class="badge badge-secondary">1</span>
+                  <p>Pengajuan Upah</p>
                 </a>
               </li>
               <li class="nav-item">
-                <a data-bs-toggle="collapse" href="#">
+                <a href="lap_realisasi_anggaran.php">
                   <i class="fas fa-file"></i>
-                  <p>Laporan RAB Upah</p>
-                  <span class="caret"></span>
+                  <p>Realisasi Anggaran</p>
                 </a>
-                <div class="collapse" id="charts">
-                  <ul class="nav nav-collapse">
-                    <li>
-                      <a href="charts/charts.html">
-                        <span class="sub-item">Lap</span>
-                      </a>
-                    </li>
-                    <li>
-                      <a href="charts/sparkline.html">
-                        <span class="sub-item">Sparkline</span>
-                      </a>
-                    </li>
-                  </ul>
-                </div>
               </li>
-              <li class="nav-item">
-                <a data-bs-toggle="collapse" href="#submenu">
-                  <i class="fas fa-bars"></i>
-                  <p>Mastering</p>
-                  <span class="caret"></span>
+                            <li class="nav-item">
+                <a href="lap_rekapitulasi_proyek.php">
+                  <i class="fas fa-file"></i>
+                  <p>Rekapitulasi Proyek</p>
                 </a>
-                <div class="collapse" id="submenu">
-                  <ul class="nav nav-collapse">
-                    <li>
-                      <a href="master_perumahan.php">
-                        <span class="sub-item">Master Perumahan</span>
-                      </a>
-                    </li>
-                    <li>
-                      <a href="master_proyek.php">
-                        <span class="sub-item">Master Proyek</span>
-                      </a>
-                    </li>
-                    <li>
-                      <a href="master_mandor.php">
-                        <span class="sub-item">Master Mandor</span>
-                      </a>
-                    </li>
-                    <li>
-                      <a href="master_kategori.php">
-                        <span class="sub-item">Master Kategori</span>
-                      </a>
-                    </li>
-                    <li>
-                      <a href="master_satuan.php">
-                        <span class="sub-item">Master Satuan</span>
-                      </a>
-                    </li>
-                    <li>
-                      <a href="master_pekerjaan.php">
-                        <span class="sub-item">Master Pekerjaan</span>
-                      </a>
-                    </li>
-                    <li>
-                      <a href="master_material.php">
-                        <span class="sub-item">Master Material</span>
-                      </a>
-                    </li>
-                    <li>
-                      <a href="master_user.php">
-                        <span class="sub-item">Master User</span>
-                      </a>
-                    </li>
-                  </ul>
-                </div>
               </li>
+              <li class="nav-section">
+                <span class="sidebar-mini-icon">
+                  <i class="fa fa-ellipsis-h"></i>
+                </span>
+                <h4 class="text-section">Mastering Data</h4>
+              </li>
+<li class="nav-item">
+  <a href="master_perumahan.php">
+    <i class="fas fa-database"></i>
+    <p>Master Perumahan</p>
+  </a>
+</li>
+<li class="nav-item">
+  <a href="master_proyek.php">
+    <i class="fas fa-database"></i>
+    <p>Master Proyek</p>
+  </a>
+</li>
+<li class="nav-item">
+  <a href="master_mandor.php">
+    <i class="fas fa-database"></i>
+    <p>Master Mandor</p>
+  </a>
+</li>
+<li class="nav-item">
+  <a href="master_kategori.php">
+    <i class="fas fa-database"></i>
+    <p>Master Kategori</p>
+  </a>
+</li>
+<li class="nav-item">
+  <a href="master_satuan.php">
+    <i class="fas fa-database"></i>
+    <p>Master Satuan</p>
+  </a>
+</li>
+<li class="nav-item">
+  <a href="#" class="disabled">
+    <i class="fas fa-database"></i>
+    <p>Master Pekerjaan</p>
+  </a>
+</li>
+<li class="nav-item">
+  <a href="master_user.php">
+    <i class="fas fa-database"></i>
+    <p>Master User</p>
+  </a>
+</li>
 
             </ul>
           </div>
@@ -312,1025 +235,181 @@ include("../config/koneksi_mysql.php");
       </div>
       <!-- End Sidebar -->
 
-      <div class="main-panel">
-        <div class="main-header">
-          <div class="main-header-logo">
-            <!-- Logo Header -->
-            <div class="logo-header" data-background-color="dark">
-              <a href="../index.html" class="logo">
-                <img
-                  src="assets/img/kaiadmin/logo_light.svg"
-                  alt="navbar brand"
-                  class="navbar-brand"
-                  height="20"
-                />
-              </a>
-              <div class="nav-toggle">
-                <button class="btn btn-toggle toggle-sidebar">
-                  <i class="gg-menu-right"></i>
-                </button>
-                <button class="btn btn-toggle sidenav-toggler">
-                  <i class="gg-menu-left"></i>
-                </button>
-              </div>
-              <button class="topbar-toggler more">
-                <i class="gg-more-vertical-alt"></i>
-              </button>
-            </div>
-            <!-- End Logo Header -->
-          </div>
-          <!-- Navbar Header -->
-          <nav
-            class="navbar navbar-header navbar-header-transparent navbar-expand-lg border-bottom"
-          >
-            <div class="container-fluid">
-              <nav
-                class="navbar navbar-header-left navbar-expand-lg navbar-form nav-search p-0 d-none d-lg-flex"
-              >
-                <div class="input-group">
-                  <div class="input-group-prepend">
-                    <button type="submit" class="btn btn-search pe-1">
-                      <i class="fa fa-search search-icon"></i>
-                    </button>
-                  </div>
-                  <input
-                    type="text"
-                    placeholder="Search ..."
-                    class="form-control"
-                  />
-                </div>
-              </nav>
-
-              <ul class="navbar-nav topbar-nav ms-md-auto align-items-center">
-                <li
-                  class="nav-item topbar-icon dropdown hidden-caret d-flex d-lg-none"
-                >
-                  <a
-                    class="nav-link dropdown-toggle"
-                    data-bs-toggle="dropdown"
-                    href="#"
-                    role="button"
-                    aria-expanded="false"
-                    aria-haspopup="true"
-                  >
-                    <i class="fa fa-search"></i>
-                  </a>
-                  <ul class="dropdown-menu dropdown-search animated fadeIn">
-                    <form class="navbar-left navbar-form nav-search">
-                      <div class="input-group">
-                        <input
-                          type="text"
-                          placeholder="Search ..."
-                          class="form-control"
-                        />
-                      </div>
-                    </form>
-                  </ul>
-                </li>
-                <li class="nav-item topbar-icon dropdown hidden-caret">
-                  <a
-                    class="nav-link dropdown-toggle"
-                    href="#"
-                    id="messageDropdown"
-                    role="button"
-                    data-bs-toggle="dropdown"
-                    aria-haspopup="true"
-                    aria-expanded="false"
-                  >
-                    <i class="fa fa-envelope"></i>
-                  </a>
-                  <ul
-                    class="dropdown-menu messages-notif-box animated fadeIn"
-                    aria-labelledby="messageDropdown"
-                  >
-                    <li>
-                      <div
-                        class="dropdown-title d-flex justify-content-between align-items-center"
-                      >
-                        Messages
-                        <a href="#" class="small">Mark all as read</a>
-                      </div>
-                    </li>
-                    <li>
-                      <div class="message-notif-scroll scrollbar-outer">
-                        <div class="notif-center">
-                          <a href="#">
-                            <div class="notif-img">
-                              <img
-                                src="assets/img/jm_denis.jpg"
-                                alt="Img Profile"
-                              />
-                            </div>
-                            <div class="notif-content">
-                              <span class="subject">Jimmy Denis</span>
-                              <span class="block"> How are you ? </span>
-                              <span class="time">5 minutes ago</span>
-                            </div>
-                          </a>
-                          <a href="#">
-                            <div class="notif-img">
-                              <img
-                                src="assets/img/chadengle.jpg"
-                                alt="Img Profile"
-                              />
-                            </div>
-                            <div class="notif-content">
-                              <span class="subject">Chad</span>
-                              <span class="block"> Ok, Thanks ! </span>
-                              <span class="time">12 minutes ago</span>
-                            </div>
-                          </a>
-                          <a href="#">
-                            <div class="notif-img">
-                              <img
-                                src="assets/img/mlane.jpg"
-                                alt="Img Profile"
-                              />
-                            </div>
-                            <div class="notif-content">
-                              <span class="subject">Jhon Doe</span>
-                              <span class="block">
-                                Ready for the meeting today...
-                              </span>
-                              <span class="time">12 minutes ago</span>
-                            </div>
-                          </a>
-                          <a href="#">
-                            <div class="notif-img">
-                              <img
-                                src="assets/img/talha.jpg"
-                                alt="Img Profile"
-                              />
-                            </div>
-                            <div class="notif-content">
-                              <span class="subject">Talha</span>
-                              <span class="block"> Hi, Apa Kabar ? </span>
-                              <span class="time">17 minutes ago</span>
-                            </div>
-                          </a>
-                        </div>
-                      </div>
-                    </li>
-                    <li>
-                      <a class="see-all" href="javascript:void(0);"
-                        >See all messages<i class="fa fa-angle-right"></i>
-                      </a>
-                    </li>
-                  </ul>
-                </li>
-                <li class="nav-item topbar-icon dropdown hidden-caret">
-                  <a
-                    class="nav-link dropdown-toggle"
-                    href="#"
-                    id="notifDropdown"
-                    role="button"
-                    data-bs-toggle="dropdown"
-                    aria-haspopup="true"
-                    aria-expanded="false"
-                  >
-                    <i class="fa fa-bell"></i>
-                    <span class="notification">4</span>
-                  </a>
-                  <ul
-                    class="dropdown-menu notif-box animated fadeIn"
-                    aria-labelledby="notifDropdown"
-                  >
-                    <li>
-                      <div class="dropdown-title">
-                        You have 4 new notification
-                      </div>
-                    </li>
-                    <li>
-                      <div class="notif-scroll scrollbar-outer">
-                        <div class="notif-center">
-                          <a href="#">
-                            <div class="notif-icon notif-primary">
-                              <i class="fa fa-user-plus"></i>
-                            </div>
-                            <div class="notif-content">
-                              <span class="block"> New user registered </span>
-                              <span class="time">5 minutes ago</span>
-                            </div>
-                          </a>
-                          <a href="#">
-                            <div class="notif-icon notif-success">
-                              <i class="fa fa-comment"></i>
-                            </div>
-                            <div class="notif-content">
-                              <span class="block">
-                                Rahmad commented on Admin
-                              </span>
-                              <span class="time">12 minutes ago</span>
-                            </div>
-                          </a>
-                          <a href="#">
-                            <div class="notif-img">
-                              <img
-                                src="assets/img/profile2.jpg"
-                                alt="Img Profile"
-                              />
-                            </div>
-                            <div class="notif-content">
-                              <span class="block">
-                                Reza send messages to you
-                              </span>
-                              <span class="time">12 minutes ago</span>
-                            </div>
-                          </a>
-                          <a href="#">
-                            <div class="notif-icon notif-danger">
-                              <i class="fa fa-heart"></i>
-                            </div>
-                            <div class="notif-content">
-                              <span class="block"> Farrah liked Admin </span>
-                              <span class="time">17 minutes ago</span>
-                            </div>
-                          </a>
-                        </div>
-                      </div>
-                    </li>
-                    <li>
-                      <a class="see-all" href="javascript:void(0);"
-                        >See all notifications<i class="fa fa-angle-right"></i>
-                      </a>
-                    </li>
-                  </ul>
-                </li>
-                <li class="nav-item topbar-icon dropdown hidden-caret">
-                  <a
-                    class="nav-link"
-                    data-bs-toggle="dropdown"
-                    href="#"
-                    aria-expanded="false"
-                  >
-                    <i class="fas fa-layer-group"></i>
-                  </a>
-                  <div class="dropdown-menu quick-actions animated fadeIn">
-                    <div class="quick-actions-header">
-                      <span class="title mb-1">Quick Actions</span>
-                      <span class="subtitle op-7">Shortcuts</span>
-                    </div>
-                    <div class="quick-actions-scroll scrollbar-outer">
-                      <div class="quick-actions-items">
-                        <div class="row m-0">
-                          <a class="col-6 col-md-4 p-0" href="#">
-                            <div class="quick-actions-item">
-                              <div class="avatar-item bg-danger rounded-circle">
-                                <i class="far fa-calendar-alt"></i>
-                              </div>
-                              <span class="text">Calendar</span>
-                            </div>
-                          </a>
-                          <a class="col-6 col-md-4 p-0" href="#">
-                            <div class="quick-actions-item">
-                              <div
-                                class="avatar-item bg-warning rounded-circle"
-                              >
-                                <i class="fas fa-map"></i>
-                              </div>
-                              <span class="text">Maps</span>
-                            </div>
-                          </a>
-                          <a class="col-6 col-md-4 p-0" href="#">
-                            <div class="quick-actions-item">
-                              <div class="avatar-item bg-info rounded-circle">
-                                <i class="fas fa-file-excel"></i>
-                              </div>
-                              <span class="text">Reports</span>
-                            </div>
-                          </a>
-                          <a class="col-6 col-md-4 p-0" href="#">
-                            <div class="quick-actions-item">
-                              <div
-                                class="avatar-item bg-success rounded-circle"
-                              >
-                                <i class="fas fa-envelope"></i>
-                              </div>
-                              <span class="text">Emails</span>
-                            </div>
-                          </a>
-                          <a class="col-6 col-md-4 p-0" href="#">
-                            <div class="quick-actions-item">
-                              <div
-                                class="avatar-item bg-primary rounded-circle"
-                              >
-                                <i class="fas fa-file-invoice-dollar"></i>
-                              </div>
-                              <span class="text">Invoice</span>
-                            </div>
-                          </a>
-                          <a class="col-6 col-md-4 p-0" href="#">
-                            <div class="quick-actions-item">
-                              <div
-                                class="avatar-item bg-secondary rounded-circle"
-                              >
-                                <i class="fas fa-credit-card"></i>
-                              </div>
-                              <span class="text">Payments</span>
-                            </div>
-                          </a>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </li>
-
-<li class="nav-item topbar-user dropdown hidden-caret">
-  <a class="dropdown-toggle profile-pic" data-bs-toggle="dropdown" href="#" aria-expanded="false">
-    <div class="avatar-sm">
-      <!-- Gambar profil, jika ada -->
-      <img src="uploads/user_photos/<?= isset($_SESSION['profile_pic']) && !empty($_SESSION['profile_pic']) ? $_SESSION['profile_pic'] : 'default.jpg' ?>" alt="Profile Picture" class="avatar-img rounded-circle" />
-    </div>
-    <span class="profile-username">
-      <span class="op-7">Hi,</span>
-      <span class="fw-bold"><?= isset($_SESSION['nama_lengkap']) ? $_SESSION['nama_lengkap'] : 'Guest' ?></span> <!-- Menampilkan nama lengkap dari session -->
-    </span>
-  </a>
-
-  <ul class="dropdown-menu dropdown-user animated fadeIn">
-    <div class="dropdown-user-scroll scrollbar-outer">
-      <li>
-        <div class="user-box">
-          <!-- Gambar Profil -->
-    <div class="avatar avatar-md">
-        <img src="<?= htmlspecialchars($foto_path) ?>" alt="Foto Profil" class="avatar-img rounded-circle">
-    </div>
-
-          <!-- Nama Lengkap -->
-          <h4 class="fw-bold"><?= isset($_SESSION['nama_lengkap']) ? $_SESSION['nama_lengkap'] : 'Guest' ?></h4> <!-- Menampilkan nama lengkap -->
-
-          <!-- Username -->
-          <p class="text-muted"><?= isset($_SESSION['username']) ? $_SESSION['username'] : 'Not logged in' ?></p> <!-- Menampilkan username -->
-
-          <!-- View Profile Button -->
-          <a href="profile.php" class="btn btn-xs btn-secondary btn-sm">View Profile</a>
-        </div>
-      </li>
-
-      <li>
-        <div class="dropdown-divider"></div>
-        <a class="dropdown-item" href="#">Account Setting</a> <!-- Account Setting -->
-        <div class="dropdown-divider"></div>
-        <a class="dropdown-item" href="logout.php">Logout</a> <!-- Logout Link -->
-      </li>
-    </div>
-  </ul>
-</li>
-
-
-
-              </ul>
-            </div>
-          </nav>
-          <!-- End Navbar -->
-        </div>
-
-        <div class="container">
-          <div class="page-inner">
-            <div
-              class="d-flex align-items-left align-items-md-center flex-column flex-md-row pt-2 pb-4"
-            >
-              <div>
-                <h3 class="fw-bold mb-3">Dashboard</h3>
-                <h6 class="op-7 mb-2">Free Bootstrap 5 Admin Dashboard</h6>
-              </div>
-              <div class="ms-md-auto py-2 py-md-0">
-                <a href="#" class="btn btn-label-info btn-round me-2">Manage</a>
-                <a href="#" class="btn btn-primary btn-round">Add Customer</a>
-              </div>
-            </div>
-            <div class="row">
-              <div class="col-sm-6 col-md-3">
-                <div class="card card-stats card-round">
-                  <div class="card-body">
-                    <div class="row align-items-center">
-                      <div class="col-icon">
-                        <div
-                          class="icon-big text-center icon-primary bubble-shadow-small"
-                        >
-                          <i class="fas fa-users"></i>
-                        </div>
-                      </div>
-                      <div class="col col-stats ms-3 ms-sm-0">
-                        <div class="numbers">
-                          <p class="card-category">Visitors</p>
-                          <h4 class="card-title">1,294</h4>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="col-sm-6 col-md-3">
-                <div class="card card-stats card-round">
-                  <div class="card-body">
-                    <div class="row align-items-center">
-                      <div class="col-icon">
-                        <div
-                          class="icon-big text-center icon-info bubble-shadow-small"
-                        >
-                          <i class="fas fa-user-check"></i>
-                        </div>
-                      </div>
-                      <div class="col col-stats ms-3 ms-sm-0">
-                        <div class="numbers">
-                          <p class="card-category">Subscribers</p>
-                          <h4 class="card-title">1303</h4>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="col-sm-6 col-md-3">
-                <div class="card card-stats card-round">
-                  <div class="card-body">
-                    <div class="row align-items-center">
-                      <div class="col-icon">
-                        <div
-                          class="icon-big text-center icon-success bubble-shadow-small"
-                        >
-                          <i class="fas fa-luggage-cart"></i>
-                        </div>
-                      </div>
-                      <div class="col col-stats ms-3 ms-sm-0">
-                        <div class="numbers">
-                          <p class="card-category">Sales</p>
-                          <h4 class="card-title">$ 1,345</h4>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="col-sm-6 col-md-3">
-                <div class="card card-stats card-round">
-                  <div class="card-body">
-                    <div class="row align-items-center">
-                      <div class="col-icon">
-                        <div
-                          class="icon-big text-center icon-secondary bubble-shadow-small"
-                        >
-                          <i class="far fa-check-circle"></i>
-                        </div>
-                      </div>
-                      <div class="col col-stats ms-3 ms-sm-0">
-                        <div class="numbers">
-                          <p class="card-category">Order</p>
-                          <h4 class="card-title">576</h4>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div class="row">
-              <div class="col-md-8">
-                <div class="card card-round">
-                  <div class="card-header">
-                    <div class="card-head-row">
-                      <div class="card-title">User Statistics</div>
-                      <div class="card-tools">
-                        <a
-                          href="#"
-                          class="btn btn-label-success btn-round btn-sm me-2"
-                        >
-                          <span class="btn-label">
-                            <i class="fa fa-pencil"></i>
-                          </span>
-                          Export
+        <div class="main-panel">
+            <div class="main-header">
+                <!-- Logo Header -->
+                <div class="main-header-logo">
+                    <div class="logo-header" data-background-color="dark">
+                        <a href="dashboard.php" class="logo">
+                            <img src="assets/img/logo/LOGO PT.jpg" alt="Logo PT" class="navbar-brand" height="30" />
                         </a>
-                        <a href="#" class="btn btn-label-info btn-round btn-sm">
-                          <span class="btn-label">
-                            <i class="fa fa-print"></i>
-                          </span>
-                          Print
-                        </a>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="card-body">
-                    <div class="chart-container" style="min-height: 375px">
-                      <canvas id="statisticsChart"></canvas>
-                    </div>
-                    <div id="myChartLegend"></div>
-                  </div>
-                </div>
-              </div>
-              <div class="col-md-4">
-                <div class="card card-primary card-round">
-                  <div class="card-header">
-                    <div class="card-head-row">
-                      <div class="card-title">Daily Sales</div>
-                      <div class="card-tools">
-                        <div class="dropdown">
-                          <button
-                            class="btn btn-sm btn-label-light dropdown-toggle"
-                            type="button"
-                            id="dropdownMenuButton"
-                            data-bs-toggle="dropdown"
-                            aria-haspopup="true"
-                            aria-expanded="false"
-                          >
-                            Export
-                          </button>
-                          <div
-                            class="dropdown-menu"
-                            aria-labelledby="dropdownMenuButton"
-                          >
-                            <a class="dropdown-item" href="#">Action</a>
-                            <a class="dropdown-item" href="#">Another action</a>
-                            <a class="dropdown-item" href="#"
-                              >Something else here</a
-                            >
-                          </div>
+                        <div class="nav-toggle">
+                            <button class="btn btn-toggle toggle-sidebar"><i class="gg-menu-right"></i></button>
+                            <button class="btn btn-toggle sidenav-toggler"><i class="gg-menu-left"></i></button>
                         </div>
-                      </div>
+                        <button class="topbar-toggler more"><i class="gg-more-vertical-alt"></i></button>
                     </div>
-                    <div class="card-category">March 25 - April 02</div>
-                  </div>
-                  <div class="card-body pb-0">
-                    <div class="mb-4 mt-2">
-                      <h1>$4,578.58</h1>
-                    </div>
-                    <div class="pull-in">
-                      <canvas id="dailySalesChart"></canvas>
-                    </div>
-                  </div>
                 </div>
-                <div class="card card-round">
-                  <div class="card-body pb-0">
-                    <div class="h1 fw-bold float-end text-primary">+5%</div>
-                    <h2 class="mb-2">17</h2>
-                    <p class="text-muted">Users online</p>
-                    <div class="pull-in sparkline-fix">
-                      <div id="lineChart"></div>
+                <!-- End Logo Header -->
+                <!-- Navbar Header -->
+                <nav class="navbar navbar-header navbar-header-transparent navbar-expand-lg border-bottom">
+                    <div class="container-fluid">
+                        <ul class="navbar-nav topbar-nav ms-md-auto align-items-center">
+                            <li class="nav-item topbar-user dropdown hidden-caret">
+                                <a class="dropdown-toggle profile-pic" data-bs-toggle="dropdown" href="#" aria-expanded="false">
+                                    <div class="avatar-sm">
+                                        <img src="../uploads/user_photos/<?= !empty($_SESSION['profile_pic']) ? htmlspecialchars($_SESSION['profile_pic']) : 'default.jpg' ?>" alt="Foto Profil" class="avatar-img rounded-circle" onerror="this.onerror=null; this.src='assets/img/profile.jpg';">
+                                    </div>
+                                    <span class="profile-username">
+                                        <span class="op-7">Selamat Datang,</span>
+                                        <span class="fw-bold"><?= htmlspecialchars($_SESSION['nama_lengkap'] ?? 'Guest') ?></span>
+                                    </span>
+                                </a>
+                                <ul class="dropdown-menu dropdown-user animated fadeIn">
+                                    <div class="dropdown-user-scroll scrollbar-outer">
+                                        <li>
+                                            <div class="user-box">
+                                                <div class="avatar-lg">
+                                                    <img src="../uploads/user_photos/<?= !empty($_SESSION['profile_pic']) ? htmlspecialchars($_SESSION['profile_pic']) : 'default.jpg' ?>" alt="Foto Profil" class="avatar-img rounded" onerror="this.onerror=null; this.src='assets/img/profile.jpg';">
+                                                </div>
+                                                <div class="u-text">
+                                                    <h4><?= htmlspecialchars($_SESSION['nama_lengkap'] ?? 'Guest') ?></h4>
+                                                    <p class="text-muted"><?= htmlspecialchars($_SESSION['username'] ?? 'guest') ?></p>
+                                                    <a href="profile.php" class="btn btn-xs btn-secondary btn-sm">Lihat Profil</a>
+                                                </div>
+                                            </div>
+                                        </li>
+                                        <li>
+                                            <div class="dropdown-divider"></div>
+                                            <a class="dropdown-item" href="profile.php">Pengaturan Akun</a>
+                                            <div class="dropdown-divider"></div>
+                                            <a class="dropdown-item" href="../logout.php">Logout</a>
+                                        </li>
+                                    </div>
+                                </ul>
+                            </li>
+                        </ul>
                     </div>
-                  </div>
-                </div>
-              </div>
+                </nav>
+                <!-- End Navbar -->
             </div>
-            <div class="row">
-              <div class="col-md-12">
-                <div class="card card-round">
-                  <div class="card-header">
-                    <div class="card-head-row card-tools-still-right">
-                      <h4 class="card-title">Users Geolocation</h4>
-                      <div class="card-tools">
-                        <button
-                          class="btn btn-icon btn-link btn-primary btn-xs"
-                        >
-                          <span class="fa fa-angle-down"></span>
-                        </button>
-                        <button
-                          class="btn btn-icon btn-link btn-primary btn-xs btn-refresh-card"
-                        >
-                          <span class="fa fa-sync-alt"></span>
-                        </button>
-                        <button
-                          class="btn btn-icon btn-link btn-primary btn-xs"
-                        >
-                          <span class="fa fa-times"></span>
-                        </button>
-                      </div>
+            <div class="container">
+                <div class="page-inner">
+                    <div class="d-flex align-items-left align-items-md-center flex-column flex-md-row pt-2 pb-4">
+                        <div>
+                            <h3 class="fw-bold mb-3">Dashboard Direktur</h3>
+                            <h6 class="op-7 mb-2">Ringkasan Umum Kinerja Proyek dan Keuangan</h6>
+                        </div>
                     </div>
-                    <p class="card-category">
-                      Map of the distribution of users around the world
-                    </p>
-                  </div>
-                  <div class="card-body">
+
                     <div class="row">
-                      <div class="col-md-6">
-                        <div class="table-responsive table-hover table-sales">
-                          <table class="table">
-                            <tbody>
-                              <tr>
-                                <td>
-                                  <div class="flag">
-                                    <img
-                                      src="assets/img/flags/id.png"
-                                      alt="indonesia"
-                                    />
-                                  </div>
-                                </td>
-                                <td>Indonesia</td>
-                                <td class="text-end">2.320</td>
-                                <td class="text-end">42.18%</td>
-                              </tr>
-                              <tr>
-                                <td>
-                                  <div class="flag">
-                                    <img
-                                      src="assets/img/flags/us.png"
-                                      alt="united states"
-                                    />
-                                  </div>
-                                </td>
-                                <td>USA</td>
-                                <td class="text-end">240</td>
-                                <td class="text-end">4.36%</td>
-                              </tr>
-                              <tr>
-                                <td>
-                                  <div class="flag">
-                                    <img
-                                      src="assets/img/flags/au.png"
-                                      alt="australia"
-                                    />
-                                  </div>
-                                </td>
-                                <td>Australia</td>
-                                <td class="text-end">119</td>
-                                <td class="text-end">2.16%</td>
-                              </tr>
-                              <tr>
-                                <td>
-                                  <div class="flag">
-                                    <img
-                                      src="assets/img/flags/ru.png"
-                                      alt="russia"
-                                    />
-                                  </div>
-                                </td>
-                                <td>Russia</td>
-                                <td class="text-end">1.081</td>
-                                <td class="text-end">19.65%</td>
-                              </tr>
-                              <tr>
-                                <td>
-                                  <div class="flag">
-                                    <img
-                                      src="assets/img/flags/cn.png"
-                                      alt="china"
-                                    />
-                                  </div>
-                                </td>
-                                <td>China</td>
-                                <td class="text-end">1.100</td>
-                                <td class="text-end">20%</td>
-                              </tr>
-                              <tr>
-                                <td>
-                                  <div class="flag">
-                                    <img
-                                      src="assets/img/flags/br.png"
-                                      alt="brazil"
-                                    />
-                                  </div>
-                                </td>
-                                <td>Brasil</td>
-                                <td class="text-end">640</td>
-                                <td class="text-end">11.63%</td>
-                              </tr>
-                            </tbody>
-                          </table>
+                        <div class="col-sm-6 col-md-3">
+                            <div class="card card-stats card-primary card-round">
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-5"><div class="icon-big text-center"><i class="flaticon-agenda-1"></i></div></div>
+                                        <div class="col-7 col-stats">
+                                            <div class="numbers"><p class="card-category">Proyek Aktif</p><h4 class="card-title"><?= $proyek_aktif ?></h4></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                      </div>
-                      <div class="col-md-6">
-                        <div class="mapcontainer">
-                          <div
-                            id="world-map"
-                            class="w-100"
-                            style="height: 300px"
-                          ></div>
+                        <div class="col-sm-6 col-md-3">
+                            <div class="card card-stats card-info card-round">
+                                <div class="card-body"><div class="row"><div class="col-5"><div class="icon-big text-center"><i class="flaticon-coins"></i></div></div><div class="col-7 col-stats"><div class="numbers"><p class="card-category">Total Anggaran</p><h4 class="card-title">Rp <?= number_format($total_rab, 0, ',', '.') ?></h4></div></div></div></div>
+                            </div>
                         </div>
-                      </div>
+                        <div class="col-sm-6 col-md-3">
+                            <div class="card card-stats card-success card-round">
+                                <div class="card-body"><div class="row"><div class="col-5"><div class="icon-big text-center"><i class="flaticon-analytics"></i></div></div><div class="col-7 col-stats"><div class="numbers"><p class="card-category">Total Realisasi</p><h4 class="card-title">Rp <?= number_format($total_realisasi, 0, ',', '.') ?></h4></div></div></div></div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6 col-md-3">
+                            <div class="card card-stats card-danger card-round">
+                                <div class="card-body"><div class="row"><div class="col-5"><div class="icon-big text-center"><i class="flaticon-envelope-1"></i></div></div><div class="col-7 col-stats"><div class="numbers"><p class="card-category">Perlu Disetujui</p><h4 class="card-title"><?= $perlu_setuju ?></h4></div></div></div></div>
+                            </div>
+                        </div>
                     </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div class="row">
-              <div class="col-md-4">
-                <div class="card card-round">
-                  <div class="card-body">
-                    <div class="card-head-row card-tools-still-right">
-                      <div class="card-title">New Customers</div>
-                      <div class="card-tools">
-                        <div class="dropdown">
-                          <button
-                            class="btn btn-icon btn-clean me-0"
-                            type="button"
-                            id="dropdownMenuButton"
-                            data-bs-toggle="dropdown"
-                            aria-haspopup="true"
-                            aria-expanded="false"
-                          >
-                            <i class="fas fa-ellipsis-h"></i>
-                          </button>
-                          <div
-                            class="dropdown-menu"
-                            aria-labelledby="dropdownMenuButton"
-                          >
-                            <a class="dropdown-item" href="#">Action</a>
-                            <a class="dropdown-item" href="#">Another action</a>
-                            <a class="dropdown-item" href="#"
-                              >Something else here</a
-                            >
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div class="card-list py-4">
-                      <div class="item-list">
-                        <div class="avatar">
-                          <img
-                            src="assets/img/jm_denis.jpg"
-                            alt="..."
-                            class="avatar-img rounded-circle"
-                          />
-                        </div>
-                        <div class="info-user ms-3">
-                          <div class="username">Jimmy Denis</div>
-                          <div class="status">Graphic Designer</div>
-                        </div>
-                        <button class="btn btn-icon btn-link op-8 me-1">
-                          <i class="far fa-envelope"></i>
-                        </button>
-                        <button class="btn btn-icon btn-link btn-danger op-8">
-                          <i class="fas fa-ban"></i>
-                        </button>
-                      </div>
-                      <div class="item-list">
-                        <div class="avatar">
-                          <span
-                            class="avatar-title rounded-circle border border-white"
-                            >CF</span
-                          >
-                        </div>
-                        <div class="info-user ms-3">
-                          <div class="username">Chandra Felix</div>
-                          <div class="status">Sales Promotion</div>
-                        </div>
-                        <button class="btn btn-icon btn-link op-8 me-1">
-                          <i class="far fa-envelope"></i>
-                        </button>
-                        <button class="btn btn-icon btn-link btn-danger op-8">
-                          <i class="fas fa-ban"></i>
-                        </button>
-                      </div>
-                      <div class="item-list">
-                        <div class="avatar">
-                          <img
-                            src="assets/img/talha.jpg"
-                            alt="..."
-                            class="avatar-img rounded-circle"
-                          />
-                        </div>
-                        <div class="info-user ms-3">
-                          <div class="username">Talha</div>
-                          <div class="status">Front End Designer</div>
-                        </div>
-                        <button class="btn btn-icon btn-link op-8 me-1">
-                          <i class="far fa-envelope"></i>
-                        </button>
-                        <button class="btn btn-icon btn-link btn-danger op-8">
-                          <i class="fas fa-ban"></i>
-                        </button>
-                      </div>
-                      <div class="item-list">
-                        <div class="avatar">
-                          <img
-                            src="assets/img/chadengle.jpg"
-                            alt="..."
-                            class="avatar-img rounded-circle"
-                          />
-                        </div>
-                        <div class="info-user ms-3">
-                          <div class="username">Chad</div>
-                          <div class="status">CEO Zeleaf</div>
-                        </div>
-                        <button class="btn btn-icon btn-link op-8 me-1">
-                          <i class="far fa-envelope"></i>
-                        </button>
-                        <button class="btn btn-icon btn-link btn-danger op-8">
-                          <i class="fas fa-ban"></i>
-                        </button>
-                      </div>
-                      <div class="item-list">
-                        <div class="avatar">
-                          <span
-                            class="avatar-title rounded-circle border border-white bg-primary"
-                            >H</span
-                          >
-                        </div>
-                        <div class="info-user ms-3">
-                          <div class="username">Hizrian</div>
-                          <div class="status">Web Designer</div>
-                        </div>
-                        <button class="btn btn-icon btn-link op-8 me-1">
-                          <i class="far fa-envelope"></i>
-                        </button>
-                        <button class="btn btn-icon btn-link btn-danger op-8">
-                          <i class="fas fa-ban"></i>
-                        </button>
-                      </div>
-                      <div class="item-list">
-                        <div class="avatar">
-                          <span
-                            class="avatar-title rounded-circle border border-white bg-secondary"
-                            >F</span
-                          >
-                        </div>
-                        <div class="info-user ms-3">
-                          <div class="username">Farrah</div>
-                          <div class="status">Marketing</div>
-                        </div>
-                        <button class="btn btn-icon btn-link op-8 me-1">
-                          <i class="far fa-envelope"></i>
-                        </button>
-                        <button class="btn btn-icon btn-link btn-danger op-8">
-                          <i class="fas fa-ban"></i>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="col-md-8">
-                <div class="card card-round">
-                  <div class="card-header">
-                    <div class="card-head-row card-tools-still-right">
-                      <div class="card-title">Transaction History</div>
-                      <div class="card-tools">
-                        <div class="dropdown">
-                          <button
-                            class="btn btn-icon btn-clean me-0"
-                            type="button"
-                            id="dropdownMenuButton"
-                            data-bs-toggle="dropdown"
-                            aria-haspopup="true"
-                            aria-expanded="false"
-                          >
-                            <i class="fas fa-ellipsis-h"></i>
-                          </button>
-                          <div
-                            class="dropdown-menu"
-                            aria-labelledby="dropdownMenuButton"
-                          >
-                            <a class="dropdown-item" href="#">Action</a>
-                            <a class="dropdown-item" href="#">Another action</a>
-                            <a class="dropdown-item" href="#"
-                              >Something else here</a
-                            >
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="card-body p-0">
-                    <div class="table-responsive">
-                      <!-- Projects table -->
-                      <table class="table align-items-center mb-0">
-                        <thead class="thead-light">
-                          <tr>
-                            <th scope="col">Payment Number</th>
-                            <th scope="col" class="text-end">Date & Time</th>
-                            <th scope="col" class="text-end">Amount</th>
-                            <th scope="col" class="text-end">Status</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          <tr>
-                            <th scope="row">
-                              <button
-                                class="btn btn-icon btn-round btn-success btn-sm me-2"
-                              >
-                                <i class="fa fa-check"></i>
-                              </button>
-                              Payment from #10231
-                            </th>
-                            <td class="text-end">Mar 19, 2020, 2.45pm</td>
-                            <td class="text-end">$250.00</td>
-                            <td class="text-end">
-                              <span class="badge badge-success">Completed</span>
-                            </td>
-                          </tr>
-                          <tr>
-                            <th scope="row">
-                              <button
-                                class="btn btn-icon btn-round btn-success btn-sm me-2"
-                              >
-                                <i class="fa fa-check"></i>
-                              </button>
-                              Payment from #10231
-                            </th>
-                            <td class="text-end">Mar 19, 2020, 2.45pm</td>
-                            <td class="text-end">$250.00</td>
-                            <td class="text-end">
-                              <span class="badge badge-success">Completed</span>
-                            </td>
-                          </tr>
-                          <tr>
-                            <th scope="row">
-                              <button
-                                class="btn btn-icon btn-round btn-success btn-sm me-2"
-                              >
-                                <i class="fa fa-check"></i>
-                              </button>
-                              Payment from #10231
-                            </th>
-                            <td class="text-end">Mar 19, 2020, 2.45pm</td>
-                            <td class="text-end">$250.00</td>
-                            <td class="text-end">
-                              <span class="badge badge-success">Completed</span>
-                            </td>
-                          </tr>
-                          <tr>
-                            <th scope="row">
-                              <button
-                                class="btn btn-icon btn-round btn-success btn-sm me-2"
-                              >
-                                <i class="fa fa-check"></i>
-                              </button>
-                              Payment from #10231
-                            </th>
-                            <td class="text-end">Mar 19, 2020, 2.45pm</td>
-                            <td class="text-end">$250.00</td>
-                            <td class="text-end">
-                              <span class="badge badge-success">Completed</span>
-                            </td>
-                          </tr>
-                          <tr>
-                            <th scope="row">
-                              <button
-                                class="btn btn-icon btn-round btn-success btn-sm me-2"
-                              >
-                                <i class="fa fa-check"></i>
-                              </button>
-                              Payment from #10231
-                            </th>
-                            <td class="text-end">Mar 19, 2020, 2.45pm</td>
-                            <td class="text-end">$250.00</td>
-                            <td class="text-end">
-                              <span class="badge badge-success">Completed</span>
-                            </td>
-                          </tr>
-                          <tr>
-                            <th scope="row">
-                              <button
-                                class="btn btn-icon btn-round btn-success btn-sm me-2"
-                              >
-                                <i class="fa fa-check"></i>
-                              </button>
-                              Payment from #10231
-                            </th>
-                            <td class="text-end">Mar 19, 2020, 2.45pm</td>
-                            <td class="text-end">$250.00</td>
-                            <td class="text-end">
-                              <span class="badge badge-success">Completed</span>
-                            </td>
-                          </tr>
-                          <tr>
-                            <th scope="row">
-                              <button
-                                class="btn btn-icon btn-round btn-success btn-sm me-2"
-                              >
-                                <i class="fa fa-check"></i>
-                              </button>
-                              Payment from #10231
-                            </th>
-                            <td class="text-end">Mar 19, 2020, 2.45pm</td>
-                            <td class="text-end">$250.00</td>
-                            <td class="text-end">
-                              <span class="badge badge-success">Completed</span>
-                            </td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
 
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="card">
+                                <div class="card-header"><div class="card-title">Realisasi Anggaran 6 Bulan Terakhir</div></div>
+                                <div class="card-body"><div class="chart-container"><canvas id="realisasiBulananChart"></canvas></div></div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card">
+                                <div class="card-header"><div class="card-title">Komposisi Status Pengajuan</div></div>
+                                <div class="card-body"><div class="chart-container"><canvas id="statusPieChart"></canvas></div></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header"><h4 class="card-title text-warning"><i class="fas fa-exclamation-triangle"></i> Proyek Kritis (Anggaran > 85%)</h4></div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-striped mt-3">
+                                            <thead><tr><th>Nama Proyek</th><th class="text-end">Anggaran</th><th class="text-end">Realisasi</th><th class="text-center">%</th></tr></thead>
+                                            <tbody>
+                                                <?php if (empty($proyek_kritis)): ?>
+                                                    <tr><td colspan="4" class="text-center text-muted">Tidak ada proyek dalam kondisi kritis.</td></tr>
+                                                <?php else: foreach ($proyek_kritis as $pk): ?>
+                                                    <tr>
+                                                        <td><?= htmlspecialchars($pk['nama_proyek']) ?></td>
+                                                        <td class="text-end">Rp <?= number_format($pk['total_rab'], 0, ',', '.') ?></td>
+                                                        <td class="text-end">Rp <?= number_format($pk['total_realisasi'], 0, ',', '.') ?></td>
+                                                        <td class="text-center"><span class="badge bg-danger"><?= number_format($pk['persentase'], 2) ?>%</span></td>
+                                                    </tr>
+                                                <?php endforeach; endif; ?>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header"><h4 class="card-title">Menunggu Persetujuan Anda</h4></div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-striped mt-3">
+                                        <thead><tr><th>Proyek</th><th>Tanggal</th><th class="text-end">Total</th><th>Aksi</th></tr></thead>
+                                            <tbody>
+                                            <?php if (empty($pengajuan_terbaru)): ?>
+                                                    <tr><td colspan="4" class="text-center text-muted">Tidak ada pengajuan baru.</td></tr>
+                                                <?php else: foreach ($pengajuan_terbaru as $pt): ?>
+                                                    <tr>
+                                                        <td><?= htmlspecialchars($pt['nama_proyek']) ?></td>
+                                                        <td><?= date('d M Y', strtotime($pt['tanggal_pengajuan'])) ?></td>
+                                                        <td class="text-end">Rp <?= number_format($pt['total_pengajuan'], 0, ',', '.') ?></td>
+                                                        <td><a href="pengajuan_upah.php" class="btn btn-primary btn-sm">Lihat</a></td>
+                                                    </tr>
+                                                <?php endforeach; endif; ?>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                                        </div>
+
+            </div>
         <footer class="footer">
           <div class="container-fluid d-flex justify-content-between">
             <nav class="pull-left">
               <ul class="nav">
-                <li class="nav-item">
-                  <a class="nav-link" href="http://www.themekita.com">
-                    ThemeKita
-                  </a>
-                </li>
-                <li class="nav-item">
-                  <a class="nav-link" href="#"> Help </a>
-                </li>
-                <li class="nav-item">
-                  <a class="nav-link" href="#"> Licenses </a>
-                </li>
-              </ul>
             </nav>
             <div class="copyright">
-              2024, made with <i class="fa fa-heart heart text-danger"></i> by
-              <a href="http://www.themekita.com">ThemeKita</a>
+              made with <i class="fa fa-heart heart text-danger"></i> PT. Hasta Bangun Nusantara
             </div>
             <div>
-              Distributed by
-              <a target="_blank" href="https://themewagon.com/">ThemeWagon</a>.
+              2025
             </div>
           </div>
         </footer>
@@ -1595,5 +674,60 @@ include("../config/koneksi_mysql.php");
         fillColor: "rgba(255, 165, 52, .14)",
       });
     </script>
-  </body>
+    <script>
+        // Data dari PHP untuk JavaScript
+        const labelsBulan = <?= json_encode($labels_bulan) ?>;
+        const dataRealisasiBulanan = <?= json_encode($realisasi_per_bulan) ?>;
+        const dataStatusPie = <?= json_encode(array_values($data_status_pie)) ?>;
+        const labelsStatusPie = <?= json_encode(array_keys($data_status_pie)) ?>;
+        
+        // Grafik Realisasi Bulanan
+        var ctxRealisasi = document.getElementById('realisasiBulananChart').getContext('2d');
+        var realisasiBulananChart = new Chart(ctxRealisasi, {
+            type: 'bar',
+            data: {
+                labels: labelsBulan,
+                datasets: [{
+                    label: "Total Realisasi",
+                    backgroundColor: '#1d7af3',
+                    borderColor: '#1d7af3',
+                    data: dataRealisasiBulanan,
+                }],
+            },
+            options: {
+                responsive: true, 
+                maintainAspectRatio: false,
+                legend: { display: false },
+                scales: {
+                    yAxes: [{ ticks: { beginAtZero: true, callback: function(value) { return 'Rp ' + value.toLocaleString('id-ID'); } } }],
+                },
+                tooltips: {
+                    callbacks: {
+                        label: function(tooltipItem, data) {
+                            return 'Rp ' + tooltipItem.yLabel.toLocaleString('id-ID');
+                        }
+                    }
+                }
+            }
+        });
+
+        // Grafik Status Pengajuan
+        var ctxStatus = document.getElementById('statusPieChart').getContext('2d');
+        var statusPieChart = new Chart(ctxStatus, {
+            type: 'doughnut',
+            data: {
+                datasets: [{
+                    data: dataStatusPie,
+                    backgroundColor : ['#ffc107', '#28a745', '#dc3545', '#1d7af3'], // Sesuaikan warna dengan status Anda
+                }],
+                labels: labelsStatusPie
+            },
+            options: {
+                responsive: true, 
+                maintainAspectRatio: false,
+                legend: { position: 'bottom' },
+            }
+        });
+    </script>
+</body>
 </html>

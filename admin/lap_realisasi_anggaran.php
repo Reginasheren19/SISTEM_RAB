@@ -39,12 +39,9 @@ $sql = "SELECT
             ) AS total_terbayar
         FROM master_proyek mpr
         LEFT JOIN master_perumahan mpe ON mpr.id_perumahan = mpe.id_perumahan
-        LEFT JOIN rab_upah ru ON mpr.id_proyek = ru.id_proyek";
+        INNER JOIN rab_upah ru ON mpr.id_proyek = ru.id_proyek";
 
-$where_conditions = [];
-if ($user_role === 'pj proyek') {
-    $where_conditions[] = "mpr.id_user_pj = " . (int)$logged_in_user_id;
-}
+
 if ($proyek_filter !== 'semua') {
     $where_conditions[] = "mpr.id_proyek = " . (int)$proyek_filter;
 }
@@ -344,10 +341,10 @@ $download_query_string = http_build_query([
                                 <table id="report-table" class="display table table-striped table-hover">
                                     <thead>
                                         <tr>
-                                            <th>Nama Proyek</th>
-                                            <th class="text-end">Total Anggaran (RAB)</th>
-                                            <th class="text-end">Total Terbayar</th>
-                                            <th class="text-end">Sisa Anggaran</th>
+                                            <th class="text-center">Nama Proyek</th>
+                                            <th class="text-center">Total Anggaran (RAB)</th>
+                                            <th class="text-center">Total Terbayar</th>
+                                            <th class="text-center">Sisa Anggaran</th>
                                             <th class="text-center" style="width: 20%;">Realisasi (%)</th>
                                         </tr>
                                     </thead>

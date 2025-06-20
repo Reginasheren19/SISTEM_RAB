@@ -37,12 +37,20 @@ $proyek_info = null;
 if (!empty($proyek_filter)) {
     $safe_proyek_filter = (int)$proyek_filter;
 
-    // Query untuk info header proyek
-    $info_sql = "SELECT CONCAT(mpe.nama_perumahan, ' - ', mpr.kavling) AS nama_proyek, mm.nama_mandor 
-                 FROM master_proyek mpr 
-                 LEFT JOIN master_perumahan mpe ON mpr.id_perumahan = mpe.id_perumahan
-                 LEFT JOIN master_mandor mm ON mpr.id_mandor = mm.id_mandor
-                 WHERE mpr.id_proyek = $safe_proyek_filter";
+// Query untuk info header proyek yang lebih lengkap
+$info_sql = "SELECT 
+    CONCAT(mpe.nama_perumahan, ' - ', mpr.kavling) AS nama_proyek,
+    mpe.nama_perumahan, 
+    mpr.kavling, 
+    mm.nama_mandor, 
+    u.nama_lengkap AS pj_proyek, 
+    ru.total_rab_upah
+             FROM master_proyek mpr
+             LEFT JOIN master_perumahan mpe ON mpr.id_perumahan = mpe.id_perumahan
+             LEFT JOIN master_mandor mm ON mpr.id_mandor = mm.id_mandor
+             LEFT JOIN master_user u ON mpr.id_user_pj = u.id_user
+             LEFT JOIN rab_upah ru ON mpr.id_proyek = ru.id_proyek
+             WHERE mpr.id_proyek = $safe_proyek_filter";
     $proyek_info = mysqli_fetch_assoc(mysqli_query($koneksi, $info_sql));
 
     // Query utama untuk mendapatkan riwayat pengajuan

@@ -301,65 +301,83 @@ $download_query_string = http_build_query([
                     </div>
 
                     <!-- Filter Section -->
-                    <div class="card">
-                        <div class="card-header"><h4 class="card-title">Filter Laporan</h4></div>
-                        <div class="card-body">
-                            <form id="filter-form" method="GET" action="">
-                                <!-- [DIUBAH] Hidden input untuk menyimpan status yang dipilih -->
-                                <input type="hidden" name="status" id="status-input" value="<?= htmlspecialchars($status_filter) ?>">
-                                
-                                <div class="row g-3">
-                                    <div class="col-md-3">
-                                        <label for="filter-proyek" class="form-label">Proyek</label>
-                                        <select id="filter-proyek" name="proyek" class="form-select">
-                                            <option value="semua">Semua Proyek</option>
-                                            <?php if($proyek_list) mysqli_data_seek($proyek_list, 0); ?>
-                                            <?php while($p = mysqli_fetch_assoc($proyek_list)): ?>
-                                                <option value="<?= $p['id_proyek'] ?>" <?= ($proyek_filter == $p['id_proyek']) ? 'selected' : '' ?>><?= htmlspecialchars($p['nama_proyek']) ?></option>
-                                            <?php endwhile; ?>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <label for="filter-mandor" class="form-label">Mandor</label>
-                                        <select id="filter-mandor" name="mandor" class="form-select">
-                                            <option value="semua">Semua Mandor</option>
-                                             <?php if($mandor_list) mysqli_data_seek($mandor_list, 0); ?>
-                                             <?php while($m = mysqli_fetch_assoc($mandor_list)): ?>
-                                                <option value="<?= $m['id_mandor'] ?>" <?= ($mandor_filter == $m['id_mandor']) ? 'selected' : '' ?>><?= htmlspecialchars($m['nama_mandor']) ?></option>
-                                            <?php endwhile; ?>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-2">
-                                        <label for="filter-tanggal-mulai" class="form-label">Dari Tanggal</label>
-                                        <input type="date" id="filter-tanggal-mulai" name="tanggal_mulai" class="form-control" value="<?= htmlspecialchars($tanggal_mulai) ?>">
-                                    </div>
-                                    <div class="col-md-2">
-                                        <label for="filter-tanggal-selesai" class="form-label">Sampai Tanggal</label>
-                                        <input type="date" id="filter-tanggal-selesai" name="tanggal_selesai" class="form-control" value="<?= htmlspecialchars($tanggal_selesai) ?>">
-                                    </div>
-                                    <div class="col-md-2 d-flex align-items-end">
-                                        <button type="submit" class="btn btn-primary w-100">Terapkan Filter</button>
-                                    </div>
-                                </div>
-                            </form>
-                            <hr>
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div id="status-buttons" class="btn-group">
-                                    <button type="button" data-status="semua" class="btn btn-outline-primary filter-btn <?= $status_filter == 'semua' ? 'active' : '' ?>">Semua</button>
-                                    <button type="button" data-status="diajukan" class="btn btn-outline-primary filter-btn <?= $status_filter == 'diajukan' ? 'active' : '' ?>">Diajukan</button>
-                                    <button type="button" data-status="disetujui" class="btn btn-outline-primary filter-btn <?= $status_filter == 'disetujui' ? 'active' : '' ?>">Disetujui</button>
-                                    <button type="button" data-status="ditolak" class="btn btn-outline-primary filter-btn <?= $status_filter == 'ditolak' ? 'active' : '' ?>">Ditolak</button>
-                                    <button type="button" data-status="dibayar" class="btn btn-outline-primary filter-btn <?= $status_filter == 'dibayar' ? 'active' : '' ?>">Dibayar</button>
-                                </div>
-                                    <a href="cetak_lap_upah.php?laporan=pengajuan_upah&<?= $download_query_string ?>" target="_blank" class="btn btn-success">                                    <i class="fas fa-download"></i> Unduh Laporan (PDF)
-                                </a>
-                            </div>
-                        </div>
+<div class="card">
+    <div class="card-header">
+        <h4 class="card-title">
+            <i class="fas fa-filter me-2"></i> Filter Laporan
+        </h4>
+    </div>
+    <div class="card-body">
+        <form id="filter-form" method="GET" action="">
+<div class="row g-3 align-items-end">
+    <div class="col-md-3">
+        <label for="filter-proyek" class="form-label">Proyek</label>
+        <select id="filter-proyek" name="proyek" class="form-select">
+            <option value="semua">Semua Proyek</option>
+            <?php if($proyek_list) mysqli_data_seek($proyek_list, 0); ?>
+            <?php while($p = mysqli_fetch_assoc($proyek_list)): ?>
+                <option value="<?= $p['id_proyek'] ?>" <?= ($proyek_filter == $p['id_proyek']) ? 'selected' : '' ?>><?= htmlspecialchars($p['nama_proyek']) ?></option>
+            <?php endwhile; ?>
+        </select>
+    </div>
+
+    <div class="col-md-3">
+        <label for="filter-mandor" class="form-label">Mandor</label>
+        <select id="filter-mandor" name="mandor" class="form-select">
+            <option value="semua">Semua Mandor</option>
+            <?php if($mandor_list) mysqli_data_seek($mandor_list, 0); ?>
+            <?php while($m = mysqli_fetch_assoc($mandor_list)): ?>
+                <option value="<?= $m['id_mandor'] ?>" <?= ($mandor_filter == $m['id_mandor']) ? 'selected' : '' ?>><?= htmlspecialchars($m['nama_mandor']) ?></option>
+            <?php endwhile; ?>
+        </select>
+    </div>
+
+    <div class="col-md-2">
+        <label for="filter-tanggal-mulai" class="form-label">Dari Tanggal</label>
+        <input type="date" id="filter-tanggal-mulai" name="tanggal_mulai" class="form-control" value="<?= htmlspecialchars($tanggal_mulai) ?>">
+    </div>
+    <div class="col-md-2">
+        <label for="filter-tanggal-selesai" class="form-label">Sampai Tanggal</label>
+        <input type="date" id="filter-tanggal-selesai" name="tanggal_selesai" class="form-control" value="<?= htmlspecialchars($tanggal_selesai) ?>">
+    </div>
+    <div class="col-md-2">
+        <button type="submit" class="btn btn-primary w-100">Terapkan</button>
+    </div>
+</div>
+
+            <hr class="my-4">
+            
+            <div class="d-flex justify-content-between align-items-end">
+                <div>
+                    <label class="form-label mb-2">Filter Berdasarkan Status:</label>
+                    <div class="btn-group">
+                        <button type="submit" name="status" value="semua" class="btn btn-outline-primary <?= $status_filter == 'semua' ? 'active' : '' ?>">Semua</button>
+                        <button type="submit" name="status" value="diajukan" class="btn btn-outline-primary <?= $status_filter == 'diajukan' ? 'active' : '' ?>">Diajukan</button>
+                        <button type="submit" name="status" value="disetujui" class="btn btn-outline-primary <?= $status_filter == 'disetujui' ? 'active' : '' ?>">Disetujui</button>
+                        <button type="submit" name="status" value="ditolak" class="btn btn-outline-primary <?= $status_filter == 'ditolak' ? 'active' : '' ?>">Ditolak</button>
+                        <button type="submit" name="status" value="dibayar" class="btn btn-outline-primary <?= $status_filter == 'dibayar' ? 'active' : '' ?>">Dibayar</button>
                     </div>
+                </div>
+                <div>
+                    <a href="cetak_lap_upah.php?laporan=pengajuan_upah&<?= $download_query_string ?>" target="_blank" class="btn btn-success">
+                        <i class="fas fa-download me-1"></i> Unduh Laporan (PDF)
+                    </a>
+                </div>
+            </div>
+
+        </form>
+    </div>
+</div>
                     
                     <!-- Tabel Laporan -->
-                    <div class="card">
-                        <div class="card-header"><h4 class="card-title">Hasil Laporan</h4></div>
+<div class="card">
+    <div class="card-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <h4 class="card-title mb-0">
+                <i class="fas fa-table me-2"></i> Hasil Laporan
+            </h4>
+        </div>
+    </div>
                         <div class="card-body">
                             <div class="table-responsive">
                                 <table id="report-table" class="display table table-striped table-hover">

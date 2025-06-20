@@ -95,12 +95,24 @@ include("../config/koneksi_mysql.php");
                 <span class="sidebar-mini-icon">
                   <i class="fa fa-ellipsis-h"></i>
                 </span>
-                <h4 class="text-section">Laporan</h4>
+                <h4 class="text-section">Laporan Upah</h4>
+              </li>
+                            <li class="nav-item">
+                <a href="lap_pengajuan_upah.php">
+                  <i class="fas fa-file"></i>
+                  <p>Pengajuan Upah</p>
+                </a>
               </li>
               <li class="nav-item">
-                <a href="#">
+                <a href="lap_realisasi_anggaran.php">
                   <i class="fas fa-file"></i>
-                  <p>Laporan RAB Upah</p>
+                  <p>Realisasi Anggaran</p>
+                </a>
+              </li>
+                            <li class="nav-item">
+                <a href="lap_rekapitulasi_proyek.php">
+                  <i class="fas fa-file"></i>
+                  <p>Rekapitulasi Proyek</p>
                 </a>
               </li>
               <li class="nav-section">
