@@ -334,8 +334,7 @@ $download_query_string = http_build_query([
                             <div class="d-flex align-items-center">
                                 <h4 class="card-title">Perbandingan Anggaran vs Realisasi per Proyek</h4>
                                 <div class="ms-auto btn-group">
-                                <a href="cetak_lap_upah.php?jenis=rekap&<?= $download_query_string ?>" target="_blank" class="btn btn-success">
-                                    <i class="fas fa-download"></i> Unduh Laporan
+<a href="cetak_lap_upah.php?laporan=realisasi_anggaran&<?= $download_query_string ?>" target="_blank" class="btn btn-success">                                    <i class="fas fa-download"></i> Unduh Laporan
                                 </a>
                                 </div>
                             </div>

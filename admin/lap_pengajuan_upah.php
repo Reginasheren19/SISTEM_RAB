@@ -351,8 +351,7 @@ $download_query_string = http_build_query([
                                     <button type="button" data-status="ditolak" class="btn btn-outline-primary filter-btn <?= $status_filter == 'ditolak' ? 'active' : '' ?>">Ditolak</button>
                                     <button type="button" data-status="dibayar" class="btn btn-outline-primary filter-btn <?= $status_filter == 'dibayar' ? 'active' : '' ?>">Dibayar</button>
                                 </div>
-                                <a href="cetak_lap_upah.php?jenis=rekap&<?= $download_query_string ?>" target="_blank" class="btn btn-success">
-                                    <i class="fas fa-download"></i> Unduh Laporan (PDF)
+                                    <a href="cetak_lap_upah.php?laporan=pengajuan_upah&<?= $download_query_string ?>" target="_blank" class="btn btn-success">                                    <i class="fas fa-download"></i> Unduh Laporan (PDF)
                                 </a>
                             </div>
                         </div>
@@ -386,7 +385,7 @@ $download_query_string = http_build_query([
                                                 <td class="text-end">Rp <?= number_format($row['total_pengajuan'], 0, ',', '.') ?></td>
                                                 <td class="text-center"><?= getStatusBadge($row['status_pengajuan']) ?></td>
                                                 <td class="text-center">
-                                                    <a href="cetak_lap_upah.php?id=<?= $row['id_pengajuan_upah'] ?>" target="_blank" class="btn btn-success btn-sm" title="Cetak Laporan">
+                                                    <a href="cetak_detail_upah.php?id=<?= $row['id_pengajuan_upah'] ?>" target="_blank" class="btn btn-success btn-sm" title="Cetak Laporan">
                                                         <i class="fas fa-print"></i>
                                                     </a>
                                                 </td>

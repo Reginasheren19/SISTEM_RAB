@@ -320,11 +320,10 @@ function getStatusBadge($status) {
                                     <button type="button" class="btn btn-success dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
                                         <i class="fas fa-download"></i> Unduh
                                     </button>
-                                    <ul class="dropdown-menu">
-                                        <li><a class="dropdown-item" href="#">PDF</a></li>
-                                        <li><a class="dropdown-item" href="#">Excel</a></li>
-                                    </ul>
-                                </div>
+<ul class="dropdown-menu">
+    <li><a class="dropdown-item" href="cetak_lap_upah.php?laporan=rekapitulasi_proyek&proyek=<?= $proyek_filter ?>" target="_blank">PDF</a></li>
+    <li><a class="dropdown-item" href="#">Excel</a></li>
+</ul>                                </div>
                             </div>
                         </div>
                         <div class="card-body">
@@ -332,8 +331,8 @@ function getStatusBadge($status) {
                                 <table id="report-table" class="display table table-striped table-hover">
                                     <thead>
                                         <tr>
-                                            <th>Tanggal Pengajuan</th>
-                                            <th class="text-center">Termin Ke-</th>
+                                            <th class="text-center">Termin PengajuanKe-</th>    
+                                            <th class="text-center">Tanggal Pengajuan</th>
                                             <th class="text-end">Total Pengajuan</th>
                                             <th class="text-center">Status</th>
                                             <th class="text-center">Tanggal Dibayar</th>
@@ -343,8 +342,8 @@ function getStatusBadge($status) {
                                         <?php if ($result_laporan && mysqli_num_rows($result_laporan) > 0): ?>
                                             <?php while($row = mysqli_fetch_assoc($result_laporan)): ?>
                                             <tr>
-                                                <td><?= date("d F Y", strtotime($row['tanggal_pengajuan'])) ?></td>
                                                 <td class="text-center"><?= $row['termin_ke'] ?></td>
+                                                <td class="text-center"><?= date("d F Y", strtotime($row['tanggal_pengajuan'])) ?></td>
                                                 <td class="text-end">Rp <?= number_format($row['total_pengajuan'], 0, ',', '.') ?></td>
                                                 <td class="text-center"><?= getStatusBadge($row['status_pengajuan']) ?></td>
                                                 <td class="text-center">

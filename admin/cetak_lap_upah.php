@@ -2,221 +2,209 @@
 session_start();
 include("../config/koneksi_mysql.php");
 
-// Pastikan ID Pengajuan ada dan valid
-if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
-    die("Akses tidak valid.");
-}
-$id_pengajuan_upah = (int)$_GET['id'];
+// 1. Panggil autoloader dari Composer (pastikan path ini benar)
+require_once __DIR__ . '/../vendor/autoload.php';
 
-// Set locale ke Indonesia agar nama bulan menjadi Bahasa Indonesia
+if (!isset($_SESSION['id_user'])) {
+    die("Akses ditolak. Silakan login terlebih dahulu.");
+}
+
+// 2. Ambil semua parameter filter
+$jenis_laporan = $_GET['laporan'] ?? 'tidak_dikenal';
+$status_filter = $_GET['status'] ?? 'semua';
+$proyek_filter = $_GET['proyek'] ?? 'semua';
+$mandor_filter = $_GET['mandor'] ?? 'semua';
+$tanggal_mulai = $_GET['tanggal_mulai'] ?? '';
+$tanggal_selesai = $_GET['tanggal_selesai'] ?? '';
+
 setlocale(LC_TIME, 'id_ID.utf8', 'id_ID');
 
-// Query info utama untuk memisahkan nama perumahan dan kavling
-$sql_info = "SELECT 
-                pu.tanggal_pengajuan, pu.total_pengajuan, pu.status_pengajuan,
-                mpe.nama_perumahan,
-                mpr.kavling,
-                mpe.lokasi,
-                mm.nama_mandor,
-                u.nama_lengkap AS pj_proyek,
-                ru.total_rab_upah,
-                tr.tanggal_mulai, -- Ditambahkan untuk durasi
-                tr.tanggal_selesai -- Ditambahkan untuk durasi
-            FROM pengajuan_upah pu
-            LEFT JOIN rab_upah ru ON pu.id_rab_upah = ru.id_rab_upah
-            LEFT JOIN master_proyek mpr ON ru.id_proyek = mpr.id_proyek
-            LEFT JOIN master_perumahan mpe ON mpr.id_perumahan = mpe.id_perumahan
-            LEFT JOIN master_mandor mm ON mpr.id_mandor = mm.id_mandor
-            LEFT JOIN master_user u ON mpr.id_user_pj = u.id_user
-            LEFT JOIN rab_upah tr ON pu.id_rab_upah = tr.id_rab_upah -- Join ulang untuk tanggal
-            WHERE pu.id_pengajuan_upah = $id_pengajuan_upah";
-$result_info = mysqli_query($koneksi, $sql_info);
-if (!$result_info || mysqli_num_rows($result_info) == 0) {
-    die("Data pengajuan tidak ditemukan.");
-}
-$pengajuan_info = mysqli_fetch_assoc($result_info);
-
-// Query untuk mengambil detail pekerjaan
-$sql_detail = "SELECT k.nama_kategori, mp.uraian_pekerjaan, dp.progress_pekerjaan, dp.nilai_upah_diajukan
-               FROM detail_pengajuan_upah dp
-               LEFT JOIN detail_rab_upah dr ON dp.id_detail_rab_upah = dr.id_detail_rab_upah
-               LEFT JOIN master_pekerjaan mp ON dr.id_pekerjaan = mp.id_pekerjaan
-               LEFT JOIN master_kategori k ON dr.id_kategori = k.id_kategori
-               WHERE dp.id_pengajuan_upah = $id_pengajuan_upah
-               ORDER BY k.id_kategori, mp.id_pekerjaan";
-$result_detail = mysqli_query($koneksi, $sql_detail);
-
-// Query untuk menghitung termin
-$id_rab_upah_q = mysqli_query($koneksi, "SELECT id_rab_upah FROM pengajuan_upah WHERE id_pengajuan_upah=$id_pengajuan_upah");
-$id_rab_upah = mysqli_fetch_assoc($id_rab_upah_q)['id_rab_upah'];
-$sql_termin = "SELECT COUNT(id_pengajuan_upah) AS termin_ke FROM pengajuan_upah WHERE id_rab_upah = $id_rab_upah AND id_pengajuan_upah <= $id_pengajuan_upah";
-$termin_ke = mysqli_fetch_assoc(mysqli_query($koneksi, $sql_termin))['termin_ke'];
-
-// Query untuk mengambil nama Direktur
-$sql_direktur = "SELECT nama_lengkap FROM master_user WHERE role = 'direktur' LIMIT 1";
-$result_direktur = mysqli_query($koneksi, $sql_direktur);
-$nama_direktur = "....................."; 
-if ($result_direktur && mysqli_num_rows($result_direktur) > 0) {
-    $direktur_info = mysqli_fetch_assoc($result_direktur);
-    $nama_direktur = $direktur_info['nama_lengkap'];
-}
-
-$nama_komisaris = "Hastut Pantjarini, SE";
-
-function toRoman($num) {
-    $map = ['M' => 1000, 'CM' => 900, 'D' => 500, 'CD' => 400, 'C' => 100, 'XC' => 90, 'L' => 50, 'XL' => 40, 'X' => 10, 'IX' => 9, 'V' => 5, 'IV' => 4, 'I' => 1];
-    $result = '';
-    foreach ($map as $roman => $value) {
-        while ($num >= $value) {
-            $result .= $roman;
-            $num -= $value;
-        }
-    }
-    return $result;
-}
+// 3. Mulai "Output Buffering" untuk menampung output HTML
+ob_start();
 ?>
 <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Cetak Pengajuan Upah #<?= htmlspecialchars($id_pengajuan_upah) ?></title>
-    <link rel="stylesheet" href="assets/css/bootstrap.min.css" />
+    <title>Cetak Laporan</title>
     <style>
-        body { font-family: 'Times New Roman', Times, serif; background-color: #fff; color: #000; }
-        .container { max-width: 800px; margin: auto; }
-        .kop-surat { display: flex; align-items: center; border-bottom: 3px double #000; padding-bottom: 15px; margin-bottom: 20px; }
-        .kop-surat img { width: 100px; height: auto; margin-right: 20px; }
-        .kop-surat .kop-text { text-align: center; flex-grow: 1; }
-        .kop-surat h3, .kop-surat p { margin: 0; }
-        .kop-surat h3 { font-size: 24px; font-weight: bold; }
-        .kop-surat p { font-size: 14px; }
-        .report-title { text-align: center; margin-bottom: 20px; font-weight: bold; text-decoration: underline; font-size: 18px;}
-        .table th, .table td { padding: 0.4rem; vertical-align: middle; border: 1px solid #333 !important; }
-        .table th { background-color: #e9ecef !important; }
-        .info-section .table { border: none !important; }
-        .info-section .table td { border: none !important; padding: 2px 0; font-size: 14px; }
-        .info-section td:nth-child(1) { width: 140px; font-weight: bold;}
-        .signature-section { margin-top: 50px; width: 100%; }
-        .signature-box { text-align: center; width: 33.33%; float: left; }
-        .signature-box .name { margin-top: 60px; font-weight: bold; text-decoration: underline; }
-        @media print {
-            body { -webkit-print-color-adjust: exact; }
-            .no-print { display: none; }
-        }
+        body { font-family: 'Times New Roman', Times, serif; font-size: 11px; color: #000; }
+        .container { width: 100%; margin: auto; }
+        .kop-surat { display: flex; align-items: center; border-bottom: 3px double #000; padding-bottom: 15px; margin-bottom: 10px; }
+        .kop-surat .logo { width: 80px; height: auto; margin-right: 20px; }
+        .kop-surat .kop-text { flex-grow: 1; text-align: center; }
+        .kop-surat h1 { font-size: 22px; font-weight: bold; margin: 0; }
+        .kop-surat p { font-size: 12px; margin: 2px 0 0 0; }
+        .info-header { margin-bottom: 15px; font-size: 11px; padding: 5px; border: 1px solid #ccc; border-radius: 4px; background-color: #f9f9f9; }
+        .info-header-col { float: left; width: 50%; }
+        .info-header::after { content: ""; display: table; clear: both; }
+        h2.report-title { text-align: center; font-size: 16px; margin-bottom: 5px; text-transform: uppercase; text-decoration: underline; font-weight: bold; margin-top: 10px; }
+        .filter-info { text-align: center; font-size: 11px; margin-bottom: 15px; font-style: italic; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        table, th, td { border: 1px solid black; }
+        th, td { padding: 5px; text-align: left; vertical-align: middle; }
+        th { background-color: #e9ecef; text-align: center; }
+        .text-center { text-align: center; }
+        .text-end { text-align: right; }
+        .fw-bold { font-weight: bold; }
+        .signature-section { margin-top: 40px; }
     </style>
 </head>
 <body>
-    <div class="container my-4">
-        <div class="kop-surat">
-            <img src="assets/img/logo/LOGO PT.jpg" alt="Logo Perusahaan" onerror="this.style.display='none'">
+    <div class="container">
+        <header class="kop-surat">
+            <img src="../assets/img/logo/LOGO PT.jpg" alt="Logo" class="logo">
             <div class="kop-text">
-                <h3>PT. HASTA BANGUN NUSANTARA</h3>
+                <h1>PT. HASTA BANGUN NUSANTARA</h1>
                 <p>Jalan Cokroaminoto 63414 Ponorogo Jawa Timur</p>
                 <p>Telp: (0352) 123-456 | Email: kontak@hastabangun.co.id</p>
             </div>
-        </div>
-        
-        <h5 class="report-title">FORMULIR PENGAJUAN UPAH</h5>
+        </header>
 
-        <div class="info-section mb-4">
-            <div class="row">
-                <div class="col-7">
-                    <table class="table table-sm">
-                        <tr><td>No. Pengajuan</td><td>: <?= htmlspecialchars($id_pengajuan_upah) ?> / Termin Pengajuan ke-<?= $termin_ke ?></td></tr>
-                        <tr><td>Nama Perumahan</td><td>: <?= htmlspecialchars($pengajuan_info['nama_perumahan']) ?></td></tr>
-                        <tr><td>Kavling / Blok</td><td>: <?= htmlspecialchars($pengajuan_info['kavling']) ?></td></tr>
-                        <tr><td>PJ Proyek</td><td>: <?= htmlspecialchars($pengajuan_info['pj_proyek']) ?></td></tr>
-                    </table>
-                </div>
-                <div class="col-5">
-                    <table class="table table-sm">
-                        <tr><td>Tanggal</td><td>: <?= date("d F Y", strtotime($pengajuan_info['tanggal_pengajuan'])) ?></td></tr>
-                        <tr><td>Mandor</td><td>: <?= htmlspecialchars($pengajuan_info['nama_mandor']) ?></td></tr>
-                        <tr><td>Total Anggaran</td><td>: Rp <?= number_format($pengajuan_info['total_rab_upah'], 0, ',', '.') ?></td></tr>
-                    </table>
-                </div>
-            </div>
-        </div>
-        
-        <h6>Rincian Pekerjaan:</h6>
-        <table class="table">
-            <thead class="text-center">
-                <tr>
-                    <th style="width: 5%;">No.</th>
-                    <th>Uraian Pekerjaan</th>
-                    <th style="width: 15%;">Progress</th>
-                    <th style="width: 25%;">Nilai Diajukan (Rp)</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php
-                $total_keseluruhan = 0;
-                if ($result_detail && mysqli_num_rows($result_detail) > 0):
-                    $prevKategori = null;
-                    $noKategori = 0;
-                    $noPekerjaan = 1;
-                    while ($row = mysqli_fetch_assoc($result_detail)):
-                        if ($prevKategori !== $row['nama_kategori']) {
-                            $noKategori++;
-                            echo "<tr class='fw-bold' style='background-color: #f8f9fa;'><td class='text-center'>" . toRoman($noKategori) . "</td><td colspan='3'>" . htmlspecialchars($row['nama_kategori']) . "</td></tr>";
-                            $prevKategori = $row['nama_kategori'];
-                            $noPekerjaan = 1; 
+        <main>
+            <?php
+            // Semua logika SWITCH CASE diletakkan di sini
+            switch ($jenis_laporan) {
+                case 'pengajuan_upah':
+                    $judul_laporan = "Laporan Pengajuan Upah";
+                    $sql = "SELECT pu.id_pengajuan_upah, pu.tanggal_pengajuan, pu.total_pengajuan, pu.status_pengajuan,
+                                   CONCAT(mpe.nama_perumahan, ' - ', mpr.kavling) AS nama_proyek, mm.nama_mandor
+                            FROM pengajuan_upah pu
+                            LEFT JOIN rab_upah ru ON pu.id_rab_upah = ru.id_rab_upah
+                            LEFT JOIN master_proyek mpr ON ru.id_proyek = mpr.id_proyek
+                            LEFT JOIN master_perumahan mpe ON mpr.id_perumahan = mpe.id_perumahan
+                            LEFT JOIN master_mandor mm ON mpr.id_mandor = mm.id_mandor
+                            WHERE 1=1";
+                    if ($status_filter !== 'semua') $sql .= " AND pu.status_pengajuan = '" . mysqli_real_escape_string($koneksi, $status_filter) . "'";
+                    if ($proyek_filter !== 'semua') $sql .= " AND ru.id_proyek = " . (int)$proyek_filter;
+                    if ($mandor_filter !== 'semua') $sql .= " AND mpr.id_mandor = " . (int)$mandor_filter;
+                    if (!empty($tanggal_mulai)) $sql .= " AND pu.tanggal_pengajuan >= '" . mysqli_real_escape_string($koneksi, $tanggal_mulai) . "'";
+                    if (!empty($tanggal_selesai)) $sql .= " AND pu.tanggal_pengajuan <= '" . mysqli_real_escape_string($koneksi, $tanggal_selesai) . "'";
+                    $sql .= " ORDER BY pu.tanggal_pengajuan DESC";
+                    $result = mysqli_query($koneksi, $sql);
+
+                    echo "<h2 class='report-title'>$judul_laporan</h2>";
+                    if (!empty($tanggal_mulai)) { echo "<p class='filter-info'>Periode: " . date('d M Y', strtotime($tanggal_mulai)) . " s/d " . date('d M Y', strtotime($tanggal_selesai)) . "</p>"; }
+                    
+                    echo "<table><thead><tr><th>No</th><th>ID</th><th>Proyek</th><th>Mandor</th><th>Tanggal</th><th class='text-end'>Total</th><th>Status</th></tr></thead><tbody>";
+                    if ($result && mysqli_num_rows($result) > 0) {
+                        $no = 1; $total_semua = 0;
+                        mysqli_data_seek($result, 0); // Kembali ke awal result set
+                        while ($row = mysqli_fetch_assoc($result)) {
+                            echo "<tr><td class='text-center'>{$no}</td><td class='text-center'>" . htmlspecialchars($row['id_pengajuan_upah']) . "</td><td>" . htmlspecialchars($row['nama_proyek']) . "</td><td>" . htmlspecialchars($row['nama_mandor']) . "</td><td class='text-center'>" . date("d-m-Y", strtotime($row['tanggal_pengajuan'])) . "</td><td class='text-end'>Rp " . number_format($row['total_pengajuan'], 0, ',', '.') . "</td><td class='text-center'>" . htmlspecialchars(ucwords($row['status_pengajuan'])) . "</td></tr>";
+                            $no++; $total_semua += $row['total_pengajuan'];
                         }
-                        $total_keseluruhan += $row['nilai_upah_diajukan'];
-                ?>
-                    <tr>
-                        <td class="text-center"><?= $noPekerjaan++ ?></td>
-                        <td><?= htmlspecialchars($row['uraian_pekerjaan']) ?></td>
-                        <td class="text-center"><?= number_format($row['progress_pekerjaan'], 2) ?>%</td>
-                        <td class="text-end"><?= number_format($row['nilai_upah_diajukan'], 0, ',', '.') ?></td>
-                    </tr>
-                <?php
-                    endwhile;
-                else:
-                ?>
-                    <tr><td colspan="4" class="text-center">Tidak ada rincian pekerjaan.</td></tr>
-                <?php endif; ?>
-            </tbody>
-            <tfoot>
-                <tr class="fw-bold">
-                    <td colspan="3" class="text-end">TOTAL PENGAJUAN</td>
-                    <td class="text-end">Rp <?= number_format($total_keseluruhan, 0, ',', '.') ?></td>
-                </tr>
-            </tfoot>
-        </table>
+                        echo "<tr class='fw-bold'><td colspan='5' class='text-center'>TOTAL KESELURUHAN</td><td class='text-end'>Rp " . number_format($total_semua, 0, ',', '.') . "</td><td></td></tr>";
+                    } else { echo "<tr><td colspan='7' class='text-center'>Tidak ada data.</td></tr>"; }
+                    echo "</tbody></table>";
+                    break;
 
-        <div class="clearfix"></div>
+                case 'realisasi_anggaran':
+                    $judul_laporan = "Laporan Realisasi Anggaran Upah";
+                    $sql = "SELECT CONCAT(mpe.nama_perumahan, ' - ', mpr.kavling) AS nama_proyek, ru.total_rab_upah, (SELECT SUM(pu.total_pengajuan) FROM pengajuan_upah pu WHERE pu.id_rab_upah = ru.id_rab_upah AND pu.status_pengajuan = 'dibayar' " . (!empty($tanggal_mulai) ? "AND pu.tanggal_pengajuan >= '" . mysqli_real_escape_string($koneksi, $tanggal_mulai) . "'" : "") . " " . (!empty($tanggal_selesai) ? "AND pu.tanggal_pengajuan <= '" . mysqli_real_escape_string($koneksi, $tanggal_selesai) . "'" : "") . ") AS total_terbayar FROM master_proyek mpr LEFT JOIN master_perumahan mpe ON mpr.id_perumahan = mpe.id_perumahan LEFT JOIN rab_upah ru ON mpr.id_proyek = ru.id_proyek";
+                    $where_conditions = [];
+                    if ($proyek_filter !== 'semua') $where_conditions[] = "mpr.id_proyek = " . (int)$proyek_filter;
+                    if ($mandor_filter !== 'semua') $where_conditions[] = "mpr.id_mandor = " . (int)$mandor_filter;
+                    if (!empty($where_conditions)) { $sql .= " WHERE " . implode(' AND ', $where_conditions); }
+                    $sql .= " GROUP BY mpr.id_proyek ORDER BY nama_proyek ASC";
+                    $result = mysqli_query($koneksi, $sql);
+                    
+                    echo "<h2 class='report-title'>$judul_laporan</h2>";
+                    if (!empty($tanggal_mulai)) { echo "<p class='filter-info'>Periode Pembayaran: " . date('d M Y', strtotime($tanggal_mulai)) . " s/d " . date('d M Y', strtotime($tanggal_selesai)) . "</p>"; }
 
-        <div class="row mt-5">
-            <div class="col-12 text-end">
-                <p>Ponorogo, <?= strftime('%d %B %Y') ?></p>
-            </div>
-        </div>
+                    echo "<table><thead><tr><th>No</th><th>Nama Proyek</th><th class='text-end'>Anggaran</th><th class='text-end'>Terbayar</th><th class='text-end'>Sisa</th><th class='text-center'>Realisasi (%)</th></tr></thead><tbody>";
+                    if ($result && mysqli_num_rows($result) > 0) {
+                        $no = 1; $total_rab_semua = 0; $total_terbayar_semua = 0; $total_sisa_semua = 0;
+                        while ($row = mysqli_fetch_assoc($result)) {
+                            $total_rab = (float)($row['total_rab_upah'] ?? 0);
+                            $total_terbayar = (float)($row['total_terbayar'] ?? 0);
+                            $sisa_anggaran = $total_rab - $total_terbayar;
+                            $realisasi_persen = ($total_rab > 0) ? ($total_terbayar / $total_rab) * 100 : 0;
+                            echo "<tr><td class='text-center'>{$no}</td><td>" . htmlspecialchars($row['nama_proyek']) . "</td><td class='text-end'>Rp " . number_format($total_rab, 0, ',', '.') . "</td><td class='text-end'>Rp " . number_format($total_terbayar, 0, ',', '.') . "</td><td class='text-end'>Rp " . number_format($sisa_anggaran, 0, ',', '.') . "</td><td class='text-center'>" . number_format($realisasi_persen, 2) . "%</td></tr>";
+                            $no++; $total_rab_semua += $total_rab; $total_terbayar_semua += $total_terbayar; $total_sisa_semua += $sisa_anggaran;
+                        }
+                        echo "<tr class='fw-bold'><td colspan='2' class='text-center'>TOTAL</td><td class='text-end'>Rp " . number_format($total_rab_semua, 0, ',', '.') . "</td><td class='text-end'>Rp " . number_format($total_terbayar_semua, 0, ',', '.') . "</td><td class='text-end'>Rp " . number_format($total_sisa_semua, 0, ',', '.') . "</td><td></td></tr>";
+                    } else { echo "<tr><td colspan='6' class='text-center'>Tidak ada data.</td></tr>"; }
+                    echo "</tbody></table>";
+                    break;
 
-        <div class="signature-section row">
-            <div class="signature-box col-4">
-                <p>Diajukan oleh,</p>
-                <div class="name"><?= htmlspecialchars($pengajuan_info['pj_proyek']) ?></div>
-                <p>PJ Proyek</p>
-            </div>
-            <div class="signature-box col-4">
-                <p>Mengetahui,</p>
-                <div class="name"><?= htmlspecialchars($nama_komisaris) ?></div>
-                <p>Komisaris</p>
-            </div>
-            <div class="signature-box col-4">
-                <p>Disetujui oleh,</p>
-                <div class="name">Ir. <?= htmlspecialchars($nama_direktur) ?></div>
-                <p>Direktur Utama</p>
-            </div>
-        </div>
-        
+                case 'rekapitulasi_proyek':
+                    $judul_laporan = "Laporan Rekapitulasi Proyek";
+                    if (empty($proyek_filter) || $proyek_filter == 'semua') die("Pilih proyek terlebih dahulu untuk laporan ini.");
+                    
+                    $safe_proyek_filter = (int)$proyek_filter;
+                    $info_sql = "SELECT CONCAT(mpe.nama_perumahan, ' - ', mpr.kavling) AS nama_proyek, mm.nama_mandor FROM master_proyek mpr LEFT JOIN master_perumahan mpe ON mpr.id_perumahan = mpe.id_perumahan LEFT JOIN master_mandor mm ON mpr.id_mandor = mm.id_mandor WHERE mpr.id_proyek = $safe_proyek_filter";
+                    $proyek_info = mysqli_fetch_assoc(mysqli_query($koneksi, $info_sql));
+
+                    echo "<div class='info-header'><div class='info-header-col'><b>Proyek:</b> " . htmlspecialchars($proyek_info['nama_proyek']) . "</div><div class='info-header-col'><b>Mandor:</b> " . htmlspecialchars($proyek_info['nama_mandor']) . "</div></div>";
+                    echo "<h2 class='report-title'>$judul_laporan</h2>";
+
+                    $laporan_sql = "SELECT pu.tanggal_pengajuan, pu.total_pengajuan, pu.status_pengajuan, pu.updated_at, (SELECT COUNT(*) FROM pengajuan_upah p2 WHERE p2.id_rab_upah = ru.id_rab_upah AND p2.id_pengajuan_upah <= pu.id_pengajuan_upah) AS termin_ke FROM pengajuan_upah pu JOIN rab_upah ru ON pu.id_rab_upah = ru.id_rab_upah WHERE ru.id_proyek = $safe_proyek_filter ORDER BY pu.tanggal_pengajuan ASC";
+                    $result = mysqli_query($koneksi, $laporan_sql);
+
+                    echo "<table><thead><tr><th>No</th><th>Tgl Pengajuan</th><th class='text-center'>Termin</th><th class='text-end'>Total Diajukan</th><th class='text-center'>Status</th><th class='text-center'>Tgl Dibayar</th></tr></thead><tbody>";
+                    if ($result && mysqli_num_rows($result) > 0) {
+                        $no = 1; $total_semua = 0;
+                        while ($row = mysqli_fetch_assoc($result)) {
+                            $tanggal_dibayar = (strtolower($row['status_pengajuan']) == 'dibayar' && !empty($row['updated_at'])) ? date("d-m-Y", strtotime($row['updated_at'])) : "-";
+                            echo "<tr><td class='text-center'>{$no}</td><td class='text-center'>" . date("d-m-Y", strtotime($row['tanggal_pengajuan'])) . "</td><td class='text-center'>" . $row['termin_ke'] . "</td><td class='text-end'>Rp " . number_format($row['total_pengajuan'], 0, ',', '.') . "</td><td class='text-center'>" . htmlspecialchars(ucwords($row['status_pengajuan'])) . "</td><td class='text-center'>{$tanggal_dibayar}</td></tr>";
+                            $no++;
+                            if (strtolower($row['status_pengajuan']) == 'dibayar') {
+                                $total_semua += $row['total_pengajuan'];
+                            }
+                        }
+                        echo "<tr class='fw-bold'><td colspan='3' class='text-center'>TOTAL DIBAYARKAN</td><td class='text-end'>Rp " . number_format($total_semua, 0, ',', '.') . "</td><td colspan='2'></td></tr>";
+                    } else { echo "<tr><td colspan='6' class='text-center'>Tidak ada riwayat pengajuan.</td></tr>"; }
+                    echo "</tbody></table>";
+                    break;
+
+                default:
+                    echo "<h2>Jenis Laporan Tidak Dikenal</h2>";
+                    break;
+            }
+
+            if (isset($result) && $result) {
+                $sql_direktur = "SELECT nama_lengkap FROM master_user WHERE role = 'direktur' LIMIT 1";
+                $nama_direktur = mysqli_fetch_assoc(mysqli_query($koneksi, $sql_direktur))['nama_lengkap'] ?? '..................';
+                echo '<div class="signature-section" style="width: 30%; float: right; text-align: center;">';
+                echo '<p>Ponorogo, ' . strftime('%d %B %Y') . '</p>';
+                echo '<p>Mengetahui,</p>';
+                echo '<br><br><br>';
+                echo '<p class="name">' . htmlspecialchars($nama_direktur) . '</p>';
+                echo '<p style="margin-top:-60px;">Direktur</p>';
+                echo '</div><div style="clear: both;"></div>';
+            }
+            if ($koneksi) mysqli_close($koneksi);
+            ?>
+        </main>
     </div>
-
-    <script>
-        window.onload = function() {
-            window.print();
-        }
-    </script>
 </body>
 </html>
+<?php
+// 4. Ambil output HTML ke variabel
+$html = ob_get_contents();
+ob_end_clean();
+
+try {
+    // 5. Buat instance mpdf
+    $mpdf = new \Mpdf\Mpdf([
+        'mode' => 'utf-8',
+        'format' => 'A4-P', // A4 Portrait
+        'tempDir' => __DIR__ . '/../temp' // Pastikan folder 'temp' ada dan writable
+    ]);
+    
+    // Nama file dinamis
+    $nama_file = 'Laporan-' . str_replace('_', '-', $jenis_laporan) . '-' . date('d-m-Y') . '.pdf';
+
+    // Tulis HTML ke PDF
+    $mpdf->WriteHTML($html);
+
+    // 6. Paksa unduh PDF
+    $mpdf->Output($nama_file, 'D');
+
+} catch (\Mpdf\MpdfException $e) {
+    die("Gagal membuat PDF: " . $e->getMessage());
+}
+
+exit;
+?>
