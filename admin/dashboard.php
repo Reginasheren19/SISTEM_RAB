@@ -97,7 +97,7 @@ include("../config/koneksi_mysql.php");
                 </span>
                 <h4 class="text-section">Laporan Upah</h4>
               </li>
-                            <li class="nav-item">
+              <li class="nav-item">
                 <a href="lap_pengajuan_upah.php">
                   <i class="fas fa-file"></i>
                   <p>Pengajuan Upah</p>
@@ -109,7 +109,7 @@ include("../config/koneksi_mysql.php");
                   <p>Realisasi Anggaran</p>
                 </a>
               </li>
-                            <li class="nav-item">
+              <li class="nav-item">
                 <a href="lap_rekapitulasi_proyek.php">
                   <i class="fas fa-file"></i>
                   <p>Rekapitulasi Proyek</p>
@@ -125,6 +125,12 @@ include("../config/koneksi_mysql.php");
                 <a href="lap_material/laporan_pembelian.php">
                   <i class="fas fa-file"></i>
                   <p>Laporan Pembelian</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="lap_material/laporan_distribusi.php">
+                  <i class="fas fa-file"></i>
+                  <p>Laporan Distribusi</p>
                 </a>
               </li>
               <li class="nav-section">
