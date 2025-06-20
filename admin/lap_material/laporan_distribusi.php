@@ -76,7 +76,7 @@ $result = mysqli_stmt_get_result($stmt);
 <html lang="en">
   <head>
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <title>Laporan Pencatatan Pembelian</title>
+    <title>Laporan Distribusi Material</title>
     <meta
       content="width=device-width, initial-scale=1.0, shrink-to-fit=no"
       name="viewport"
@@ -365,7 +365,7 @@ $result = mysqli_stmt_get_result($stmt);
                                     <div class="col-12 text-end">
                                         <button type="submit" name="reset" class="btn btn-secondary">Reset</button>
                                         <button type="submit" name="filter" class="btn btn-primary"><i class="fas fa-search"></i> Tampilkan</button>
-                                        <a href="cetak_lap_pembelian.php?start=<?= $tanggal_mulai ?>&end=<?= $tanggal_selesai ?>&material=<?= $id_material_filter ?>" target="_blank" class="btn btn-success">
+                                        <a href="cetak_lap_distribusi.php?start=<?= $tanggal_mulai ?>&end=<?= $tanggal_selesai ?>&material=<?= $id_material_filter ?>" target="_blank" class="btn btn-success">
                                             <i class="fas fa-print"></i> Unduh (PDF)
                                         </a>
                                     </div>
