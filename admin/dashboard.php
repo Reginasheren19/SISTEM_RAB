@@ -119,57 +119,68 @@ include("../config/koneksi_mysql.php");
                 <span class="sidebar-mini-icon">
                   <i class="fa fa-ellipsis-h"></i>
                 </span>
+                <h4 class="text-section">Laporan Material</h4>
+              </li>
+              <li class="nav-item">
+                <a href="lap_material/laporan_pembelian.php">
+                  <i class="fas fa-file"></i>
+                  <p>Laporan Pembelian</p>
+                </a>
+              </li>
+              <li class="nav-section">
+                <span class="sidebar-mini-icon">
+                  <i class="fa fa-ellipsis-h"></i>
+                </span>
                 <h4 class="text-section">Mastering Data</h4>
               </li>
-<li class="nav-item">
-  <a href="master_perumahan.php">
-    <i class="fas fa-database"></i>
-    <p>Master Perumahan</p>
-  </a>
-</li>
-<li class="nav-item">
-  <a href="master_proyek.php">
-    <i class="fas fa-database"></i>
-    <p>Master Proyek</p>
-  </a>
-</li>
-<li class="nav-item">
-  <a href="master_mandor.php">
-    <i class="fas fa-database"></i>
-    <p>Master Mandor</p>
-  </a>
-</li>
-<li class="nav-item">
-  <a href="master_kategori.php">
-    <i class="fas fa-database"></i>
-    <p>Master Kategori</p>
-  </a>
-</li>
-<li class="nav-item">
-  <a href="master_satuan.php">
-    <i class="fas fa-database"></i>
-    <p>Master Satuan</p>
-  </a>
-</li>
-<li class="nav-item">
-  <a href="master_pekerjaan.php">
-    <i class="fas fa-database"></i>
-    <p>Master Pekerjaan</p>
-  </a>
-</li>
-<li class="nav-item">
-  <a href="master_material.php">
-    <i class="fas fa-database"></i>
-    <p>Master Material</p>
-  </a>
-</li>
-<li class="nav-item">
-  <a href="master_user.php">
-    <i class="fas fa-database"></i>
-    <p>Master User</p>
-  </a>
-</li>
-
+              <li class="nav-item">
+                <a href="master_perumahan.php">
+                  <i class="fas fa-database"></i>
+                  <p>Master Perumahan</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="master_proyek.php">
+                  <i class="fas fa-database"></i>
+                  <p>Master Proyek</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="master_mandor.php">
+                  <i class="fas fa-database"></i>
+                  <p>Master Mandor</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="master_kategori.php">
+                  <i class="fas fa-database"></i>
+                  <p>Master Kategori</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="master_satuan.php">
+                  <i class="fas fa-database"></i>
+                  <p>Master Satuan</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="master_pekerjaan.php">
+                  <i class="fas fa-database"></i>
+                  <p>Master Pekerjaan</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="master_material.php">
+                  <i class="fas fa-database"></i>
+                  <p>Master Material</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="master_user.php">
+                  <i class="fas fa-database"></i>
+                  <p>Master User</p>
+                </a>
+              </li>
             </ul>
           </div>
         </div>
