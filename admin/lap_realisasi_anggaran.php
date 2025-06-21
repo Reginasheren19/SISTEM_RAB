@@ -330,10 +330,9 @@ $download_query_string = http_build_query([
                         <div class="card-header">
                             <div class="d-flex align-items-center">
                                 <h4 class="card-title">Perbandingan Anggaran vs Realisasi per Proyek</h4>
-                                <div class="ms-auto btn-group">
-<a href="cetak_lap_upah.php?laporan=realisasi_anggaran&<?= $download_query_string ?>" target="_blank" class="btn btn-success">                                    <i class="fas fa-download"></i> Unduh Laporan
+                                <a href="cetak_laporan.php?<?= $download_query_string ?>" target="_blank" class="btn btn-success ms-auto">
+                                    <i class="fas fa-print"></i> Cetak Ringkasan
                                 </a>
-                                </div>
                             </div>
                         </div>
                         <div class="card-body">
@@ -341,11 +340,12 @@ $download_query_string = http_build_query([
                                 <table id="report-table" class="display table table-striped table-hover">
                                     <thead>
                                         <tr>
-                                            <th class="text-center">Nama Proyek</th>
-                                            <th class="text-center">Total Anggaran (RAB)</th>
-                                            <th class="text-center">Total Terbayar</th>
-                                            <th class="text-center">Sisa Anggaran</th>
+                                            <th>Nama Proyek</th>
+                                            <th class="text-end">Total Anggaran (RAB)</th>
+                                            <th class="text-end">Total Terbayar</th>
+                                            <th class="text-end">Sisa Anggaran</th>
                                             <th class="text-center" style="width: 20%;">Realisasi (%)</th>
+                                            <th class="text-center">Aksi</th> <!-- Kolom Baru -->
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -355,7 +355,6 @@ $download_query_string = http_build_query([
                                                 $total_terbayar = (float)($row['total_terbayar'] ?? 0);
                                                 $sisa_anggaran = $total_rab - $total_terbayar;
                                                 $realisasi_persen = ($total_rab > 0) ? ($total_terbayar / $total_rab) * 100 : 0;
-                                                
                                                 $progress_color = 'bg-success';
                                                 if ($realisasi_persen > 75) $progress_color = 'bg-warning';
                                                 if ($realisasi_persen >= 100) $progress_color = 'bg-danger';
@@ -372,12 +371,16 @@ $download_query_string = http_build_query([
                                                         </div>
                                                     </div>
                                                 </td>
+                                                <!-- Tombol Aksi Baru -->
+                                                <td class="text-center">
+                                                    <a href="cetak_detail_progres.php?proyek_id=<?= $row['id_proyek'] ?>" target="_blank" class="btn btn-success btn-sm" title="Cetak Detail Progres">
+                                                        <i class="fas fa-print"></i>
+                                                    </a>
+                                                </td>
                                             </tr>
                                             <?php endwhile; ?>
                                         <?php else: ?>
-                                            <tr>
-                                                <td colspan="5" class="text-center text-muted">Tidak ada data proyek untuk ditampilkan.</td>
-                                            </tr>
+                                            <tr><td colspan="6" class="text-center text-muted">Tidak ada data proyek untuk ditampilkan.</td></tr>
                                         <?php endif; ?>
                                     </tbody>
                                 </table>

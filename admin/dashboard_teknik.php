@@ -288,38 +288,7 @@ if ($q_rab_terbaru) { while($row = mysqli_fetch_assoc($q_rab_terbaru)) { $rab_te
                         <div class="col-sm-6 col-md-3"><div class="card card-stats card-round"><div class="card-body"><div class="row align-items-center"><div class="col-icon"><div class="icon-big text-center icon-primary bubble-shadow-small"><i class="fas fa-calendar-check"></i></div></div><div class="col col-stats ms-3 ms-sm-0"><div class="numbers"><p class="card-category">RAB Bulan Ini</p><h4 class="card-title"><?= $rab_bulan_ini ?></h4></div></div></div></div></div></div>
                     </div>
 
-                    <!-- GRAFIK ANALISIS ANGGARAN DENGAN FILTER -->
-                    <div class="row">
-                        <div class="col-md-12">
-                            <div class="card">
-                                <div class="card-header"><h4 class="card-title">Analisis Anggaran Proyek</h4></div>
-                                <div class="card-body">
-                                    <form method="GET" action="dashboard_teknik.php">
-                                        <div class="row gx-2 mb-4">
-                                            <div class="col-md-5">
-                                                <label for="perumahanFilter" class="form-label">Filter berdasarkan Perumahan:</label>
-                                                <select class="form-select" id="perumahanFilter" name="perumahan_id">
-                                                    <option value="semua">-- Tampilkan Semua Proyek --</option>
-                                                    <?php foreach($daftar_perumahan as $perumahan): ?>
-                                                        <option value="<?= $perumahan['id_perumahan'] ?>" <?= ($perumahan['id_perumahan'] == $perumahan_id_terpilih) ? 'selected' : '' ?>>
-                                                            <?= htmlspecialchars($perumahan['nama_perumahan']) ?>
-                                                        </option>
-                                                    <?php endforeach; ?>
-                                                </select>
-                                            </div>
-                                            <div class="col-md-2 d-flex align-items-end">
-                                                <button type="submit" class="btn btn-primary w-100">Filter</button>
-                                            </div>
-                                        </div>
-                                    </form>
-                                    <div class="chart-container" style="height: 350px">
-                                        <canvas id="rabPerProyekChart"></canvas>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
+                    
                     <!-- 5 RAB TERAKHIR DIBUAT & AKSES CEPAT -->
                     <div class="row">
                         <div class="col-md-9">
@@ -354,6 +323,38 @@ if ($q_rab_terbaru) { while($row = mysqli_fetch_assoc($q_rab_terbaru)) { $rab_te
                                         <a href="master_satuan.php" class="btn btn-secondary btn-sm"><i></i> Master Satuan</a>
                                         <a href="master_perumahan.php" class="btn btn-secondary btn-sm"><i></i> Master Perumahan</a>
                                         <a href="master_proyek.php" class="btn btn-secondary btn-sm"><i></i> Master Proyek</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- GRAFIK ANALISIS ANGGARAN DENGAN FILTER -->
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="card">
+                                <div class="card-header"><h4 class="card-title">Analisis Anggaran Proyek</h4></div>
+                                <div class="card-body">
+                                    <form method="GET" action="dashboard_teknik.php">
+                                        <div class="row gx-2 mb-4">
+                                            <div class="col-md-5">
+                                                <label for="perumahanFilter" class="form-label">Filter berdasarkan Perumahan:</label>
+                                                <select class="form-select" id="perumahanFilter" name="perumahan_id">
+                                                    <option value="semua">-- Tampilkan Semua Proyek --</option>
+                                                    <?php foreach($daftar_perumahan as $perumahan): ?>
+                                                        <option value="<?= $perumahan['id_perumahan'] ?>" <?= ($perumahan['id_perumahan'] == $perumahan_id_terpilih) ? 'selected' : '' ?>>
+                                                            <?= htmlspecialchars($perumahan['nama_perumahan']) ?>
+                                                        </option>
+                                                    <?php endforeach; ?>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-2 d-flex align-items-end">
+                                                <button type="submit" class="btn btn-primary w-100">Filter</button>
+                                            </div>
+                                        </div>
+                                    </form>
+                                    <div class="chart-container" style="height: 350px">
+                                        <canvas id="rabPerProyekChart"></canvas>
                                     </div>
                                 </div>
                             </div>
