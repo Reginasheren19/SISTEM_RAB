@@ -36,6 +36,8 @@ if (!$result || mysqli_num_rows($result) == 0) {
 
 $data = mysqli_fetch_assoc($result);
 
+
+
 // Query detail RAB harus include kategori nama
 $sql_detail = "SELECT 
                  d.id_detail_rab_upah, 
@@ -775,29 +777,13 @@ $detail_result = mysqli_query($koneksi, $sql_detail);
         <div class="container">
           <div class="page-inner">
             <div class="page-header">
-              <h3 class="fw-bold mb-3">Rancang RAB</h3>
-              <ul class="breadcrumbs mb-3">
-                <li class="nav-home">
-                  <a href="dashboard.php">
-                    <i class="icon-home"></i>
-                  </a>
-                </li>
-                <li class="separator">
-                  <i class="icon-arrow-right"></i>
-                </li>
-                <li class="nav-item">
-                  <a href="#">Rancang RAB</a>
-                </li>
-                <li class="separator">
-                  <i class="icon-arrow-right"></i>
-                </li>
-                <li class="nav-item">
-                  <a href="#">RAB Upah</a>
-                </li>
-              </ul>
+                <h3 class="fw-bold mb-3">Detail RAB Upah</h3>
+                <div class="ms-auto">
+                    <a href="pengajuan_upah.php" class="btn btn-secondary btn-round">
+                        <i class="fas fa-arrow-left"></i> Kembali ke Daftar
+                    </a>
+                </div>
             </div>
-
-          <div class="container mt-4">
 
           <div class="card shadow-sm mb-4">
             <div class="card-header fw-bold">
@@ -881,9 +867,13 @@ $detail_result = mysqli_query($koneksi, $sql_detail);
 ?>
 
 <div class="card">
-  <div class="card-header fw-bold">
-    Detail RAB
-  </div>
+<div class="card-header fw-bold d-flex justify-content-between align-items-center">
+                                        <h4 class="card-title">Detail Rencana Anggaran Biaya (RAB)</h4>
+                                        <div class="ms-auto btn-group">
+                                            <a href="cetak_rab_upah.php?id_rab_upah=<?= $id_rab_upah ?>" target="_blank" class="btn btn-primary btn-sm"><i class="fa fa-print"></i> Cetak RAB</a>
+                                        </div>
+</div>
+
   <div class="card-body">
     <div class="table-responsive">
       <table class="table table-bordered" id="tblDetailRAB">

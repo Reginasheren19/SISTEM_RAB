@@ -16,13 +16,29 @@ function toRoman($num) {
 }
 
 // 1. Ambil Info Utama Pengajuan & Proyek
-$info_sql = "SELECT pu.tanggal_pengajuan, pu.id_rab_upah, mpe.nama_perumahan, mpr.kavling, mm.nama_mandor, u.nama_lengkap AS pj_proyek FROM pengajuan_upah pu JOIN rab_upah ru ON pu.id_rab_upah = ru.id_rab_upah JOIN master_proyek mpr ON ru.id_proyek = mpr.id_proyek LEFT JOIN master_perumahan mpe ON mpr.id_perumahan = mpe.id_perumahan LEFT JOIN master_mandor mm ON mpr.id_mandor = mm.id_mandor LEFT JOIN master_user u ON mpr.id_user_pj = u.id_user WHERE pu.id_pengajuan_upah = $id_pengajuan_upah";
+$info_sql = "
+    SELECT 
+        pu.tanggal_pengajuan, pu.total_pengajuan, pu.id_rab_upah,
+        mpe.nama_perumahan, mpr.kavling, mm.nama_mandor, u.nama_lengkap AS pj_proyek,
+        ru.total_rab_upah, ru.tanggal_mulai, ru.tanggal_selesai
+    FROM pengajuan_upah pu
+    JOIN rab_upah ru ON pu.id_rab_upah = ru.id_rab_upah
+    JOIN master_proyek mpr ON ru.id_proyek = mpr.id_proyek
+    LEFT JOIN master_perumahan mpe ON mpr.id_perumahan = mpe.id_perumahan
+    LEFT JOIN master_mandor mm ON mpr.id_mandor = mm.id_mandor
+    LEFT JOIN master_user u ON mpr.id_user_pj = u.id_user
+    WHERE pu.id_pengajuan_upah = $id_pengajuan_upah
+";
 $info_result = mysqli_query($koneksi, $info_sql);
 if (!$info_result || mysqli_num_rows($info_result) == 0) { die("Data pengajuan tidak ditemukan."); }
 $info = mysqli_fetch_assoc($info_result);
 $id_rab_upah = $info['id_rab_upah'];
 
-// 2. Ambil Detail Pekerjaan untuk Pengajuan Ini, lengkap dengan data keuangan
+// 2. Hitung ini termin ke berapa
+$sql_termin = "SELECT COUNT(id_pengajuan_upah) AS termin_ke FROM pengajuan_upah WHERE id_rab_upah = $id_rab_upah AND id_pengajuan_upah <= $id_pengajuan_upah";
+$termin_ke = mysqli_fetch_assoc(mysqli_query($koneksi, $sql_termin))['termin_ke'];
+
+// 3. Ambil Detail Pekerjaan untuk Pengajuan Ini
 $detail_sql = "
     SELECT 
         k.nama_kategori, 
@@ -44,7 +60,7 @@ $detail_sql = "
 $detail_result = mysqli_query($koneksi, $detail_sql);
 if (!$detail_result) { die("Gagal mengambil detail pekerjaan: " . mysqli_error($koneksi)); }
 
-// 3. Ambil nama Direktur & Komisaris untuk TTD
+// 4. Ambil nama Direktur & Komisaris untuk TTD
 $sql_direktur = "SELECT nama_lengkap FROM master_user WHERE role = 'direktur' LIMIT 1";
 $nama_direktur = mysqli_fetch_assoc(mysqli_query($koneksi, $sql_direktur))['nama_lengkap'] ?? '.....................';
 $nama_komisaris = "Hastut Pantjarini, SE"; 
@@ -55,14 +71,20 @@ setlocale(LC_TIME, 'id_ID.utf8', 'id_ID');
 <head>
     <meta charset="UTF-8">
     <title>Cetak Formulir Pengajuan #<?= $id_pengajuan_upah ?></title>
+    <link rel="stylesheet" href="assets/css/bootstrap.min.css" />
     <style>
-        body { font-family: 'Arial', sans-serif; background-color: #fff; color: #000; font-size: 9px;}
-        .container { width: 98%; margin: auto; }
-        .kop-surat { text-align: center; margin-bottom: 15px; }
-        .kop-surat h3 { font-size: 18px; font-weight: bold; margin: 0; }
-        .kop-surat p { font-size: 12px; margin: 2px 0; }
-        .report-title { text-align: center; margin-bottom: 15px; font-weight: bold; text-decoration: underline; font-size: 14px;}
-        table.report { width: 100%; border-collapse: collapse; }
+        body { font-family: 'Times New Roman', Times, serif; background-color: #fff; color: #000; font-size: 11px;}
+        .container { max-width: 800px; margin: auto; }
+        .kop-surat { display: flex; align-items: center; border-bottom: 3px double #000; padding-bottom: 15px; margin-bottom: 20px; }
+        .kop-surat img { width: 100px; height: auto; margin-right: 20px; }
+        .kop-surat .kop-text { text-align: center; flex-grow: 1; }
+        .kop-surat h3 { font-size: 22px; font-weight: bold; margin: 0; }
+        .kop-surat p { font-size: 14px; margin: 0; }
+        .report-title { text-align: center; margin-bottom: 20px; font-weight: bold; text-decoration: underline; font-size: 16px;}
+        .info-section .table { border: none !important; margin-bottom: 0; }
+        .info-section .table td { border: none !important; padding: 1px 0; font-size: 12px; vertical-align: top; }
+        .info-section td:nth-child(1) { width: 140px; font-weight: bold;}
+        table.report { width: 100%; border-collapse: collapse; margin-top: 20px; }
         table.report th, table.report td { border: 1px solid black; padding: 4px; vertical-align: middle; }
         table.report th { background-color: #e9ecef !important; text-align: center; }
         .category-row td { background-color: #f8f9fa; font-weight: bold; }
@@ -70,27 +92,61 @@ setlocale(LC_TIME, 'id_ID.utf8', 'id_ID');
         .signature-section { margin-top: 30px; width: 100%; }
         .signature-box { text-align: center; width: 33.33%; float: left; }
         .signature-box .name { margin-top: 50px; font-weight: bold; text-decoration: underline; }
-        @media print { .no-print { display: none; } @page { size: A4 landscape; margin: 10mm; } }
+        .clearfix { clear: both; }
+
+        @media print { 
+            .no-print { display: none; } 
+            @page { 
+                size: A4 portrait; 
+                margin: 10mm; 
+            } 
+        }
     </style>
 </head>
 <body>
     <div class="container my-3">
         <button class="no-print" onclick="window.print()" style="margin-bottom:15px; padding: 8px 12px;">Cetak Formulir</button>
+        
+        <!-- [DIUBAH] Menggunakan Format Kop Surat & Header dari get_pengajuan_upah.php -->
         <div class="kop-surat">
-            <h3>PENGAJUAN OPNAME VOLUME PEKERJAAN</h3>
-            <p>PROYEK: <?= strtoupper(htmlspecialchars($info['nama_perumahan'])) ?> - KAVLING <?= strtoupper(htmlspecialchars($info['kavling'])) ?> | TANGGAL: <?= strtoupper(strftime('%d %B %Y', strtotime($info['tanggal_pengajuan']))) ?></p>
+            <img src="assets/img/logo/LOGO PT.jpg" alt="Logo Perusahaan" onerror="this.style.display='none'">
+            <div class="kop-text">
+                <h3>PT. HASTA BANGUN NUSANTARA</h3>
+                <p>Jalan Cokroaminoto 63414 Ponorogo Jawa Timur</p>
+                <p>Telp: (0352) 123-456 | Email: kontak@hastabangun.co.id</p>
+            </div>
+        </div>
+        <h5 class="report-title">PENGAJUAN OPNAME VOLUME PEKERJAAN</h5>
+
+        <div class="info-section mb-4">
+            <div class="row">
+                <div class="col-7">
+                    <table class="table table-sm">
+                        <tr><td>No. Pengajuan</td><td>: <?= htmlspecialchars($id_pengajuan_upah) ?> / Termin Pengajuan ke-<?= $termin_ke ?></td></tr>
+                        <tr><td>Nama Perumahan</td><td>: <?= htmlspecialchars($info['nama_perumahan']) ?></td></tr>
+                        <tr><td>Kavling / Blok</td><td>: <?= htmlspecialchars($info['kavling']) ?></td></tr>
+                    </table>
+                </div>
+                <div class="col-5">
+                    <table class="table table-sm">
+                        <tr><td>Tanggal</td><td>: <?= date("d F Y", strtotime($info['tanggal_pengajuan'])) ?></td></tr>
+                        <tr><td>Mandor</td><td>: <?= htmlspecialchars($info['nama_mandor']) ?></td></tr>
+                        <tr><td>PJ Proyek</td><td>: <?= htmlspecialchars($info['pj_proyek']) ?></td></tr>
+                    </table>
+                </div>
+            </div>
         </div>
         
         <table class="report">
             <thead>
                 <tr>
-                    <th style="width: 2%;">No</th>
-                    <th style="width: 28%;">Keterangan</th>
-                    <th style="width: 12%;">Kontrak (Rp)</th>
-                    <th style="width: 12%;">Pencairan (Rp)</th>
-                    <th style="width: 12%;">Sisa (Rp)</th>
-                    <th style="width: 12%;">Pengajuan (Rp)</th>
-                    <th style="width: 10%;">Progress (%)</th>
+                    <th style="width: 3%;">No</th>
+                    <th style="width: 32%;">Keterangan</th>
+                    <th style="width: 13%;">Kontrak (Rp)</th>
+                    <th style="width: 13%;">Pencairan (Rp)</th>
+                    <th style="width: 13%;">Sisa (Rp)</th>
+                    <th style="width: 13%;">Pengajuan (Rp)</th>
+                    <th style="width: 11%;">Progress (%)</th>
                 </tr>
             </thead>
             <tbody>

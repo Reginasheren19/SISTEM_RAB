@@ -402,7 +402,7 @@ $download_query_string = http_build_query([
                                                 <td class="text-end">Rp <?= number_format($row['total_pengajuan'], 0, ',', '.') ?></td>
                                                 <td class="text-center"><?= getStatusBadge($row['status_pengajuan']) ?></td>
                                                 <td class="text-center">
-                                                    <a href="cetak_detail_upah.php?id=<?= $row['id_pengajuan_upah'] ?>" target="_blank" class="btn btn-success btn-sm" title="Cetak Laporan">
+                                                    <a href="cetak_formulir_pengajuan.php?id=<?= $row['id_pengajuan_upah'] ?>" target="_blank" class="btn btn-success btn-sm" title="Cetak Laporan">
                                                         <i class="fas fa-print"></i>
                                                     </a>
                                                 </td>
