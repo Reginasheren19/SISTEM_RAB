@@ -2,27 +2,24 @@
 session_start();
 include("../config/koneksi_mysql.php");
 
-// Query untuk mengambil data pembelian
+// -- DIUBAH -- Query diperbarui untuk mengambil status_pembelian
+// dan menggunakan total_biaya yang sudah ada di tabel, bukan subquery lagi.
 $sql = "SELECT 
             p.id_pembelian,
             p.tanggal_pembelian,
             p.keterangan_pembelian,
-            p.bukti_pembayaran,  
-            (SELECT SUM(dp.sub_total_pp) 
-             FROM detail_pencatatan_pembelian dp  
-             WHERE dp.id_pembelian = p.id_pembelian) AS total_biaya
+            p.bukti_pembayaran, 
+            p.total_biaya,
+            p.status_pembelian
         FROM 
             pencatatan_pembelian p
         ORDER BY 
-            p.tanggal_pembelian DESC";
+            p.tanggal_pembelian DESC, p.id_pembelian DESC";
 
-// Eksekusi query
 $result = mysqli_query($koneksi, $sql);
 
-// Periksa apakah query berhasil dieksekusi
 if (!$result) {
-    echo "<div class='alert alert-danger'>Query Error: " . mysqli_error($koneksi) . "</div>";
-    exit;  // Hentikan eksekusi jika query gagal
+    die("Query Error: " . mysqli_error($koneksi));
 }
 ?>
 
@@ -804,6 +801,7 @@ if (!$result) {
                                             <th>Keterangan</th>
                                             <th>Total Biaya</th>
                                             <th>Bukti Pembelian</th>
+                                            <th>Status</th>
                                             <th>Action</th>
                                         </tr>
                                     </thead>
@@ -812,11 +810,22 @@ if (!$result) {
                                         if (isset($result) && $result && mysqli_num_rows($result) > 0): 
                                             $nomor = 1; 
                                             while ($row = mysqli_fetch_assoc($result)): 
+                                                // Persiapan variabel di dalam loop
                                                 $tahun_pembelian = date('Y', strtotime($row['tanggal_pembelian']));
                                                 $formatted_id = 'PB' . $row['id_pembelian'] . $tahun_pembelian;
+                                                
+                                                $status = $row['status_pembelian'];
+                                                $badge_class = 'bg-secondary'; // Default
+                                                if ($status == 'Dipesan') {
+                                                    $badge_class = 'bg-warning';
+                                                } elseif ($status == 'Selesai') {
+                                                    $badge_class = 'bg-success';
+                                                } elseif ($status == 'Ada Masalah' || $status == 'Selesai dengan Catatan') {
+                                                    $badge_class = 'bg-danger';
+                                                }
                                         ?>
                                                 <tr>
-                                                    <td><?= $nomor ?></td>
+                                                    <td><?= $nomor++ ?></td>
                                                     <td><?= htmlspecialchars($formatted_id) ?></td>
                                                     <td><?= date("d F Y", strtotime($row['tanggal_pembelian'])) ?></td>
                                                     <td><?= htmlspecialchars($row['keterangan_pembelian']) ?></td>
@@ -831,6 +840,9 @@ if (!$result) {
                                                         <?php endif; ?>
                                                     </td>
                                                     <td>
+                                                        <span class="badge <?= $badge_class ?>"><?= htmlspecialchars($status) ?></span>
+                                                    </td>
+                                                    <td>
                                                         <a href="detail_pembelian.php?id=<?= urlencode($row['id_pembelian']) ?>" class="btn btn-info btn-sm">Detail</a>
                                                         <button class="btn btn-danger btn-sm btn-delete" 
                                                                 data-id="<?= $row['id_pembelian'] ?>" 
@@ -841,14 +853,15 @@ if (!$result) {
                                                     </td>
                                                 </tr>
                                         <?php 
-                                            $nomor++; 
-                                            endwhile; 
-                                        else: 
+                                            endwhile; // Penutup untuk 'while'
+                                        else: // Ini dieksekusi jika tidak ada data sama sekali
                                         ?>
                                             <tr>
-                                                <td colspan="7" class="text-center">Belum ada data pembelian.</td>
+                                                <td colspan="8" class="text-center">Belum ada data pembelian.</td>
                                             </tr>
-                                        <?php endif; ?>
+                                        <?php 
+                                        endif; // Penutup untuk 'if'
+                                        ?>
                                     </tbody>
                                 </table>
                             </div>
