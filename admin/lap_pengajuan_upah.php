@@ -349,7 +349,6 @@ $download_query_string = http_build_query([
             
             <div class="d-flex justify-content-between align-items-end">
                 <div>
-                    <label class="form-label mb-2">Filter Berdasarkan Status:</label>
                     <div class="btn-group">
                         <button type="submit" name="status" value="semua" class="btn btn-outline-primary <?= $status_filter == 'semua' ? 'active' : '' ?>">Semua</button>
                         <button type="submit" name="status" value="diajukan" class="btn btn-outline-primary <?= $status_filter == 'diajukan' ? 'active' : '' ?>">Diajukan</button>

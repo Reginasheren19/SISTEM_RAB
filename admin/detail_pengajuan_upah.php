@@ -863,32 +863,49 @@ function toRoman($num) {
                                         <th>Uraian Pekerjaan</th>
                                         <th style="width:12%;" class="text-center">Jumlah (Rp)</th>
                                         <th style="width:12%;" class="text-center">Progress Lalu (%)</th>
-                                        <th style="width:10%;" class="text-center">Progress Saat Ini (%)</th>
+                                        <th style="width:15%;" class="text-center">Progress Saat Ini (%)</th>
                                         <th style="width:20%;" class="text-center">Nilai Pengajuan (Rp)</th>
                                     </tr>
                                 </thead>
-                                <tbody>
-                                    <?php
-                                    $grandTotalRAB = 0;
-                                    if ($detail_result && mysqli_num_rows($detail_result) > 0) {
-                                        mysqli_data_seek($detail_result, 0);
-                                        $prevKategori = null; $noKategori = 0; $noPekerjaan = 1;
-                                        while ($row = mysqli_fetch_assoc($detail_result)) {
-                                            if ($prevKategori !== $row['nama_kategori']) {
-                                                $noKategori++;
-                                                echo "<tr class='table-primary fw-bold'><td class='text-center'>" . toRoman($noKategori) . "</td><td colspan='5'>" . htmlspecialchars($row['nama_kategori']) . "</td></tr>";
-                                                $prevKategori = $row['nama_kategori']; $noPekerjaan = 1;
+                                        <tbody>
+                                            <?php
+                                            $grandTotalRAB = 0;
+                                            if ($detail_result && mysqli_num_rows($detail_result) > 0) {
+                                                mysqli_data_seek($detail_result, 0);
+                                                $prevKategori = null; $noKategori = 0; $noPekerjaan = 1;
+                                                while ($row = mysqli_fetch_assoc($detail_result)) {
+                                                    if ($prevKategori !== $row['nama_kategori']) {
+                                                        $noKategori++;
+                                                        echo "<tr class='table-primary fw-bold'><td class='text-center'>" . toRoman($noKategori) . "</td><td colspan='5'>" . htmlspecialchars($row['nama_kategori']) . "</td></tr>";
+                                                        $prevKategori = $row['nama_kategori']; $noPekerjaan = 1;
+                                                    }
+                                                    $idDetail = $row['id_detail_rab_upah'];
+                                                    $progressLalu = getProgressLaluPersen($koneksi, $idDetail);
+                                                    $sisaProgress = 100 - $progressLalu;
+                                                    $isLunas = $sisaProgress <= 0.001;
+                                            ?>
+                                                    <tr>
+                                                        <td class='text-center'><?= $noPekerjaan ?></td>
+                                                        <td><span class='ms-3'><?= htmlspecialchars($row['uraian_pekerjaan']) ?></span></td>
+                                                        <td class='text-end'><?= number_format($row['sub_total'], 0, ',', '.') ?></td>
+                                                        <td class='text-center'><?= number_format($progressLalu, 2, ',', '.') ?>%</td>
+                                                        <!-- [DIUBAH] Menambahkan Checkbox Lunas -->
+                                                        <td class="p-1 align-middle">
+                                                            <div class="input-group">
+                                                                <input type="number" class="form-control form-control-sm progress-input text-center" data-subtotal="<?= $row['sub_total'] ?>" data-id="<?= $idDetail ?>" name="progress[<?= $idDetail ?>]" min="0" max="<?= number_format($sisaProgress, 2, '.', '') ?>" step="0.01" <?= $isLunas ? 'disabled placeholder="Lunas"' : 'placeholder="0.00"' ?>>
+                                                                <div class="input-group-text">
+                                                                    <input class="form-check-input mt-0 lunas-checkbox" type="checkbox" title="Tandai Lunas (100% Progress)" <?= $isLunas ? 'disabled' : '' ?>>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td class='text-end fw-bold nilai-pengajuan' data-id='<?= $idDetail ?>'>Rp 0</td>
+                                                    </tr>
+                                            <?php
+                                                    $noPekerjaan++; $grandTotalRAB += $row['sub_total'];
+                                                }
                                             }
-                                            $idDetail = $row['id_detail_rab_upah'];
-                                            $progressLalu = getProgressLaluPersen($koneksi, $idDetail);
-                                            $sisaProgress = 100 - $progressLalu;
-                                            $isLunas = $sisaProgress <= 0.001;
-                                            echo "<tr><td class='text-center'>{$noPekerjaan}</td><td><span class='ms-3'>".htmlspecialchars($row['uraian_pekerjaan'])."</span></td><td class='text-end'>".number_format($row['sub_total'],0,',','.')."</td><td class='text-center'>".number_format($progressLalu,2,',','.')."%</td><td class='text-center'><input type='number' class='form-control form-control-sm progress-input text-center' data-subtotal='{$row['sub_total']}' data-id='{$idDetail}' name='progress[{$idDetail}]' min='0' max='".number_format($sisaProgress,2,'.','')."' step='0.01' ".($isLunas ? 'disabled placeholder="Lunas"':'placeholder="0.00"')."></td><td class='text-end fw-bold nilai-pengajuan' data-id='{$idDetail}'>Rp 0</td></tr>";
-                                            $noPekerjaan++; $grandTotalRAB += $row['sub_total'];
-                                        }
-                                    }
-                                    ?>
-                                </tbody>
+                                            ?>
+                                        </tbody>
                                 <!-- [DIPERBAIKI] Footer Tabel Ditambahkan Kembali -->
                                 <tfoot>
                                     <tr class='table-light fw-bolder'>
@@ -986,8 +1003,29 @@ function toRoman($num) {
                 }
             }
 
-            if (tableBody) tableBody.addEventListener('input', e => { if (e.target.classList.contains('progress-input')) calculateTotals(); });
-            if (nominalPengajuanInput) nominalPengajuanInput.addEventListener('input', validateNominal);
+            if (tableBody) {
+                tableBody.addEventListener('input', e => { if (e.target.classList.contains('progress-input')) calculateTotals(); });
+                
+                // [BARU] Logika untuk checkbox lunas
+                tableBody.addEventListener('change', function(e) {
+                    if (e.target.classList.contains('lunas-checkbox')) {
+                        const tr = e.target.closest('tr');
+                        const progressInput = tr.querySelector('.progress-input');
+                        if (!progressInput) return;
+
+                        const maxProgress = parseFloat(progressInput.max);
+                        
+                        if (e.target.checked) {
+                            progressInput.value = maxProgress.toFixed(2);
+                            progressInput.disabled = true;
+                        } else {
+                            progressInput.value = '';
+                            progressInput.disabled = false;
+                        }
+                        calculateTotals(); // Panggil kalkulasi ulang
+                    }
+                });
+            }            if (nominalPengajuanInput) nominalPengajuanInput.addEventListener('input', validateNominal);
             calculateTotals();
 
             // Logika Upload File

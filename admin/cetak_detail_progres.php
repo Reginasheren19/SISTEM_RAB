@@ -20,30 +20,47 @@ function toRoman($num) {
 }
 
 // 1. Ambil Info Utama Proyek
-$info_sql = "SELECT CONCAT(mpe.nama_perumahan, ' - ', mpr.kavling) AS nama_proyek, mm.nama_mandor, u.nama_lengkap as pj_proyek, ru.total_rab_upah FROM master_proyek mpr LEFT JOIN master_perumahan mpe ON mpr.id_perumahan = mpe.id_perumahan LEFT JOIN master_mandor mm ON mpr.id_mandor = mm.id_mandor LEFT JOIN master_user u ON mpr.id_user_pj = u.id_user LEFT JOIN rab_upah ru ON mpr.id_proyek = ru.id_proyek WHERE mpr.id_proyek = $proyek_id";
+$info_sql = "
+    SELECT 
+        mpe.nama_perumahan,
+        mpr.kavling,
+        mm.nama_mandor,
+        u.nama_lengkap as pj_proyek,
+        ru.id_rab_upah,
+        ru.total_rab_upah,
+        ru.tanggal_mulai,
+        ru.tanggal_selesai
+    FROM master_proyek mpr
+    LEFT JOIN master_perumahan mpe ON mpr.id_perumahan = mpe.id_perumahan
+    LEFT JOIN master_mandor mm ON mpr.id_mandor = mm.id_mandor
+    LEFT JOIN master_user u ON mpr.id_user_pj = u.id_user
+    LEFT JOIN rab_upah ru ON mpr.id_proyek = ru.id_proyek
+    WHERE mpr.id_proyek = $proyek_id
+";
 $proyek_info_result = mysqli_query($koneksi, $info_sql);
 if(!$proyek_info_result || mysqli_num_rows($proyek_info_result) == 0){ die("Proyek tidak ditemukan atau belum memiliki RAB."); }
 $proyek_info = mysqli_fetch_assoc($proyek_info_result);
+$id_rab_upah = $proyek_info['id_rab_upah'];
 
-// 2. Ambil semua termin pengajuan untuk proyek ini (untuk header tabel dinamis)
+// 2. Ambil semua termin pengajuan untuk proyek ini
 $termins = [];
-$termins_sql = "SELECT pu.id_pengajuan_upah, pu.tanggal_pengajuan FROM pengajuan_upah pu JOIN rab_upah ru ON pu.id_rab_upah = ru.id_rab_upah WHERE ru.id_proyek = $proyek_id ORDER BY pu.tanggal_pengajuan, pu.id_pengajuan_upah";
+$termins_sql = "SELECT pu.id_pengajuan_upah, pu.tanggal_pengajuan FROM pengajuan_upah pu WHERE pu.id_rab_upah = $id_rab_upah ORDER BY pu.tanggal_pengajuan, pu.id_pengajuan_upah";
 $termins_result = mysqli_query($koneksi, $termins_sql);
 if($termins_result){ while($row = mysqli_fetch_assoc($termins_result)){ $termins[] = $row; } }
 
-// 3. [PERBAIKAN TOTAL] Query yang lebih aman untuk mengambil semua data progres
+// 3. Ambil semua data progres
 $report_data = [];
 $detail_sql = "
     SELECT 
         dr.id_detail_rab_upah,
         k.nama_kategori,
         mp.uraian_pekerjaan,
-        dr.sub_total AS nilai_anggaran, -- Menggunakan 'sub_total' sesuai struktur Anda
+        dr.sub_total AS nilai_anggaran,
         dpu.id_pengajuan_upah,
         dpu.progress_pekerjaan,
         pu.status_pengajuan
-    FROM rab_upah ru
-    INNER JOIN detail_rab_upah dr ON ru.id_rab_upah = dr.id_rab_upah
+    FROM detail_rab_upah dr
+    INNER JOIN rab_upah ru ON dr.id_rab_upah = ru.id_rab_upah
     LEFT JOIN master_pekerjaan mp ON dr.id_pekerjaan = mp.id_pekerjaan
     LEFT JOIN master_kategori k ON dr.id_kategori = k.id_kategori
     LEFT JOIN detail_pengajuan_upah dpu ON dr.id_detail_rab_upah = dpu.id_detail_rab_upah
@@ -80,48 +97,86 @@ if ($result_detail) {
         }
     }
 }
+
+// [BARU] Ambil nama Direktur untuk TTD
+$sql_direktur = "SELECT nama_lengkap FROM master_user WHERE role = 'direktur' LIMIT 1";
+$result_direktur = mysqli_query($koneksi, $sql_direktur);
+$nama_direktur = "....................."; 
+if ($result_direktur && mysqli_num_rows($result_direktur) > 0) {
+    $direktur_info = mysqli_fetch_assoc($result_direktur);
+    $nama_direktur = $direktur_info['nama_lengkap'];
+}
 ?>
 <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
     <title>Laporan Detail Progres Proyek</title>
+    <link rel="stylesheet" href="assets/css/bootstrap.min.css" />
     <style>
-        body { font-family: 'Times New Roman', Times, serif; font-size: 10px; }
-        .container { width: 98%; margin: auto; }
-        .kop-surat { text-align: center; border-bottom: 3px double #000; padding-bottom: 15px; margin-bottom: 15px; }
-        .kop-surat h1 { font-size: 22px; margin:0; } .kop-surat p { font-size: 14px; margin: 2px 0; }
-        h2 { text-align: center; font-size: 16px; margin-bottom: 5px; text-transform: uppercase; text-decoration: underline; }
-        .info-header { margin-bottom: 20px; font-size: 12px; }
-        .info-header table { width: 100%; } .info-header td { padding: 2px; } .info-header td:first-child { width: 120px; font-weight: bold; }
-        table.report { width: 100%; border-collapse: collapse; page-break-inside: auto; }
+        body { font-family: 'Times New Roman', Times, serif; background-color: #fff; color: #000; }
+        .container { max-width: 800px; margin: auto; }
+        .kop-surat { display: flex; align-items: center; border-bottom: 3px double #000; padding-bottom: 15px; margin-bottom: 20px; }
+        .kop-surat img { width: 100px; height: auto; margin-right: 20px; }
+        .kop-surat .kop-text { text-align: center; flex-grow: 1; }
+        .kop-surat h3, .kop-surat p { margin: 0; }
+        .kop-surat h3 { font-size: 24px; font-weight: bold; }
+        .kop-surat p { font-size: 14px; }
+        .report-title { text-align: center; margin-bottom: 20px; font-weight: bold; text-decoration: underline; font-size: 18px;}
+        .info-section .table { border: none !important; }
+        .info-section .table td { border: none !important; padding: 2px 0; font-size: 12px; }
+        .info-section td:first-child { width: 140px; font-weight: bold;}
+        table.report { width: 100%; border-collapse: collapse; page-break-inside: auto; font-size: 10px; }
         table.report tr { page-break-inside: avoid; page-break-after: auto; }
         table.report th, table.report td { border: 1px solid black; padding: 4px; word-wrap: break-word; }
         table.report th { background-color: #e9ecef; text-align: center; vertical-align: middle; }
         .category-row td { background-color: #f8f9fa; font-weight: bold; }
         .text-end { text-align: right; } .text-center { text-align: center; }
+        /* [BARU] CSS untuk Tanda Tangan */
+        .signature-section { margin-top: 50px; width: 100%; }
+        .signature-box { text-align: center; width: 33.33%; float: left; }
+        .signature-box .name { margin-top: 60px; font-weight: bold; text-decoration: underline; }
+        .clearfix { clear: both; }
+
         @media print { 
             .no-print { display: none; } 
             @page { 
-                size: <?= count($termins) > 4 ? 'A4 landscape' : 'A4 portrait' ?>; 
+                size: A4 portrait;
                 margin: 15mm; 
             } 
         }
     </style>
 </head>
 <body>
-    <div class="container">
+    <div class="container my-4">
         <button class="no-print" onclick="window.print()" style="margin-bottom:15px; padding: 8px 12px;">Cetak Laporan</button>
         <div class="kop-surat">
-             <h1>PT. HASTA BANGUN NUSANTARA</h1>
-             <p>Jalan Cokroaminoto 63414 Ponorogo Jawa Timur</p>
+            <img src="assets/img/logo/LOGO PT.jpg" alt="Logo Perusahaan" onerror="this.style.display='none'">
+            <div class="kop-text">
+                <h3>PT. HASTA BANGUN NUSANTARA</h3>
+                <p>Jalan Cakraninggrat, Kauman, Kabupaten Ponorogo, Jawa Timur 63414</p>
+                <p>Telp: (0352) 123-456 | Email: kontak@hastabangun.co.id</p>
+            </div>
         </div>
-        <h2>Laporan Detail Progres Proyek</h2>
-        <div class="info-header">
-            <table>
-                <tr><td>Nama Proyek</td><td>: <?= htmlspecialchars($proyek_info['nama_proyek']) ?></td><td>PJ Proyek</td><td>: <?= htmlspecialchars($proyek_info['pj_proyek']) ?></td></tr>
-                <tr><td>Mandor</td><td>: <?= htmlspecialchars($proyek_info['nama_mandor']) ?></td><td>Total Anggaran</td><td>: Rp <?= number_format($proyek_info['total_rab_upah'], 0, ',', '.') ?></td></tr>
-            </table>
+        <h5 class="report-title">LAPORAN DETAIL PROGRES PROYEK</h5>
+        
+        <div class="info-section mb-4">
+            <div class="row">
+                <div class="col-7">
+                    <table class="table table-sm">
+                        <tr><td>ID RAB</td><td>: <?= 'RABU' . date('ym', strtotime($proyek_info['tanggal_mulai'])) . $proyek_info['id_rab_upah'] ?></td></tr>
+                        <tr><td>Nama Perumahan</td><td>: <?= htmlspecialchars($proyek_info['nama_perumahan']) ?></td></tr>
+                        <tr><td>Kavling / Blok</td><td>: <?= htmlspecialchars($proyek_info['kavling']) ?></td></tr>
+                    </table>
+                </div>
+                <div class="col-5">
+                    <table class="table table-sm">
+                        <tr><td>Tanggal Mulai</td><td>: <?= date("d F Y", strtotime($proyek_info['tanggal_mulai'])) ?></td></tr>
+                        <tr><td>Tanggal Selesai</td><td>: <?= date("d F Y", strtotime($proyek_info['tanggal_selesai'])) ?></td></tr>
+                        <tr><td>Mandor</td><td>: <?= htmlspecialchars($proyek_info['nama_mandor']) ?></td></tr>
+                    </table>
+                </div>
+            </div>
         </div>
 
         <table class="report">
@@ -129,7 +184,7 @@ if ($result_detail) {
                 <tr>
                     <th rowspan="2" style="width: 3%;">No</th>
                     <th rowspan="2" style="width: 25%;">Uraian Pekerjaan</th>
-                    <th rowspan="2" class="text-end">Total RAB (Rp)</th>
+                    <th rowspan="2" class="text-end">Nilai Anggaran (Rp)</th>
                     <?php if(!empty($termins)): ?>
                     <th colspan="<?= count($termins) ?>">Progres per Termin (%)</th>
                     <?php endif; ?>
@@ -145,11 +200,7 @@ if ($result_detail) {
             </thead>
             <tbody>
                 <?php if (!empty($report_data)): 
-                    $grand_total_anggaran = 0;
-                    $grand_total_dibayar = 0;
-                    $prev_kategori = null;
-                    $no_kategori = 0;
-
+                    $grand_total_anggaran = 0; $grand_total_dibayar = 0; $prev_kategori = null; $no_kategori = 0;
                     foreach($report_data as $item):
                         if ($prev_kategori !== $item['kategori']) {
                             $no_kategori++;
@@ -157,7 +208,6 @@ if ($result_detail) {
                             $prev_kategori = $item['kategori'];
                             $no = 1;
                         }
-
                         $grand_total_anggaran += $item['anggaran'];
                         $grand_total_dibayar += $item['total_dibayar'];
                 ?>
@@ -187,6 +237,32 @@ if ($result_detail) {
                 <?php endif; ?>
             </tbody>
         </table>
+
+        <div class="clearfix"></div>
+
+        <!-- [DIUBAH] Tanda Tangan yang Lebih Rapi -->
+        <div class="signature-section">
+            <div style="width: 33.33%; float: right; text-align: center;">
+                <p>Ponorogo, <?= strftime('%d %B %Y') ?></p>
+            </div>
+            <div class="clearfix" style="margin-bottom: 20px;"></div>
+
+            <div class="signature-box" style="width: 33.33%; float: left;">
+                <p>Diajukan oleh,</p>
+                <div class="name"><?= htmlspecialchars($proyek_info['pj_proyek']) ?></div>
+                <p>PJ Proyek</p>
+            </div>
+            <div class="signature-box" style="width: 33.33%; float: left;">
+                <p>Mengetahui,</p>
+                <div class="name"><?= htmlspecialchars($proyek_info['nama_mandor']) ?></div>
+                <p>Mandor</p>
+            </div>
+            <div class="signature-box" style="width: 33.33%; float: left;">
+                <p>Disetujui oleh,</p>
+                <div class="name">Ir. <?= htmlspecialchars($nama_direktur) ?></div>
+                <p>Direktur Utama</p>
+            </div>
+        </div>
     </div>
     <script>
         window.onload = function() { window.print(); }

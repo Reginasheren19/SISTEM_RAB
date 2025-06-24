@@ -41,7 +41,14 @@ if (mysqli_num_rows($pengajuan_result) == 0) {
 }
 $pengajuan_info = mysqli_fetch_assoc($pengajuan_result);
 
+$id_rab_upah = $pengajuan_info['id_rab_upah'];
 
+// [BARU] Query untuk menghitung data keuangan proyek
+$sql_keuangan = "SELECT SUM(total_pengajuan) as total_cair FROM pengajuan_upah WHERE id_rab_upah = $id_rab_upah AND status_pengajuan = 'dibayar'";
+$keuangan_result = mysqli_query($koneksi, $sql_keuangan);
+$total_pencairan = mysqli_fetch_assoc($keuangan_result)['total_cair'] ?? 0;
+$total_kontrak = (float) $pengajuan_info['total_rab_upah'];
+$sisa_anggaran = $total_kontrak - $total_pencairan;
 // Query detail pengajuan upah
 // =================================== KESALAHAN DI SINI ===================================
 // Nama tabel yang benar adalah 'detail_pengajuan_upah', bukan 'detail_pengajuan'
@@ -826,6 +833,12 @@ function toRoman($num) {
                     <span class="badge bg-primary fs-6">Pengajuan Termin Ke-<?= htmlspecialchars($termin_ke) ?></span>
                 </div>
                 <div class="card-body">
+                                                      <div class="row mb-3">
+                                        <div class="col-sm-6 col-md-3 mb-3"><div class="card card-stats card-info card-round m-0"><div class="card-body"><div class="row"><div class="col-5"><div class="icon-big text-center"><i class="fas fa-file-contract"></i></div></div><div class="col-7 col-stats"><div class="numbers"><p class="card-category">Total Kontrak</p><h4 class="card-title" style="font-size: 1rem;">Rp <?= number_format($total_kontrak, 0, ',', '.') ?></h4></div></div></div></div></div></div>
+                                        <div class="col-sm-6 col-md-3 mb-3"><div class="card card-stats card-success card-round m-0"><div class="card-body"><div class="row"><div class="col-5"><div class="icon-big text-center"><i class="fas fa-hand-holding-usd"></i></div></div><div class="col-7 col-stats"><div class="numbers"><p class="card-category">Total Sudah Cair</p><h4 class="card-title" style="font-size: 1rem;">Rp <?= number_format($total_pencairan, 0, ',', '.') ?></h4></div></div></div></div></div></div>
+                                        <div class="col-sm-6 col-md-3 mb-3"><div class="card card-stats card-secondary card-round m-0"><div class="card-body"><div class="row"><div class="col-5"><div class="icon-big text-center"><i class="fas fa-wallet"></i></div></div><div class="col-7 col-stats"><div class="numbers"><p class="card-category">Sisa Anggaran</p><h4 class="card-title" style="font-size: 1rem;">Rp <?= number_format($sisa_anggaran, 0, ',', '.') ?></h4></div></div></div></div></div></div>
+                                        <div class="col-sm-6 col-md-3 mb-3"><div class="card card-stats card-warning card-round m-0"><div class="card-body"><div class="row"><div class="col-5"><div class="icon-big text-center"><i class="fas fa-file-invoice-dollar"></i></div></div><div class="col-7 col-stats"><div class="numbers"><p class="card-category">Nilai Pengajuan Ini</p><h4 class="card-title" style="font-size: 1rem;">Rp <?= number_format($pengajuan_info['total_pengajuan'], 0, ',', '.') ?></h4></div></div></div></div></div></div>
+                                    </div>
                     <div class="row">
                         <!-- Kolom Kiri -->
                         <div class="col-md-6">
@@ -861,8 +874,6 @@ function toRoman($num) {
                                 <dt class="col-sm-4">PJ Proyek</dt>
                                 <dd class="col-sm-8">: <?= htmlspecialchars($pengajuan_info['pj_proyek']) ?></dd>
                                 
-                                <dt class="col-sm-4">Total RAB Upah</dt>
-                                <dd class="col-sm-8">: <strong class="text-success">Rp <?= number_format($pengajuan_info['total_rab_upah'], 0, ',', '.') ?></strong></dd>
                             </dl>
                         </div>
                     </div>
@@ -871,7 +882,12 @@ function toRoman($num) {
 
             <!-- Tabel Detail Pekerjaan -->
             <div class="card shadow-sm">
-                <div class="card-header bg-light"><h4 class="card-title mb-0">Rincian Pekerjaan yang Diajukan</h4></div>
+<div class="card-header bg-light d-flex justify-content-between align-items-center">
+  <h4 class="card-title mb-0">Rincian Pekerjaan yang Diajukan</h4>
+  <a href="cetak_formulir_pengajuan.php?id=<?= $id_pengajuan_upah ?>" target="_blank" class="btn btn-outline-primary btn-sm">
+    <i class="fas fa-print me-1"></i> Cetak
+  </a>
+</div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
                         <table class="table table-bordered table-vcenter mb-0">

@@ -111,14 +111,14 @@ function toRoman($num) {
             <img src="assets/img/logo/LOGO PT.jpg" alt="Logo Perusahaan" onerror="this.style.display='none'">
             <div class="kop-text">
                 <h3>PT. HASTA BANGUN NUSANTARA</h3>
-                <p>Jalan Cokroaminoto 63414 Ponorogo Jawa Timur</p>
+                <p>Jalan Cakraninggrat, Kauman, Kabupaten Ponorogo, Jawa Timur 63414</p>
                 <p>Telp: (0352) 123-456 | Email: kontak@hastabangun.co.id</p>
             </div>
         </div>
         
         <h5 class="report-title">FORMULIR PENGAJUAN UPAH</h5>
 
-        <div class="info-section mb-4">
+        <div class="info-section mb-2">
             <div class="row">
                 <div class="col-7">
                     <table class="table table-sm">
@@ -187,7 +187,7 @@ function toRoman($num) {
 
         <div class="clearfix"></div>
 
-        <div class="row mt-5">
+        <div class="row mt-3">
             <div class="col-12 text-end">
                 <p>Ponorogo, <?= strftime('%d %B %Y') ?></p>
             </div>
