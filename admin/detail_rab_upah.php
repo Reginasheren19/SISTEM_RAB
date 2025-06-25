@@ -276,12 +276,12 @@ $detail_result = mysqli_query($koneksi, $sql_detail);
         <div class="row row-cols-1 row-cols-md-2 g-3">
 
             <!-- ID RAB -->
-            <div class="col">
-                <div class="d-flex">
-                    <span class="fw-semibold me-2" style="min-width: 120px;">ID RAB</span>
-                    <span>: <?= htmlspecialchars($data['id_rab_upah']) ?></span>
-                </div>
-            </div>
+<div class="col">
+    <div class="d-flex">
+        <span class="fw-semibold me-2" style="min-width: 120px;">ID RAB</span>
+        <span>: <?= 'RABP' . htmlspecialchars($data['id_rab_upah']) ?></span>
+    </div>
+</div>
 
 
                         <!-- Mandor -->
