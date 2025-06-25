@@ -144,12 +144,7 @@ if ($result_proyek_progres) { while($row = mysqli_fetch_assoc($result_proyek_pro
                   <p>Realisasi Anggaran</p>
                 </a>
               </li>
-                            <li class="nav-item">
-                <a href="lap_rekapitulasi_proyek.php">
-                  <i class="fas fa-file"></i>
-                  <p>Rekapitulasi Proyek</p>
-                </a>
-              </li>
+
               <li class="nav-section">
                 <span class="sidebar-mini-icon">
                   <i class="fa fa-ellipsis-h"></i>

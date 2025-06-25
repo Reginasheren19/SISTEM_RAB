@@ -169,12 +169,6 @@ $download_query_string = http_build_query([
                   <p>Realisasi Anggaran</p>
                 </a>
               </li>
-                            <li class="nav-item">
-                <a href="lap_rekapitulasi_proyek.php">
-                  <i class="fas fa-file"></i>
-                  <p>Rekapitulasi Proyek</p>
-                </a>
-              </li>
               <li class="nav-section">
                 <span class="sidebar-mini-icon">
                   <i class="fa fa-ellipsis-h"></i>
@@ -385,7 +379,7 @@ $download_query_string = http_build_query([
                                             <th>ID</th>
                                             <th>Proyek</th>
                                             <th>Mandor</th>
-                                            <th>Tanggal Pengajuan</th>
+                                            <th class="text-center">Tanggal Pengajuan</th>
                                             <th class="text-end">Total Pengajuan</th>
                                             <th class="text-center">Status</th>
                                             <th class="text-center">Aksi</th>
@@ -398,7 +392,7 @@ $download_query_string = http_build_query([
                                                 <td><?= htmlspecialchars($row['id_pengajuan_upah']) ?></td>
                                                 <td><?= htmlspecialchars($row['nama_proyek']) ?></td>
                                                 <td><?= htmlspecialchars($row['nama_mandor']) ?></td>
-                                                <td><?= date("d M Y", strtotime($row['tanggal_pengajuan'])) ?></td>
+                                                <td class="text-center"><?= date("d M Y", strtotime($row['tanggal_pengajuan'])) ?></td>
                                                 <td class="text-end">Rp <?= number_format($row['total_pengajuan'], 0, ',', '.') ?></td>
                                                 <td class="text-center"><?= getStatusBadge($row['status_pengajuan']) ?></td>
                                                 <td class="text-center">

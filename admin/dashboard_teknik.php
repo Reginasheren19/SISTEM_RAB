@@ -151,12 +151,6 @@ if ($q_rab_terbaru) { while($row = mysqli_fetch_assoc($q_rab_terbaru)) { $rab_te
                   <p>Realisasi Anggaran</p>
                 </a>
               </li>
-                            <li class="nav-item">
-                <a href="lap_rekapitulasi_proyek.php">
-                  <i class="fas fa-file"></i>
-                  <p>Rekapitulasi Proyek</p>
-                </a>
-              </li>
               <li class="nav-section">
                 <span class="sidebar-mini-icon">
                   <i class="fa fa-ellipsis-h"></i>

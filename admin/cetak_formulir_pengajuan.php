@@ -73,12 +73,13 @@ setlocale(LC_TIME, 'id_ID.utf8', 'id_ID');
     <title>Cetak Formulir Pengajuan #<?= $id_pengajuan_upah ?></title>
     <link rel="stylesheet" href="assets/css/bootstrap.min.css" />
     <style>
-        body { font-family: 'Times New Roman', Times, serif; background-color: #fff; color: #000; font-size: 11px;}
+        body { font-family: 'Tahoma', sans-serif; background-color: #fff; color: #000; font-size: 11px; }
         .container { max-width: 800px; margin: auto; }
         .kop-surat { display: flex; align-items: center; border-bottom: 3px double #000; padding-bottom: 15px; margin-bottom: 20px; }
-        .kop-surat img { width: 100px; height: auto; margin-right: 20px; }
+.kop-surat img { width: 100px; height: auto; margin-left: 40px; } /* Geser logo ke kanan */
         .kop-surat .kop-text { text-align: center; flex-grow: 1; }
         .kop-surat h3 { font-size: 22px; font-weight: bold; margin: 0; }
+                .kop-surat h2 { font-size: 18px; font-weight: bold; margin: 0; }
         .kop-surat p { font-size: 14px; margin: 0; }
         .report-title { text-align: center; margin-bottom: 20px; font-weight: bold; text-decoration: underline; font-size: 16px;}
         .info-section .table { border: none !important; margin-bottom: 0; }
@@ -93,6 +94,10 @@ setlocale(LC_TIME, 'id_ID.utf8', 'id_ID');
         .signature-box { text-align: center; width: 33.33%; float: left; }
         .signature-box .name { margin-top: 50px; font-weight: bold; text-decoration: underline; }
         .clearfix { clear: both; }
+        .tagline {
+    font-style: italic;
+}
+
 
         @media print { 
             .no-print { display: none; } 
@@ -108,14 +113,15 @@ setlocale(LC_TIME, 'id_ID.utf8', 'id_ID');
         <button class="no-print" onclick="window.print()" style="margin-bottom:15px; padding: 8px 12px;">Cetak Formulir</button>
         
         <!-- [DIUBAH] Menggunakan Format Kop Surat & Header dari get_pengajuan_upah.php -->
-        <div class="kop-surat">
-            <img src="assets/img/logo/LOGO PT.jpg" alt="Logo Perusahaan" onerror="this.style.display='none'">
-            <div class="kop-text">
-                <h3>PT. HASTA BANGUN NUSANTARA</h3>
-                <p>Jalan Cokroaminoto 63414 Ponorogo Jawa Timur</p>
+<div class="kop-surat">
+    <img src="assets/img/logo/LOGO PT.jpg" alt="Logo Perusahaan" onerror="this.style.display='none'">
+    <div class="kop-text">
+        <h3>PT. HASTA BANGUN NUSANTARA</h3>
+        <h2 class ="tagline">General Contractor & Developer</h2>
+                <p>Jalan Cakraninggrat, Kauman, Kabupaten Ponorogo, Jawa Timur 63414</p>
                 <p>Telp: (0352) 123-456 | Email: kontak@hastabangun.co.id</p>
-            </div>
-        </div>
+    </div>
+</div>
         <h5 class="report-title">PENGAJUAN OPNAME VOLUME PEKERJAAN</h5>
 
         <div class="info-section mb-4">
@@ -129,7 +135,7 @@ setlocale(LC_TIME, 'id_ID.utf8', 'id_ID');
                 </div>
                 <div class="col-5">
                     <table class="table table-sm">
-                        <tr><td>Tanggal</td><td>: <?= date("d F Y", strtotime($info['tanggal_pengajuan'])) ?></td></tr>
+                        <tr><td>Tanggal Pengajuan</td><td>: <?= date("d F Y", strtotime($info['tanggal_pengajuan'])) ?></td></tr>
                         <tr><td>Mandor</td><td>: <?= htmlspecialchars($info['nama_mandor']) ?></td></tr>
                         <tr><td>PJ Proyek</td><td>: <?= htmlspecialchars($info['pj_proyek']) ?></td></tr>
                     </table>
@@ -199,7 +205,7 @@ setlocale(LC_TIME, 'id_ID.utf8', 'id_ID');
         <div class="signature-section">
             <div class="signature-box"><p>Diajukan oleh,</p><div class="name"><?= htmlspecialchars($info['pj_proyek']) ?></div><p>PJ Proyek</p></div>
             <div class="signature-box"><p>Mengetahui,</p><div class="name"><?= htmlspecialchars($nama_komisaris) ?></div><p>Komisaris</p></div>
-            <div class="signature-box"><p>Disetujui oleh,</p><div class="name">Ir. <?= htmlspecialchars($nama_direktur) ?></div><p>Direktur</p></div>
+            <div class="signature-box"><p>Disetujui oleh,</p><div class="name"><?= htmlspecialchars($nama_direktur) ?></div><p>Direktur</p></div>
         </div>
     </div>
     <script> window.onload = function() { window.print(); } </script>

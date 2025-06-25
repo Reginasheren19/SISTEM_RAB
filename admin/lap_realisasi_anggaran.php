@@ -2,21 +2,14 @@
 session_start();
 include("../config/koneksi_mysql.php");
 
-// =========================================================================
-// Pastikan nama session ini sesuai dengan file login.php Anda
+// Pastikan user sudah login
 $logged_in_user_id = $_SESSION['id_user'] ?? 0;
-$user_role = strtolower($_SESSION['role'] ?? 'guest');
-
 if ($logged_in_user_id === 0) {
     header("Location: ../index.php?pesan=belum_login");
     exit();
 }
-// =========================================================================
 
-// Ambil nama file saat ini untuk menandai menu yang aktif
-$current_page = basename($_SERVER['PHP_SELF']);
-
-// Ambil semua parameter filter dari URL
+// Ambil parameter filter dari URL
 $proyek_filter = $_GET['proyek'] ?? 'semua';
 $mandor_filter = $_GET['mandor'] ?? 'semua';
 $tanggal_mulai = $_GET['tanggal_mulai'] ?? '';
@@ -41,7 +34,7 @@ $sql = "SELECT
         LEFT JOIN master_perumahan mpe ON mpr.id_perumahan = mpe.id_perumahan
         INNER JOIN rab_upah ru ON mpr.id_proyek = ru.id_proyek";
 
-
+$where_conditions = [];
 if ($proyek_filter !== 'semua') {
     $where_conditions[] = "mpr.id_proyek = " . (int)$proyek_filter;
 }
@@ -60,8 +53,9 @@ if (!$result_laporan) {
     die("Query Gagal: " . mysqli_error($koneksi));
 }
 
-// Bangun query string untuk link download
+// [PERBAIKAN] Bangun query string untuk link download, tambahkan 'laporan'
 $download_query_string = http_build_query([
+    'laporan' => 'realisasi_anggaran',
     'proyek' => $proyek_filter,
     'mandor' => $mandor_filter,
     'tanggal_mulai' => $tanggal_mulai,
@@ -150,12 +144,6 @@ $download_query_string = http_build_query([
                 <a href="lap_realisasi_anggaran.php">
                   <i class="fas fa-file"></i>
                   <p>Realisasi Anggaran</p>
-                </a>
-              </li>
-                            <li class="nav-item">
-                <a href="lap_rekapitulasi_proyek.php">
-                  <i class="fas fa-file"></i>
-                  <p>Rekapitulasi Proyek</p>
                 </a>
               </li>
               <li class="nav-section">
@@ -283,7 +271,6 @@ $download_query_string = http_build_query([
                         </ul>
                     </div>
                     
-                    <!-- [BARU] Filter Section -->
                     <div class="card">
                         <div class="card-header"><h4 class="card-title">Filter Laporan</h4></div>
                         <div class="card-body">
@@ -325,12 +312,11 @@ $download_query_string = http_build_query([
                         </div>
                     </div>
 
-                    <!-- Tabel Laporan -->
                     <div class="card">
                         <div class="card-header">
                             <div class="d-flex align-items-center">
                                 <h4 class="card-title">Perbandingan Anggaran vs Realisasi per Proyek</h4>
-                                <a href="cetak_laporan.php?<?= $download_query_string ?>" target="_blank" class="btn btn-success ms-auto">
+                                <a href="cetak_lap_upah.php?<?= $download_query_string ?>" target="_blank" class="btn btn-success btn-round ms-auto">
                                     <i class="fas fa-print"></i> Cetak Ringkasan
                                 </a>
                             </div>
@@ -345,7 +331,7 @@ $download_query_string = http_build_query([
                                             <th class="text-end">Total Terbayar</th>
                                             <th class="text-end">Sisa Anggaran</th>
                                             <th class="text-center" style="width: 20%;">Realisasi (%)</th>
-                                            <th class="text-center">Aksi</th> <!-- Kolom Baru -->
+                                            <th class="text-center">Aksi</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -356,7 +342,7 @@ $download_query_string = http_build_query([
                                                 $sisa_anggaran = $total_rab - $total_terbayar;
                                                 $realisasi_persen = ($total_rab > 0) ? ($total_terbayar / $total_rab) * 100 : 0;
                                                 $progress_color = 'bg-success';
-                                                if ($realisasi_persen > 75) $progress_color = 'bg-warning';
+                                                if ($realisasi_persen > 80) $progress_color = 'bg-warning';
                                                 if ($realisasi_persen >= 100) $progress_color = 'bg-danger';
                                             ?>
                                             <tr>
@@ -371,7 +357,6 @@ $download_query_string = http_build_query([
                                                         </div>
                                                     </div>
                                                 </td>
-                                                <!-- Tombol Aksi Baru -->
                                                 <td class="text-center">
                                                     <a href="cetak_detail_progres.php?proyek_id=<?= $row['id_proyek'] ?>" target="_blank" class="btn btn-success btn-sm" title="Cetak Detail Progres">
                                                         <i class="fas fa-print"></i>
@@ -380,7 +365,7 @@ $download_query_string = http_build_query([
                                             </tr>
                                             <?php endwhile; ?>
                                         <?php else: ?>
-                                            <tr><td colspan="6" class="text-center text-muted">Tidak ada data proyek untuk ditampilkan.</td></tr>
+                                            <tr><td colspan="6" class="text-center text-muted">Tidak ada data proyek untuk ditampilkan. Coba ubah filter Anda.</td></tr>
                                         <?php endif; ?>
                                     </tbody>
                                 </table>
@@ -390,16 +375,8 @@ $download_query_string = http_build_query([
                 </div>
             </div>
 
-            <footer class="footer">
-                <div class="container-fluid d-flex justify-content-between">
-                    <div class="copyright">
-                        2024, made with <i class="fa fa-heart heart text-danger"></i> by <a href="#">Your Company</a>
-                    </div>
-                </div>
-            </footer>
         </div>
     </div>
-    <!-- Core JS Files -->
     <script src="assets/js/core/jquery-3.7.1.min.js"></script>
     <script src="assets/js/core/popper.min.js"></script>
     <script src="assets/js/core/bootstrap.min.js"></script>
@@ -408,7 +385,9 @@ $download_query_string = http_build_query([
     <script src="assets/js/kaiadmin.min.js"></script>
     <script>
         $(document).ready(function() {
-            $('#report-table').DataTable();
+            $('#report-table').DataTable({
+                "pageLength": 10,
+            });
         });
     </script>
 </body>
