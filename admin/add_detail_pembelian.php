@@ -25,23 +25,20 @@ if (json_last_error() !== JSON_ERROR_NONE || !is_array($items) || empty($items))
     exit();
 }
 
-
 $koneksi->begin_transaction();
 
 $stmt_detail = null;
-$stmt_stok = null;
 $stmt_total = null;
+// Variabel $stmt_stok dihapus karena tidak kita perlukan lagi
 
 try {
     // Siapkan query untuk insert detail di luar loop agar lebih efisien
     $sql_detail = "INSERT INTO detail_pencatatan_pembelian (id_pembelian, id_material, quantity, harga_satuan_pp, sub_total_pp) VALUES (?, ?, ?, ?, ?)";
     $stmt_detail = $koneksi->prepare($sql_detail);
 
-    // Siapkan juga query untuk update stok di luar loop
-    $sql_stok = "UPDATE stok_material SET jumlah_stok_tersedia = jumlah_stok_tersedia + ? WHERE id_material = ?";
-    $stmt_stok = $koneksi->prepare($sql_stok);
+    // --- BAGIAN QUERY STOK DIHAPUS DARI SINI ---
 
-    if (!$stmt_detail || !$stmt_stok) {
+    if (!$stmt_detail) {
         throw new Exception("Gagal menyiapkan query: " . $koneksi->error);
     }
 
@@ -58,14 +55,11 @@ try {
             throw new Exception("Gagal menyimpan detail item: " . $stmt_detail->error);
         }
 
-        // Langkah 2 (BARU): Update (tambah) stok di tabel stok_material
-        $stmt_stok->bind_param("di", $item['quantity'], $item['id_material']);
-        if (!$stmt_stok->execute()) {
-            throw new Exception("Gagal mengupdate stok material: " . $stmt_stok->error);
-        }
+        // --- LANGKAH 2 UNTUK UPDATE STOK SUDAH DIHAPUS TOTAL DARI SINI ---
     }
 
-    // Langkah 3 (BONUS): Hitung ulang dan update total_biaya di tabel induk
+    // Langkah 3: Hitung ulang dan update total_biaya di tabel induk
+    // Di tabel detail_pencatatan_pembelian, saya lihat Anda menamainya sub_total_pp bukan subtotal
     $sql_update_total = "UPDATE pencatatan_pembelian SET total_biaya = (SELECT SUM(sub_total_pp) FROM detail_pencatatan_pembelian WHERE id_pembelian = ?) WHERE id_pembelian = ?";
     $stmt_total = $koneksi->prepare($sql_update_total);
     $stmt_total->bind_param("ii", $pembelian_id, $pembelian_id);
@@ -73,7 +67,9 @@ try {
     
     // Jika semua proses berhasil, simpan permanen
     $koneksi->commit();
-    $_SESSION['pesan_sukses'] = "Pembelian ID #{$pembelian_id} berhasil disimpan dan stok telah diperbarui.";
+
+    // --- PESAN SUKSES DIUBAH AGAR SESUAI ALUR KERJA BARU ---
+    $_SESSION['pesan_sukses'] = "Pembelian ID #{$pembelian_id} berhasil disimpan. Stok akan bertambah setelah dikonfirmasi oleh PJ Proyek.";
     header("Location: pencatatan_pembelian.php");
     exit();
 
@@ -87,7 +83,7 @@ try {
 } finally {
     // Pastikan semua statement ditutup
     if (isset($stmt_detail)) $stmt_detail->close();
-    if (isset($stmt_stok)) $stmt_stok->close();
+    // $stmt_stok dihapus dari sini
     if (isset($stmt_total)) $stmt_total->close();
     if (isset($koneksi)) $koneksi->close();
 }

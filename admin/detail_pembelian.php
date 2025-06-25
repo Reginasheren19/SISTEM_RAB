@@ -11,7 +11,7 @@ if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
 }
 $pembelian_id = (int)$_GET['id'];
 
-// 2. AMBIL DATA INDUK: Mengambil informasi utama dari transaksi pembelian
+// 2. AMBIL DATA INDUK: Query ini sudah benar karena SELECT * akan mengambil kolom status
 $stmt_master = $koneksi->prepare("SELECT * FROM pencatatan_pembelian WHERE id_pembelian = ?");
 $stmt_master->bind_param("i", $pembelian_id);
 $stmt_master->execute();
@@ -26,12 +26,15 @@ if (!$pembelian) {
 }
 
 // 3. AMBIL DATA DETAIL: Mengambil semua material yang terkait dengan ID pembelian ini
-// Kita menggunakan JOIN untuk mendapatkan nama material dan nama satuan secara langsung
+// --- DIUBAH: Menambahkan kolom-kolom baru untuk hasil konfirmasi ---
 $sql_detail = "
     SELECT 
         dp.quantity, 
         dp.harga_satuan_pp, 
         dp.sub_total_pp,
+        dp.jumlah_diterima_baik,
+        dp.jumlah_rusak,
+        dp.catatan_penerimaan,
         m.nama_material,
         s.nama_satuan
     FROM 
@@ -787,111 +790,128 @@ $result_detail = $stmt_detail->get_result();
                 <li class="nav-item"><a href="">Pencatatan Pembelian Material</a></li>
             </ul>
         </div>
-        <div class="card">
+<div class="card">
     <div class="card-header">
         <h4 class="card-title">Informasi Transaksi</h4>
     </div>
     <div class="card-body">
         <div class="row">
             <div class="col-md-6">
-                <div class="row mb-2">
-                    <div class="col-4 fw-bold">ID Pembelian</div>
-                    <div class="col-8">
-                        <?php
-                            $tahun_pembelian = date('Y', strtotime($pembelian['tanggal_pembelian']));
-                            $formatted_id = 'PB' . $pembelian['id_pembelian'] . $tahun_pembelian;
-                            echo ": " . htmlspecialchars($formatted_id);
-                        ?>
-                    </div>
-                </div>
-                <div class="row mb-2">
-                    <div class="col-4 fw-bold">Tanggal</div>
-                    <div class="col-8">: <?= date("d F Y", strtotime(htmlspecialchars($pembelian['tanggal_pembelian'] ?? ''))) ?></div>
-                </div>
-                <div class="row mb-2">
-                    <div class="col-4 fw-bold">Keterangan</div>
-                    <div class="col-8">: <?= htmlspecialchars($pembelian['keterangan_pembelian'] ?? '') ?></div>
-                </div>
+                <p><strong>ID Pembelian:</strong> <?= 'PB' . htmlspecialchars($pembelian['id_pembelian']) . date('Y', strtotime($pembelian['tanggal_pembelian'])) ?></p>
+                <p><strong>Tanggal:</strong> <?= date("d F Y", strtotime(htmlspecialchars($pembelian['tanggal_pembelian']))) ?></p>
+                <p><strong>Keterangan:</strong> <?= htmlspecialchars($pembelian['keterangan_pembelian']) ?></p>
             </div>
             <div class="col-md-6">
-                <div class="row mb-2">
-                    <div class="col-4 fw-bold">Bukti Pembayaran</div>
-                    <div class="col-8">
-                        <?php if (!empty($pembelian['bukti_pembayaran'])): ?>
-                            <?php $image_path = '../uploads/bukti_pembayaran/' . htmlspecialchars($pembelian['bukti_pembayaran']); ?>
-                            : <a href="<?= $image_path ?>" target="_blank">
-                                <img src="<?= $image_path ?>" alt="Bukti Pembayaran" style="max-width: 150px; height: auto; border-radius: 5px; vertical-align: top;">
-                              </a>
-                        <?php else: ?>
-                            : <span class="text-muted fst-italic">Tidak diunggah.</span>
-                        <?php endif; ?>
-                    </div>
-                </div>
+                <p><strong>Status:</strong> 
+                    <?php
+                        $status = $pembelian['status_pembelian'];
+                        $badge_class = 'bg-secondary';
+                        if ($status == 'Dipesan') $badge_class = 'bg-warning';
+                        elseif ($status == 'Selesai') $badge_class = 'bg-success';
+                        elseif (str_contains($status, 'Masalah') || str_contains($status, 'Catatan')) $badge_class = 'bg-danger';
+                    ?>
+                    <span class="badge <?= $badge_class ?>"><?= htmlspecialchars($status) ?></span>
+                </p>
+                <p><strong>Bukti Pembayaran:</strong> 
+                    <?php if (!empty($pembelian['bukti_pembayaran'])): ?>
+                        <a href="../uploads/bukti_pembayaran/<?= htmlspecialchars($pembelian['bukti_pembayaran']) ?>" target="_blank">Lihat Bukti</a>
+                    <?php else: ?>
+                        <span class="text-muted"><em>Tidak ada</em></span>
+                    <?php endif; ?>
+                </p>
             </div>
         </div>
     </div>
-</div>            
+</div>
 
-
-       <div class="card">
-    <div class="card-header">
-        <h4 class="card-title">Rincian Material Dibeli</h4>
-    </div>
+<div class="card">
+    <div class="card-header"><h4 class="card-title">Rincian Material Dipesan</h4></div>
     <div class="card-body">
         <div class="table-responsive">
-            <table class="table table-striped table-hover">
+            <table class="table table-striped">
                 <thead>
                     <tr>
                         <th>No.</th>
                         <th>Nama Material</th>
-                        <th>Satuan</th>
-                        <th class="text-end">Jumlah</th>
+                        <th class="text-end">Jumlah Dipesan</th>
                         <th class="text-end">Harga Satuan</th>
                         <th class="text-end">Sub Total</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php
-                    // 1. Siapkan variabel untuk nomor urut dan grand total
                     $nomor = 1;
-                    $grand_total = 0;
-
-                    // 2. Cek apakah ada data detail yang ditemukan
                     if ($result_detail->num_rows > 0):
-                        // 3. Jika ada, lakukan perulangan untuk setiap baris data
+                        mysqli_data_seek($result_detail, 0); 
                         while ($item = $result_detail->fetch_assoc()):
-                            // 4. Tambahkan sub total ke grand total
-                            $grand_total += $item['sub_total_pp'];
                     ?>
-                            <tr>
-                                <td><?= $nomor++ ?></td>
-                                <td><?= htmlspecialchars($item['nama_material']) ?></td>
-                                <td><?= htmlspecialchars($item['nama_satuan']) ?></td>
-                                <td class="text-end"><?= number_format($item['quantity'], 0, ',', '.') ?></td>
-                                <td class="text-end"><?= 'Rp ' . number_format($item['harga_satuan_pp'], 0, ',', '.') ?></td>
-                                <td class="text-end"><?= 'Rp ' . number_format($item['sub_total_pp'], 0, ',', '.') ?></td>
-                            </tr>
+                        <tr>
+                            <td><?= $nomor++ ?></td>
+                            <td><?= htmlspecialchars($item['nama_material']) ?></td>
+                            <td class="text-end"><?= number_format($item['quantity'], 2, ',', '.') ?> <?= htmlspecialchars($item['nama_satuan']) ?></td>
+                            <td class="text-end">Rp <?= number_format($item['harga_satuan_pp'], 0, ',', '.') ?></td>
+                            <td class="text-end">Rp <?= number_format($item['sub_total_pp'], 0, ',', '.') ?></td>
+                        </tr>
                     <?php 
                         endwhile;
                     else:
                     ?>
-                        <tr>
-                            <td colspan="6" class="text-center">Belum ada detail material untuk pembelian ini.</td>
-                        </tr>
+                        <tr><td colspan="5" class="text-center">Belum ada detail material.</td></tr>
                     <?php endif; ?>
                 </tbody>
                 <tfoot>
                     <tr>
-                        <th colspan="5" class="text-end fw-bold">Grand Total Pembelian</th>
-                        <th class="text-end fw-bold"><?= 'Rp ' . number_format($grand_total, 0, ',', '.') ?></th>
+                        <th colspan="4" class="text-end fw-bold">Grand Total Pembelian</th>
+                        <th class="text-end fw-bold">Rp <?= number_format($pembelian['total_biaya'], 0, ',', '.') ?></th>
                     </tr>
                 </tfoot>
             </table>
         </div>
-        <div class="text-end mt-3">
-            <a href="pencatatan_pembelian.php" class="btn btn-secondary">Kembali</a>
+    </div>
+</div>
+
+<?php if ($pembelian['status_pembelian'] != 'Dipesan'): ?>
+<div class="card">
+    <div class="card-header"><h4 class="card-title">Laporan Hasil Penerimaan oleh PJ Proyek</h4></div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>No.</th>
+                        <th>Nama Material</th>
+                        <th class="text-end">Diterima Baik</th>
+                        <th class="text-end">Rusak/Ditolak</th>
+                        <th>Catatan dari PJ</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php
+                    $nomor = 1;
+                    if ($result_detail->num_rows > 0):
+                        mysqli_data_seek($result_detail, 0);
+                        while ($item = $result_detail->fetch_assoc()):
+                    ?>
+                        <tr>
+                            <td><?= $nomor++ ?></td>
+                            <td><?= htmlspecialchars($item['nama_material']) ?></td>
+                            <td class="text-end"><?= number_format($item['jumlah_diterima_baik'], 2, ',', '.') ?> <?= htmlspecialchars($item['nama_satuan']) ?></td>
+                            <td class="text-end text-danger"><?= number_format($item['jumlah_rusak'], 2, ',', '.') ?> <?= htmlspecialchars($item['nama_satuan']) ?></td>
+                            <td><?= htmlspecialchars($item['catatan_penerimaan']) ?></td>
+                        </tr>
+                    <?php
+                        endwhile;
+                    endif;
+                    ?>
+                </tbody>
+            </table>
         </div>
     </div>
+</div>
+<?php endif; ?>
+
+<div class="text-end mt-3 mb-3">
+    <a href="pencatatan_pembelian.php" class="btn btn-secondary">Kembali ke Daftar</a>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
