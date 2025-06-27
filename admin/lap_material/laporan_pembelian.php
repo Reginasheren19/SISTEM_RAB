@@ -6,50 +6,32 @@ include("../../config/koneksi_mysql.php");
 // =============================================================================
 // BAGIAN 1: LOGIKA FILTER DENGAN POLA PRG (POST/REDIRECT/GET)
 // =============================================================================
-
-// Jika pengguna menekan tombol "Tampilkan"
 if (isset($_POST['filter'])) {
-    // Simpan semua nilai filter ke dalam session
     $_SESSION['lp_tanggal_mulai'] = $_POST['tanggal_mulai'];
     $_SESSION['lp_tanggal_selesai'] = $_POST['tanggal_selesai'];
     $_SESSION['lp_id_material'] = $_POST['id_material'];
-
-    // Redirect ke halaman ini sendiri untuk membersihkan state POST
     header("Location: " . $_SERVER['PHP_SELF']);
     exit();
 }
-
-// Jika pengguna menekan tombol "Reset"
 if (isset($_POST['reset'])) {
-    // Hapus semua session filter yang berhubungan dengan laporan ini
-    unset($_SESSION['lp_tanggal_mulai']);
-    unset($_SESSION['lp_tanggal_selesai']);
-    unset($_SESSION['lp_id_material']);
-    
+    unset($_SESSION['lp_tanggal_mulai'], $_SESSION['lp_tanggal_selesai'], $_SESSION['lp_id_material']);
     header("Location: " . $_SERVER['PHP_SELF']);
     exit();
 }
-
-// Ambil nilai filter dari session, atau gunakan nilai default jika session tidak ada
 $tanggal_mulai = $_SESSION['lp_tanggal_mulai'] ?? date('Y-m-01');
 $tanggal_selesai = $_SESSION['lp_tanggal_selesai'] ?? date('Y-m-t');
-$id_material_filter = $_SESSION['lp_id_material'] ?? ''; // '' berarti "Semua Material"
+$id_material_filter = $_SESSION['lp_id_material'] ?? '';
 
 // =============================================================================
 // BAGIAN 2: LOGIKA UNTUK MEMBUAT SUB-JUDUL DINAMIS
 // =============================================================================
-
-// 1. Buat array kosong sebagai "wadah"
+// ... (Tidak ada perubahan di bagian ini) ...
 $sub_judul_parts = [];
-
-// 2. Isi "wadah" dengan informasi tanggal
 if ($tanggal_mulai == $tanggal_selesai) {
     $sub_judul_parts[] = "Untuk tanggal: " . date('d F Y', strtotime($tanggal_mulai));
 } else {
     $sub_judul_parts[] = "Periode: " . date('d M Y', strtotime($tanggal_mulai)) . " s/d " . date('d M Y', strtotime($tanggal_selesai));
 }
-
-// 3. Jika ada filter material, ambil namanya dan tambahkan ke "wadah"
 if (!empty($id_material_filter)) {
     $nama_material_sql = "SELECT nama_material FROM master_material WHERE id_material = ?";
     $stmt_nama = mysqli_prepare($koneksi, $nama_material_sql);
@@ -61,50 +43,42 @@ if (!empty($id_material_filter)) {
     }
     mysqli_stmt_close($stmt_nama);
 }
-
-// 4. Setelah semua "bahan" terkumpul, gabungkan menjadi satu kalimat
 $sub_judul = implode(" | ", $sub_judul_parts);
 
 
 // =============================================================================
 // BAGIAN 3: QUERY PENGAMBILAN DATA
 // =============================================================================
-
-// Query untuk mengisi dropdown filter material
 $material_sql = "SELECT id_material, nama_material FROM master_material ORDER BY nama_material ASC";
 $material_result = mysqli_query($koneksi, $material_sql);
 
-// Query utama yang dinamis untuk mengambil data laporan
 $sql_parts = [
-    "select"    => "SELECT DISTINCT p.id_pembelian, p.tanggal_pembelian, p.keterangan_pembelian, p.total_biaya",
-    "from"      => "FROM pencatatan_pembelian p",
-    "join"      => "",
-    "where"     => "WHERE p.tanggal_pembelian BETWEEN ? AND ?",
-    "order"     => "ORDER BY p.tanggal_pembelian DESC"
+    "select"  => "SELECT p.tanggal_pembelian, p.id_pembelian, p.keterangan_pembelian, m.nama_material, s.nama_satuan, dp.quantity, dp.harga_satuan_pp, dp.sub_total_pp",
+    "from"    => "FROM detail_pencatatan_pembelian dp",
+    "join"    => "JOIN pencatatan_pembelian p ON dp.id_pembelian = p.id_pembelian
+                  JOIN master_material m ON dp.id_material = m.id_material
+                  LEFT JOIN master_satuan s ON m.id_satuan = s.id_satuan",
+    // --- [DITAMBAHKAN] Filter item pengganti dengan harga 0 ---
+    "where"   => "WHERE p.tanggal_pembelian BETWEEN ? AND ? AND dp.harga_satuan_pp > 0",
+    "order"   => "ORDER BY p.tanggal_pembelian, p.id_pembelian, m.nama_material"
 ];
 $params = [$tanggal_mulai, $tanggal_selesai];
 $param_types = "ss";
 
-// Tambahkan join dan kondisi jika material difilter
 if (!empty($id_material_filter)) {
-    $sql_parts['join'] = "JOIN detail_pencatatan_pembelian dp ON p.id_pembelian = dp.id_pembelian";
     $sql_parts['where'] .= " AND dp.id_material = ?";
     $params[] = $id_material_filter;
     $param_types .= "i";
 }
 
-// Gabungkan semua bagian query menjadi satu
 $sql = implode(" ", $sql_parts);
-
 $stmt = mysqli_prepare($koneksi, $sql);
 if ($stmt === false) { die("Query Gagal Disiapkan. Error: " . mysqli_error($koneksi)); }
-
-// Bind parameter secara dinamis
 mysqli_stmt_bind_param($stmt, $param_types, ...$params);
 mysqli_stmt_execute($stmt);
 $result = mysqli_stmt_get_result($stmt);
-
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -361,7 +335,7 @@ $result = mysqli_stmt_get_result($stmt);
                 </ul>
             </div>
 
-                    <div class="card">
+<div class="card">
                         <div class="card-header">
                             <h4 class="card-title">Filter Laporan</h4>
                         </div>
@@ -386,7 +360,6 @@ $result = mysqli_stmt_get_result($stmt);
                                             <select name="id_material" class="form-select">
                                                 <option value="">Semua Material</option>
                                                 <?php 
-                                                // Pastikan pointer direset jika variabel result dipakai lagi
                                                 mysqli_data_seek($material_result, 0); 
                                                 while($material = mysqli_fetch_assoc($material_result)): 
                                                 ?>
@@ -398,7 +371,6 @@ $result = mysqli_stmt_get_result($stmt);
                                         </div>
                                     </div>
                                 </div>
-
                                 <hr class="mt-3">
                                 <div class="row">
                                     <div class="col-12 text-end">
@@ -406,32 +378,37 @@ $result = mysqli_stmt_get_result($stmt);
                                         <button type="submit" name="filter" class="btn btn-primary">
                                             <i class="fas fa-search"></i> Tampilkan Laporan
                                         </button>
-                                        <a href="cetak_lap_pembelian.php?start=<?= $tanggal_mulai ?>&end=<?= $tanggal_selesai ?>&material=<?= $id_material_filter ?>" target="_blank" class="btn btn-success">
-                                            <i class="fas fa-print"></i> Unduh (PDF)
+                                        <a href="cetak_lap_pembelian.php?start=<?= htmlspecialchars($tanggal_mulai) ?>&end=<?= htmlspecialchars($tanggal_selesai) ?>&material=<?= htmlspecialchars($id_material_filter) ?>" target="_blank" class="btn btn-success">
+                                            <i class="fas fa-print"></i> Cetak Laporan
                                         </a>
                                     </div>
                                 </div>
                             </form>
                         </div>
                     </div>
+
                     <div class="card">
-                    <div class="card-header">
-                        <div class="d-flex align-items-center">
-                            <div>
-                                <h4 class="card-title mb-1">Laporan Pencatatan Pembelian</h4>
-                                <p class="text-muted small mb-0"><?= $sub_judul ?></p>
+                        <div class="card-header">
+                            <div class="d-flex align-items-center">
+                                <div>
+                                    <h4 class="card-title mb-1">Laporan Rincian Pembelian</h4>
+                                    <p class="text-muted small mb-0"><?= $sub_judul ?></p>
+                                </div>
                             </div>
                         </div>
-                    </div>
                         <div class="card-body">
                             <div class="table-responsive">
                                 <table class="table table-striped table-hover">
                                     <thead>
                                         <tr>
                                             <th>No.</th>
-                                            <th>ID Pembelian</th>
                                             <th>Tanggal</th>
-                                            <th>Keterangan</th> <th class="text-end">Total Biaya</th>
+                                            <th>ID Pembelian</th>
+                                            <th>Keterangan</th>
+                                            <th>Nama Material</th>
+                                            <th class="text-end">Kuantitas</th>
+                                            <th class="text-end">Harga Satuan</th>
+                                            <th class="text-end">Sub Total</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -440,32 +417,33 @@ $result = mysqli_stmt_get_result($stmt);
                                         $grand_total = 0;
                                         if ($result && mysqli_num_rows($result) > 0):
                                             while ($row = mysqli_fetch_assoc($result)):
-                                            $grand_total += $row['total_biaya'];
-
-                                            // TAMBAHKAN 2 BARIS INI UNTUK FORMAT ID
-                                            $tahun_pembelian = date('Y', strtotime($row['tanggal_pembelian']));
-                                            $formatted_id = 'PB' . $row['id_pembelian'] . $tahun_pembelian;
+                                                $grand_total += $row['sub_total_pp'];
+                                                $tahun_pembelian = date('Y', strtotime($row['tanggal_pembelian']));
+                                                $formatted_id = 'PB' . $row['id_pembelian'] . $tahun_pembelian;
                                         ?>
-                                            <tr>
-                                                <td><?= $nomor++ ?></td>
-                                                <td><?= htmlspecialchars($formatted_id) ?></td>
-                                                <td><?= date("d F Y", strtotime($row['tanggal_pembelian'])) ?></td>
-                                                <td><?= htmlspecialchars($row['keterangan_pembelian']) ?></td> 
-                                                <td class="text-end">Rp <?= number_format($row['total_biaya'] ?? 0, 0, ',', '.') ?></td>
-                                            </tr>
+                                        <tr>
+                                            <td><?= $nomor++ ?></td>
+                                            <td><?= date("d M Y", strtotime($row['tanggal_pembelian'])) ?></td>
+                                            <td><?= htmlspecialchars($formatted_id) ?></td>
+                                            <td><?= htmlspecialchars($row['keterangan_pembelian']) ?></td> 
+                                            <td><?= htmlspecialchars($row['nama_material']) ?></td>
+                                            <td class="text-end"><?= number_format($row['quantity'], 2, ',', '.') ?> <?= htmlspecialchars($row['nama_satuan']) ?></td>
+                                            <td class="text-end">Rp <?= number_format($row['harga_satuan_pp'] ?? 0, 0, ',', '.') ?></td>
+                                            <td class="text-end">Rp <?= number_format($row['sub_total_pp'] ?? 0, 0, ',', '.') ?></td>
+                                        </tr>
                                         <?php 
-                                        endwhile; 
+                                            endwhile; 
                                         else:
                                         ?>
-                                            <tr>
-                                                <td colspan="5" class="text-center">Tidak ada data pembelian pada periode ini.</td>
-                                            </tr>
+                                        <tr>
+                                            <td colspan="8" class="text-center">Tidak ada data pembelian pada periode atau filter yang dipilih.</td>
+                                        </tr>
                                         <?php endif; ?>
                                     </tbody>
                                     <tfoot>
                                         <tr>
-                                            <th colspan="4" class="text-end">Grand Total</th>
-                                            <th class="text-end">Rp <?= number_format($grand_total, 0, ',', '.') ?></th>
+                                            <th colspan="7" class="text-end fw-bold">Grand Total</th>
+                                            <th class="text-end fw-bold">Rp <?= number_format($grand_total, 0, ',', '.') ?></th>
                                         </tr>
                                     </tfoot>
                                 </table>
@@ -474,13 +452,12 @@ $result = mysqli_stmt_get_result($stmt);
                     </div>
                 </div>
             </div>
-        </div>
-    </div>    
+            </div>
+    </div>     
     <script src="../assets/js/core/jquery-3.7.1.min.js"></script>
     <script src="../assets/js/core/popper.min.js"></script>
     <script src="../assets/js/core/bootstrap.min.js"></script>
     <script src="../assets/js/plugin/datatables/datatables.min.js"></script>
     <script src="../assets/js/plugin/datatables/dataTables.bootstrap5.min.js"></script>
-
-    </body>
+</body>
 </html>

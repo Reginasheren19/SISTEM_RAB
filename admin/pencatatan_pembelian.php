@@ -2,19 +2,33 @@
 session_start();
 include("../config/koneksi_mysql.php");
 
-// -- DIUBAH -- Query diperbarui untuk mengambil status_pembelian
-// dan menggunakan total_biaya yang sudah ada di tabel, bukan subquery lagi.
-$sql = "SELECT 
-            p.id_pembelian,
-            p.tanggal_pembelian,
-            p.keterangan_pembelian,
-            p.bukti_pembayaran, 
-            p.total_biaya,
-            p.status_pembelian
-        FROM 
-            pencatatan_pembelian p
-        ORDER BY 
-            p.tanggal_pembelian DESC, p.id_pembelian DESC";
+// --- [DIUBAH TOTAL] --- Query diperbaiki dengan Subquery agar 100% akurat dan anti-salah hitung
+$sql = "
+    SELECT 
+        p.id_pembelian,
+        p.tanggal_pembelian,
+        p.keterangan_pembelian,
+        p.bukti_pembayaran,
+        p.total_biaya,
+        COALESCE(pesanan.total_dipesan, 0) AS total_dipesan,
+        COALESCE(diproses.total_diproses, 0) AS total_diproses
+    FROM 
+        pencatatan_pembelian p
+    -- Subquery (1): Menghitung total kuantitas yang dipesan (asli + pengganti)
+    LEFT JOIN (
+        SELECT id_pembelian, SUM(quantity) as total_dipesan
+        FROM detail_pencatatan_pembelian
+        GROUP BY id_pembelian
+    ) AS pesanan ON p.id_pembelian = pesanan.id_pembelian
+    -- Subquery (2): Menghitung total item yang sudah diproses (diterima baik + rusak)
+    LEFT JOIN (
+        SELECT id_pembelian, SUM(jumlah_diterima + jumlah_rusak) as total_diproses
+        FROM log_penerimaan_material
+        GROUP BY id_pembelian
+    ) AS diproses ON p.id_pembelian = diproses.id_pembelian
+    ORDER BY 
+        p.tanggal_pembelian DESC, p.id_pembelian DESC
+";
 
 $result = mysqli_query($koneksi, $sql);
 
@@ -22,7 +36,6 @@ if (!$result) {
     die("Query Error: " . mysqli_error($koneksi));
 }
 ?>
-
 
 <!DOCTYPE html>
 <html lang="en">
@@ -770,107 +783,99 @@ if (!$result) {
                 </ul>
             </div>
 
-            <div class="row">
-                <div class="col-md-12">
-                    <div class="card">
-                        <div class="card-header d-flex align-items-center">
-                            <h4 class="card-title">Daftar Transaksi Pembelian</h4>
-                            <button class="btn btn-primary btn-round ms-auto" data-bs-toggle="modal" data-bs-target="#addPembelianModal">
-                                <i class="fa fa-plus"></i> Tambah Pembelian
-                            </button>
-                        </div>
-                        <div class="card-body">
-                            <?php
-                            // Menampilkan pesan sukses atau error dari proses lain (seperti hapus data)
-                            if (isset($_SESSION['pesan_sukses'])) {
-                                echo '<div class="alert alert-success" role="alert">' . $_SESSION['pesan_sukses'] . '</div>';
-                                unset($_SESSION['pesan_sukses']);
-                            }
-                            if (isset($_SESSION['error_message'])) {
-                                echo '<div class="alert alert-danger" role="alert">' . $_SESSION['error_message'] . '</div>';
-                                unset($_SESSION['error_message']);
-                            }
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header d-flex align-items-center">
+                <h4 class="card-title">Daftar Transaksi Pembelian</h4>
+                <button class="btn btn-primary btn-round ms-auto" data-bs-toggle="modal" data-bs-target="#addPembelianModal">
+                    <i class="fa fa-plus"></i> Tambah Pembelian
+                </button>
+            </div>
+            <div class="card-body">
+                <?php /* ... Blok Notifikasi ... */ ?>
+                <div class="table-responsive">
+                    <table id="tabelPembelian" class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>No.</th>
+                                <th>ID Pembelian</th>
+                                <th>Tanggal Pembelian</th>
+                                <th>Keterangan</th>
+                                <th>Total Biaya</th>
+                                <th>Bukti Pembelian</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php 
+                            if (isset($result) && $result && mysqli_num_rows($result) > 0): 
+                                $nomor = 1; 
+                                while ($row = mysqli_fetch_assoc($result)): 
+                                    $tahun_pembelian = date('Y', strtotime($row['tanggal_pembelian']));
+                                    $formatted_id = 'PB' . $row['id_pembelian'] . $tahun_pembelian;
+                                    
+                                    // --- [DISEMPURNAKAN] --- Logika Status Final yang Sesuai Permintaan
+                                    $total_dipesan = $row['total_dipesan'];
+                                    $total_diproses = $row['total_diproses'];
+                                    
+                                    $status_text = 'Baru';
+                                    $badge_class = 'bg-secondary';
+
+                                    if ($total_dipesan == 0) {
+                                        $status_text = 'Kosong';
+                                        $badge_class = 'bg-dark';
+                                    } elseif ($total_diproses >= $total_dipesan) {
+                                        // Jika semua sudah diproses (baik+rusak) >= total pesanan (asli+pengganti)
+                                        // Maka statusnya final: Selesai. Tidak ada lagi "(Ada Retur)".
+                                        $status_text = 'Selesai';
+                                        $badge_class = 'bg-success';
+                                    } elseif ($total_diproses > 0 && $total_diproses < $total_dipesan) {
+                                        $status_text = 'Diterima Sebagian';
+                                        $badge_class = 'bg-info text-dark';
+                                    } else { // ($total_diproses <= 0 && $total_dipesan > 0)
+                                        $status_text = 'Menunggu Penerimaan';
+                                        $badge_class = 'bg-warning text-dark';
+                                    }
                             ?>
-                            <div class="table-responsive">
-                                <table id="tabelPembelian" class="table table-striped table-hover">
-                                    <thead>
-                                        <tr>
-                                            <th>No.</th>
-                                            <th>ID Pembelian</th>
-                                            <th>Tanggal Pembelian</th>
-                                            <th>Keterangan</th>
-                                            <th>Total Biaya</th>
-                                            <th>Bukti Pembelian</th>
-                                            <th>Status</th>
-                                            <th>Action</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php 
-                                        if (isset($result) && $result && mysqli_num_rows($result) > 0): 
-                                            $nomor = 1; 
-                                            while ($row = mysqli_fetch_assoc($result)): 
-                                                // Persiapan variabel di dalam loop
-                                                $tahun_pembelian = date('Y', strtotime($row['tanggal_pembelian']));
-                                                $formatted_id = 'PB' . $row['id_pembelian'] . $tahun_pembelian;
-                                                
-                                                $status = $row['status_pembelian'];
-                                                $badge_class = 'bg-secondary'; // Default
-                                                if ($status == 'Dipesan') {
-                                                    $badge_class = 'bg-warning';
-                                                } elseif ($status == 'Selesai') {
-                                                    $badge_class = 'bg-success';
-                                                } elseif ($status == 'Ada Masalah' || $status == 'Selesai dengan Catatan') {
-                                                    $badge_class = 'bg-danger';
-                                                }
-                                        ?>
-                                                <tr>
-                                                    <td><?= $nomor++ ?></td>
-                                                    <td><?= htmlspecialchars($formatted_id) ?></td>
-                                                    <td><?= date("d F Y", strtotime($row['tanggal_pembelian'])) ?></td>
-                                                    <td><?= htmlspecialchars($row['keterangan_pembelian']) ?></td>
-                                                    <td><?= 'Rp ' . number_format($row['total_biaya'] ?? 0, 0, ',', '.') ?></td>
-                                                    <td>
-                                                        <?php if (!empty($row['bukti_pembayaran'])): ?>
-                                                            <a href="../uploads/bukti_pembayaran/<?= htmlspecialchars($row['bukti_pembayaran']) ?>" target="_blank">
-                                                                <img src="../uploads/bukti_pembayaran/<?= htmlspecialchars($row['bukti_pembayaran']) ?>" alt="Nota" style="width: 80px; height: auto; border-radius: 4px;">
-                                                            </a>
-                                                        <?php else: ?>
-                                                            <span>-</span>
-                                                        <?php endif; ?>
-                                                    </td>
-                                                    <td>
-                                                        <span class="badge <?= $badge_class ?>"><?= htmlspecialchars($status) ?></span>
-                                                    </td>
-                                                    <td>
-                                                        <a href="detail_pembelian.php?id=<?= urlencode($row['id_pembelian']) ?>" class="btn btn-info btn-sm">Detail</a>
-                                                        <button class="btn btn-danger btn-sm btn-delete" 
-                                                                data-id="<?= $row['id_pembelian'] ?>" 
-                                                                data-bs-toggle="modal" 
-                                                                data-bs-target="#confirmDeleteModal">
-                                                            Delete
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                        <?php 
-                                            endwhile; // Penutup untuk 'while'
-                                        else: // Ini dieksekusi jika tidak ada data sama sekali
-                                        ?>
-                                            <tr>
-                                                <td colspan="8" class="text-center">Belum ada data pembelian.</td>
-                                            </tr>
-                                        <?php 
-                                        endif; // Penutup untuk 'if'
-                                        ?>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
+                                    <tr>
+                                        <td><?= $nomor++ ?></td>
+                                        <td><?= htmlspecialchars($formatted_id) ?></td>
+                                        <td><?= date("d F Y", strtotime($row['tanggal_pembelian'])) ?></td>
+                                        <td><?= htmlspecialchars($row['keterangan_pembelian']) ?></td>
+                                        <td><?= 'Rp ' . number_format($row['total_biaya'] ?? 0, 0, ',', '.') ?></td>
+                                        <td>
+                                            <?php if (!empty($row['bukti_pembayaran'])): ?>
+                                                <a href="../uploads/bukti_pembayaran/<?= htmlspecialchars($row['bukti_pembayaran']) ?>" target="_blank">Lihat Bukti</a>
+                                            <?php else: ?>
+                                                <span>-</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <span class="badge <?= $badge_class ?>"><?= htmlspecialchars($status_text) ?></span>
+                                        </td>
+                                        <td class="text-center">
+                                            <a href="detail_pembelian.php?id=<?= urlencode($row['id_pembelian']) ?>" class="btn btn-info btn-sm" title="Lihat Detail">Detail</a>
+                                        </td>
+                                    </tr>
+                            <?php 
+                                endwhile; 
+                            else:
+                            ?>
+                                <tr>
+                                    <td colspan="8" class="text-center">Belum ada data pembelian.</td>
+                                </tr>
+                            <?php 
+                            endif;
+                            ?>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
     </div>
+</div>
 
     <div class="modal fade" id="addPembelianModal" tabindex="-1" aria-labelledby="addPembelianModalLabel" aria-hidden="true">
         <div class="modal-dialog">

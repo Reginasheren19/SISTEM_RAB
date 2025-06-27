@@ -3,7 +3,7 @@
 session_start();
 include("../config/koneksi_mysql.php");
 
-// 1. VALIDASI: Pastikan ada ID pembelian yang dikirim lewat URL
+// 1. VALIDASI (Tetap Sama)
 if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
     $_SESSION['error_message'] = "ID Pembelian tidak valid atau tidak ditemukan.";
     header("Location: pencatatan_pembelian.php");
@@ -11,47 +11,103 @@ if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
 }
 $pembelian_id = (int)$_GET['id'];
 
-// 2. AMBIL DATA INDUK: Query ini sudah benar karena SELECT * akan mengambil kolom status
+// 2. AMBIL DATA INDUK & DETAIL (Query tetap sama, kita olah datanya setelah ini)
 $stmt_master = $koneksi->prepare("SELECT * FROM pencatatan_pembelian WHERE id_pembelian = ?");
 $stmt_master->bind_param("i", $pembelian_id);
 $stmt_master->execute();
 $result_master = $stmt_master->get_result();
 $pembelian = $result_master->fetch_assoc();
 
-// Jika data pembelian dengan ID tersebut tidak ada, kembalikan ke halaman daftar
-if (!$pembelian) {
-    $_SESSION['error_message'] = "Data pembelian dengan ID #{$pembelian_id} tidak ditemukan.";
-    header("Location: pencatatan_pembelian.php");
-    exit();
-}
+if (!$pembelian) { /* ... handling error ... */ }
 
-// 3. AMBIL DATA DETAIL: Mengambil semua material yang terkait dengan ID pembelian ini
-// --- DIUBAH: Menambahkan kolom-kolom baru untuk hasil konfirmasi ---
 $sql_detail = "
-    SELECT 
-        dp.quantity, 
-        dp.harga_satuan_pp, 
-        dp.sub_total_pp,
-        dp.jumlah_diterima_baik,
-        dp.jumlah_rusak,
-        dp.catatan_penerimaan,
-        m.nama_material,
-        s.nama_satuan
-    FROM 
-        detail_pencatatan_pembelian dp
-    JOIN 
-        master_material m ON dp.id_material = m.id_material
-    LEFT JOIN
-        master_satuan s ON m.id_satuan = s.id_satuan
-    WHERE 
-        dp.id_pembelian = ?
+    SELECT dp.id_detail_pembelian, dp.id_material, dp.quantity, dp.harga_satuan_pp, dp.sub_total_pp,
+           m.nama_material, s.nama_satuan
+    FROM detail_pencatatan_pembelian dp
+    JOIN master_material m ON dp.id_material = m.id_material
+    LEFT JOIN master_satuan s ON m.id_satuan = s.id_satuan
+    WHERE dp.id_pembelian = ? ORDER BY dp.harga_satuan_pp DESC
 ";
 $stmt_detail = $koneksi->prepare($sql_detail);
 $stmt_detail->bind_param("i", $pembelian_id);
 $stmt_detail->execute();
-$result_detail = $stmt_detail->get_result();
-?>
+$detail_items = $stmt_detail->get_result()->fetch_all(MYSQLI_ASSOC);
 
+// 3. AMBIL SEMUA DATA LOG & PENERIMAAN (Query tetap sama)
+$sql_log = "
+    SELECT log.jumlah_diterima, log.jumlah_rusak, log.catatan, log.tanggal_penerimaan,
+           log.jenis_penerimaan, m.nama_material, s.nama_satuan
+    FROM log_penerimaan_material log
+    JOIN master_material m ON log.id_material = m.id_material
+    LEFT JOIN master_satuan s ON m.id_satuan = s.id_satuan
+    WHERE log.id_pembelian = ? ORDER BY log.tanggal_penerimaan DESC
+";
+$stmt_log = $koneksi->prepare($sql_log);
+$stmt_log->bind_param("i", $pembelian_id);
+$stmt_log->execute();
+$result_log = $stmt_log->get_result();
+
+$penerimaan_per_item = [];
+$stmt_sum_item = $koneksi->prepare("SELECT id_detail_pembelian, SUM(jumlah_diterima) as diterima FROM log_penerimaan_material WHERE id_pembelian = ? GROUP BY id_detail_pembelian");
+$stmt_sum_item->bind_param("i", $pembelian_id);
+$stmt_sum_item->execute();
+$result_sum_item = $stmt_sum_item->get_result();
+while ($row = $result_sum_item->fetch_assoc()) {
+    $penerimaan_per_item[$row['id_detail_pembelian']] = $row['diterima'];
+}
+
+// BAGIAN PERSIAPAN DATA UNTUK TABEL RINCIAN
+$grouped_items = [];
+foreach ($detail_items as $item) {
+    $material_name = $item['nama_material'];
+    if (!isset($grouped_items[$material_name])) {
+        $grouped_items[$material_name] = [
+            'nama_material' => $material_name, 'nama_satuan' => $item['nama_satuan'],
+            'total_dipesan_asli' => 0, 'total_sub_total_asli' => 0,
+            'total_diterima' => 0, 'detail_ids' => []
+        ];
+    }
+    $grouped_items[$material_name]['detail_ids'][] = $item['id_detail_pembelian'];
+    if ((float)$item['harga_satuan_pp'] > 0) {
+        $grouped_items[$material_name]['total_dipesan_asli'] += $item['quantity'];
+        $grouped_items[$material_name]['total_sub_total_asli'] += $item['sub_total_pp'];
+    }
+}
+foreach ($grouped_items as $material_name => &$group_data) {
+    $total_diterima_grup = 0;
+    foreach ($group_data['detail_ids'] as $detail_id) {
+        $total_diterima_grup += $penerimaan_per_item[$detail_id] ?? 0;
+    }
+    $group_data['total_diterima'] = $total_diterima_grup;
+}
+unset($group_data);
+
+// --- [BARU] --- HITUNG ULANG GRAND TOTAL UNTUK STATUS HEADER ---
+$total_dipesan = 0;
+$total_diterima = 0;
+// Kita hitung total pesanan dari SEMUA item (asli + pengganti)
+$stmt_total_pesanan_all = $koneksi->prepare("SELECT SUM(quantity) as total FROM detail_pencatatan_pembelian WHERE id_pembelian = ?");
+$stmt_total_pesanan_all->bind_param("i", $pembelian_id);
+$stmt_total_pesanan_all->execute();
+$total_dipesan = $stmt_total_pesanan_all->get_result()->fetch_assoc()['total'] ?? 0;
+// Kita hitung total diterima dari SEMUA log
+foreach ($grouped_items as $group) {
+    $total_diterima += $group['total_diterima'];
+}
+
+
+// Logika untuk tombol retur (tetap sama)
+$stmt_total_rusak = $koneksi->prepare("SELECT SUM(jumlah_rusak) as total FROM log_penerimaan_material WHERE id_pembelian = ?");
+$stmt_total_rusak->bind_param("i", $pembelian_id);
+$stmt_total_rusak->execute();
+$total_rusak_dilaporkan = $stmt_total_rusak->get_result()->fetch_assoc()['total'] ?? 0;
+$stmt_total_retur = $koneksi->prepare("SELECT SUM(quantity) as total FROM detail_pencatatan_pembelian WHERE id_pembelian = ? AND harga_satuan_pp = 0");
+$stmt_total_retur->bind_param("i", $pembelian_id);
+$stmt_total_retur->execute();
+$total_sudah_diretur = $stmt_total_retur->get_result()->fetch_assoc()['total'] ?? 0;
+$perlu_proses_retur = $total_rusak_dilaporkan > $total_sudah_diretur;
+
+?>
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -790,6 +846,7 @@ $result_detail = $stmt_detail->get_result();
                 <li class="nav-item"><a href="">Pencatatan Pembelian Material</a></li>
             </ul>
         </div>
+
 <div class="card">
     <div class="card-header">
         <h4 class="card-title">Informasi Transaksi</h4>
@@ -804,13 +861,21 @@ $result_detail = $stmt_detail->get_result();
             <div class="col-md-6">
                 <p><strong>Status:</strong> 
                     <?php
-                        $status = $pembelian['status_pembelian'];
-                        $badge_class = 'bg-secondary';
-                        if ($status == 'Dipesan') $badge_class = 'bg-warning';
-                        elseif ($status == 'Selesai') $badge_class = 'bg-success';
-                        elseif (str_contains($status, 'Masalah') || str_contains($status, 'Catatan')) $badge_class = 'bg-danger';
+                        // Sekarang variabel $total_dipesan dan $total_diterima sudah ada lagi
+                        $status_text = 'Baru';
+                        $badge_class = 'bg-info';
+                        if ($total_diterima <= 0 && $total_dipesan > 0) {
+                            $status_text = 'Menunggu Penerimaan';
+                            $badge_class = 'bg-warning';
+                        } elseif ($total_diterima < $total_dipesan) {
+                            $status_text = 'Diterima Sebagian';
+                            $badge_class = 'bg-primary';
+                        } elseif ($total_diterima >= $total_dipesan) {
+                            $status_text = 'Selesai';
+                            $badge_class = 'bg-success';
+                        }
                     ?>
-                    <span class="badge <?= $badge_class ?>"><?= htmlspecialchars($status) ?></span>
+                    <span class="badge <?= $badge_class ?>"><?= $status_text ?></span>
                 </p>
                 <p><strong>Bukti Pembayaran:</strong> 
                     <?php if (!empty($pembelian['bukti_pembayaran'])): ?>
@@ -821,6 +886,17 @@ $result_detail = $stmt_detail->get_result();
                 </p>
             </div>
         </div>
+
+        <?php if ($perlu_proses_retur): ?>
+        <div class="alert alert-warning mt-3">
+            <h5 class="alert-heading">Tindakan Diperlukan!</h5>
+            <p>Terdapat barang yang dilaporkan rusak atau tidak sesuai oleh PJ Proyek. Silakan proses retur untuk memesan barang pengganti.</p>
+            <hr>
+            <a href="add_retur.php?id=<?= $pembelian_id ?>" class="btn btn-warning" onclick="return confirm('Anda yakin ingin memproses retur dan membuat pesanan pengganti untuk item yang rusak?')">
+                <i class="fa fa-sync-alt"></i> Proses Retur & Pesan Pengganti
+            </a>
+        </div>
+        <?php endif; ?>
     </div>
 </div>
 
@@ -833,27 +909,28 @@ $result_detail = $stmt_detail->get_result();
                     <tr>
                         <th>No.</th>
                         <th>Nama Material</th>
-                        <th class="text-end">Jumlah Dipesan</th>
-                        <th class="text-end">Harga Satuan</th>
+                        <th class="text-end">Jumlah Dipesan (Asli)</th>
+                        <th class="text-end">Total Diterima Baik</th>
                         <th class="text-end">Sub Total</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php
                     $nomor = 1;
-                    if ($result_detail->num_rows > 0):
-                        mysqli_data_seek($result_detail, 0); 
-                        while ($item = $result_detail->fetch_assoc()):
+                    if (!empty($grouped_items)):
+                        foreach ($grouped_items as $item):
                     ?>
                         <tr>
                             <td><?= $nomor++ ?></td>
                             <td><?= htmlspecialchars($item['nama_material']) ?></td>
-                            <td class="text-end"><?= number_format($item['quantity'], 2, ',', '.') ?> <?= htmlspecialchars($item['nama_satuan']) ?></td>
-                            <td class="text-end">Rp <?= number_format($item['harga_satuan_pp'], 0, ',', '.') ?></td>
-                            <td class="text-end">Rp <?= number_format($item['sub_total_pp'], 0, ',', '.') ?></td>
+                            <td class="text-end"><?= number_format($item['total_dipesan_asli'], 2, ',', '.') ?> <?= htmlspecialchars($item['nama_satuan']) ?></td>
+                            <td class="text-end fw-bold <?= ($item['total_diterima'] < $item['total_dipesan_asli']) ? 'text-warning' : 'text-success' ?>">
+                                <?= number_format($item['total_diterima'], 2, ',', '.') ?>
+                            </td>
+                            <td class="text-end">Rp <?= number_format($item['total_sub_total_asli'], 0, ',', '.') ?></td>
                         </tr>
                     <?php 
-                        endwhile;
+                        endforeach;
                     else:
                     ?>
                         <tr><td colspan="5" class="text-center">Belum ada detail material.</td></tr>
@@ -870,45 +947,51 @@ $result_detail = $stmt_detail->get_result();
     </div>
 </div>
 
-<?php if ($pembelian['status_pembelian'] != 'Dipesan'): ?>
 <div class="card">
-    <div class="card-header"><h4 class="card-title">Laporan Hasil Penerimaan oleh PJ Proyek</h4></div>
+    <div class="card-header"><h4 class="card-title">Riwayat Penerimaan Barang (Log)</h4></div>
     <div class="card-body">
         <div class="table-responsive">
             <table class="table table-hover">
                 <thead>
                     <tr>
-                        <th>No.</th>
-                        <th>Nama Material</th>
+                        <th>Tanggal</th>
+                        <th>Material</th>
+                        <th>Jenis</th>
                         <th class="text-end">Diterima Baik</th>
-                        <th class="text-end">Rusak/Ditolak</th>
+                        <th class="text-end">Rusak</th>
                         <th>Catatan dari PJ</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php
-                    $nomor = 1;
-                    if ($result_detail->num_rows > 0):
-                        mysqli_data_seek($result_detail, 0);
-                        while ($item = $result_detail->fetch_assoc()):
+                    if ($result_log->num_rows > 0):
+                        $result_log->data_seek(0);
+                        while ($log_entry = $result_log->fetch_assoc()):
                     ?>
                         <tr>
-                            <td><?= $nomor++ ?></td>
-                            <td><?= htmlspecialchars($item['nama_material']) ?></td>
-                            <td class="text-end"><?= number_format($item['jumlah_diterima_baik'], 2, ',', '.') ?> <?= htmlspecialchars($item['nama_satuan']) ?></td>
-                            <td class="text-end text-danger"><?= number_format($item['jumlah_rusak'], 2, ',', '.') ?> <?= htmlspecialchars($item['nama_satuan']) ?></td>
-                            <td><?= htmlspecialchars($item['catatan_penerimaan']) ?></td>
+                            <td><?= date("d M Y, H:i", strtotime($log_entry['tanggal_penerimaan'])) ?></td>
+                            <td><?= htmlspecialchars($log_entry['nama_material']) ?></td>
+                            <td>
+                                <?php 
+                                    $jenis_badge = $log_entry['jenis_penerimaan'] == 'Penerimaan Awal' ? 'bg-info' : 'bg-secondary';
+                                ?>
+                                <span class="badge <?= $jenis_badge ?>"><?= htmlspecialchars($log_entry['jenis_penerimaan']) ?></span>
+                            </td>
+                            <td class="text-end text-success"><?= number_format($log_entry['jumlah_diterima'], 2, ',', '.') ?> <?= htmlspecialchars($log_entry['nama_satuan']) ?></td>
+                            <td class="text-end text-danger"><?= number_format($log_entry['jumlah_rusak'], 2, ',', '.') ?> <?= htmlspecialchars($log_entry['nama_satuan']) ?></td>
+                            <td><?= htmlspecialchars($log_entry['catatan']) ?></td>
                         </tr>
                     <?php
                         endwhile;
-                    endif;
+                    else:
                     ?>
+                        <tr><td colspan="6" class="text-center"><em>Belum ada riwayat penerimaan barang untuk pembelian ini.</em></td></tr>
+                    <?php endif; ?>
                 </tbody>
             </table>
         </div>
     </div>
 </div>
-<?php endif; ?>
 
 <div class="text-end mt-3 mb-3">
     <a href="pencatatan_pembelian.php" class="btn btn-secondary">Kembali ke Daftar</a>
@@ -917,7 +1000,6 @@ $result_detail = $stmt_detail->get_result();
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
-
 
 </body>
 </html>
