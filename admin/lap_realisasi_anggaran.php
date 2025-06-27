@@ -331,7 +331,7 @@ $download_query_string = http_build_query([
                                             <th class="text-end">Total Terbayar</th>
                                             <th class="text-end">Sisa Anggaran</th>
                                             <th class="text-center" style="width: 20%;">Realisasi (%)</th>
-                                            <th class="text-center">Aksi</th>
+                                            <th class="text-center" style="width: 15%;">Aksi</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -358,6 +358,7 @@ $download_query_string = http_build_query([
                                                     </div>
                                                 </td>
                                                 <td class="text-center">
+                                                    <a href="lap_detail_proyek.php?proyek_id=<?= $row['id_proyek'] ?>" class="btn btn-info btn-sm" title="Lihat Dashboard Proyek"><i class="fas fa-chart-line"></i></a>
                                                     <a href="cetak_detail_progres.php?proyek_id=<?= $row['id_proyek'] ?>" target="_blank" class="btn btn-success btn-sm" title="Cetak Detail Progres">
                                                         <i class="fas fa-print"></i>
                                                     </a>

@@ -14,6 +14,7 @@ $sql_pengajuan_info = "SELECT
                         pu.total_pengajuan,
                         pu.status_pengajuan,
                         pu.keterangan,
+                        pu.bukti_bayar,
                         tr.id_rab_upah,
                         tr.total_rab_upah,
                         tr.tanggal_mulai,
@@ -325,8 +326,8 @@ function toRoman($num) {
                         <!-- Kolom Kiri -->
                         <div class="col-md-6">
                             <dl class="row">
-                                <dt class="col-sm-4">ID Pengajuan</dt>
-                                <dd class="col-sm-8">: <?= htmlspecialchars($id_pengajuan_upah) ?></dd>
+        <dt class="col-sm-4">ID Pengajuan</dt>
+        <dd class="col-sm-8">: PU<?= htmlspecialchars($id_pengajuan_upah) ?></dd>
 
                                 <dt class="col-sm-4">Pekerjaan</dt>
                                 <dd class="col-sm-8">: <?= htmlspecialchars($pengajuan_info['pekerjaan']) ?></dd>
@@ -417,50 +418,54 @@ function toRoman($num) {
                     </div>
                 </div>
               </div>
-                <!-- [DIUBAH] Layout Bukti Pembayaran & Bukti Pekerjaan -->
-                <div class="row">
-                <!-- Layout galeri bukti -->
-                <div class="row">
-                    <!-- Kolom Bukti Pembayaran -->
-                    <div class="col-md-6">
-                        <div class="card shadow-sm mb-4" style="min-height: 250px;">
-                            <div class="card-header bg-light"><h4 class="card-title mb-0">Bukti Pembayaran</h4></div>
-                            <div class="card-body">
-                                <?php if (!empty($pengajuan_info['bukti_bayar'])):
-                                    $path_bayar = "../" . htmlspecialchars($pengajuan_info['bukti_bayar']);
-                                ?>
-                                    <div class="col-12">
-                                        <a href="../<?= $path_bayar ?>" target="_blank" title="Lihat Bukti Pembayaran">
-                                            <img src="../<?= $path_bayar ?>" class="img-thumbnail" style="width: 100%; height: auto; max-height: 240px; object-fit: contain;" onerror="this.onerror=null;this.src='https://placehold.co/600x400/EEE/31343C?text=File Tidak Ditemukan';">
-                                        </a>
-                                    </div>
-                                <?php else: ?>
-                                    <p class="text-muted text-center py-3">Tidak ada bukti pembayaran yang dilampirkan.</p>
-                                <?php endif; ?>
-                            </div>
-                        </div>
+<div class="row align-items-stretch">
+    
+    <div class="col-md-6 mb-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-light"><h4 class="card-title mb-0">Bukti Progress Pekerjaan</h4></div>
+            <div class="card-body">
+                <div class="row g-2">
+                    <?php if ($bukti_pekerjaan_result && mysqli_num_rows($bukti_pekerjaan_result) > 0):
+                        while ($bukti = mysqli_fetch_assoc($bukti_pekerjaan_result)):
+                            $path_pekerjaan = "../" . htmlspecialchars($bukti['path_file']);
+                    ?>
+                    <div class="col-4">
+                        <a href="<?= $path_pekerjaan ?>" target="_blank" title="<?= htmlspecialchars($bukti['nama_file']) ?>">
+                            <img src="<?= $path_pekerjaan ?>" class="img-thumbnail gallery-item" onerror="this.onerror=null;this.src='https://placehold.co/100x100/EEE/31343C?text=File';">
+                        </a>
                     </div>
-                    <!-- Kolom Bukti Pembayaran -->
-                    <div class="col-md-6">
-                        <div class="card shadow-sm mb-4" style="min-height: 250px;">
-                            <div class="card-header bg-light"><h4 class="card-title mb-0">Bukti Pembayaran</h4></div>
-                            <div class="card-body">
-                                <?php if (!empty($pengajuan_info['bukti_bayar'])):
-                                    // [FIXED] Path dibangun dengan benar sekali saja.
-                                    $path_bayar = "../" . htmlspecialchars($pengajuan_info['bukti_bayar']);
-                                ?>
-                                    <div class="col-12">
-                                        <a href="<?= $path_bayar ?>" target="_blank" title="Lihat Bukti Pembayaran">
-                                            <img src="<?= $path_bayar ?>" class="img-thumbnail" style="width: 100%; height: auto; max-height: 240px; object-fit: contain;" onerror="this.onerror=null;this.src='https://placehold.co/600x400/EEE/31343C?text=File';">
-                                        </a>
-                                    </div>
-                                <?php else: ?>
-                                    <p class="text-muted text-center py-3">Tidak ada bukti pembayaran yang dilampirkan.</p>
-                                <?php endif; ?>
-                            </div>
-                        </div>
+                    <?php 
+                        endwhile;
+                    else: ?>
+                    <div class="col-12 d-flex align-items-center justify-content-center h-100">
+                        <p class="text-muted text-center py-3 m-0">Tidak ada bukti progress yang dilampirkan.</p>
                     </div>
+                    <?php endif; ?>
                 </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6 mb-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-light"><h4 class="card-title mb-0">Bukti Pembayaran</h4></div>
+            <div class="card-body d-flex flex-column justify-content-center align-items-center">
+                <?php if (!empty($pengajuan_info['bukti_bayar'])):
+                    $path_bayar = "../" . htmlspecialchars($pengajuan_info['bukti_bayar']);
+                ?>
+                <div class="col-12">
+                    <a href="<?= $path_bayar ?>" target="_blank" title="Lihat Bukti Pembayaran">
+                        <img src="<?= $path_bayar ?>" class="img-thumbnail" style="width: 100%; height: auto; max-height: 240px; object-fit: contain;" onerror="this.onerror=null;this.src='https://placehold.co/600x400/EEE/31343C?text=File';">
+                    </a>
+                </div>
+                <?php else: ?>
+                    <p class="text-muted text-center py-3 m-0">Tidak ada bukti pembayaran yang dilampirkan.</p>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+
+</div>
 
           </div>
         </div>

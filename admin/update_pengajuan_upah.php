@@ -1,114 +1,66 @@
 <?php
-// FILE: update_pengajuan_upah.php (Hanya untuk menampilkan form)
+// FILE: update_pengajuan_upah.php (Dibersihkan dari logika POST yang tidak perlu)
 
-// Sertakan file koneksi Anda
+// Selalu sertakan file koneksi dan session di bagian paling atas
 include("../config/koneksi_mysql.php");
+session_start();
 
-// Mengatur error reporting untuk development
+// Aktifkan error reporting untuk mempermudah debugging
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-// Pastikan ID Pengajuan Upah ada dari GET request
-if (!isset($_GET['id_pengajuan_upah'])) {
-    die("Akses tidak sah. ID Pengajuan Upah tidak diberikan.");
-}
+//======================================================================
+// BLOK PEMROSESAN POST DIHAPUS DARI FILE INI
+// Karena form di-submit ke "proses_update_pengajuan.php"
+//======================================================================
 
-// Ambil ID dari GET dan amankan
+
+//=========================================================
+// BLOK 2: MENAMPILKAN DATA (METHOD GET) - TIDAK BERUBAH
+//=========================================================
+if (!isset($_GET['id_pengajuan_upah'])) {
+    die("Akses tidak sah. ID Pengajuan Upah tidak ditemukan.");
+}
 $id_pengajuan_upah = (int)$_GET['id_pengajuan_upah'];
 
-//=============================================
-// BLOK UNTUK MENAMPILKAN DATA (METHOD GET)
-//=============================================
-
-// [PERBAIKAN] Query utama untuk mengambil data header pengajuan dengan alur JOIN yang benar
-$sql_pengajuan = "SELECT 
-                    pu.*, 
-                    CONCAT(mpe.nama_perumahan, ' - ', mpr.kavling) AS pekerjaan, 
-                    mpr.type_proyek, 
-                    mpe.lokasi, 
-                    mm.nama_mandor,
-                    u.nama_lengkap AS pj_proyek
-                  FROM pengajuan_upah pu
-                  LEFT JOIN rab_upah ru ON pu.id_rab_upah = ru.id_rab_upah
-                  LEFT JOIN master_proyek mpr ON ru.id_proyek = mpr.id_proyek
-                  LEFT JOIN master_perumahan mpe ON mpr.id_perumahan = mpe.id_perumahan
-                  LEFT JOIN master_mandor mm ON mpr.id_mandor = mm.id_mandor
-                  LEFT JOIN master_user u ON mpr.id_user_pj = u.id_user
-                  WHERE pu.id_pengajuan_upah = $id_pengajuan_upah";
-
-$pengajuan_result = mysqli_query($koneksi, $sql_pengajuan);
-if (!$pengajuan_result) {
-    die("Error Query: " . mysqli_error($koneksi));
-}
-if (mysqli_num_rows($pengajuan_result) == 0) {
-    die("Data Pengajuan Upah dengan ID $id_pengajuan_upah tidak ditemukan.");
-}
+// Pemeriksaan apakah pengajuan ada dan boleh di-update
+$sql_pengajuan = "SELECT pu.*, CONCAT(mpe.nama_perumahan, ' - ', mpr.kavling) AS pekerjaan, mpr.type_proyek, mpe.lokasi, mm.nama_mandor, u.nama_lengkap AS pj_proyek FROM pengajuan_upah pu LEFT JOIN rab_upah ru ON pu.id_rab_upah = ru.id_rab_upah LEFT JOIN master_proyek mpr ON ru.id_proyek = mpr.id_proyek LEFT JOIN master_perumahan mpe ON mpr.id_perumahan = mpe.id_perumahan LEFT JOIN master_mandor mm ON mpr.id_mandor = mm.id_mandor LEFT JOIN master_user u ON mpr.id_user_pj = u.id_user WHERE pu.id_pengajuan_upah = ?";
+$stmt_pengajuan = mysqli_prepare($koneksi, $sql_pengajuan);
+mysqli_stmt_bind_param($stmt_pengajuan, 'i', $id_pengajuan_upah);
+mysqli_stmt_execute($stmt_pengajuan);
+$pengajuan_result = mysqli_stmt_get_result($stmt_pengajuan);
+if (mysqli_num_rows($pengajuan_result) == 0) { die("Data Pengajuan Upah dengan ID $id_pengajuan_upah tidak ditemukan."); }
 $pengajuan_info = mysqli_fetch_assoc($pengajuan_result);
 $id_rab_upah = $pengajuan_info['id_rab_upah'];
+mysqli_stmt_close($stmt_pengajuan);
 
-// Hanya izinkan update jika status 'diajukan' atau 'ditolak'
+// Pastikan hanya status tertentu yang boleh diupdate
 if (!in_array($pengajuan_info['status_pengajuan'], ['diajukan', 'ditolak'])) {
     die("Pengajuan dengan status '" . htmlspecialchars($pengajuan_info['status_pengajuan']) . "' tidak dapat diupdate lagi.");
 }
 
-// Menghitung termin ke berapa pengajuan ini
-$sql_termin = "SELECT COUNT(id_pengajuan_upah) AS urutan FROM pengajuan_upah WHERE id_rab_upah = $id_rab_upah AND id_pengajuan_upah <= $id_pengajuan_upah";
-$termin_result = mysqli_query($koneksi, $sql_termin);
-$termin_data = mysqli_fetch_assoc($termin_result);
-$termin_ke = $termin_data['urutan'] ?? 0;
-
-// Query untuk mendapatkan semua item dari RAB asli (sudah benar)
-$sql_rab_items = "SELECT d.id_detail_rab_upah, k.nama_kategori, mp.uraian_pekerjaan, d.sub_total 
-                  FROM detail_rab_upah d 
-                  LEFT JOIN master_pekerjaan mp ON d.id_pekerjaan = mp.id_pekerjaan 
-                  LEFT JOIN master_kategori k ON d.id_kategori = k.id_kategori 
-                  WHERE d.id_rab_upah = '$id_rab_upah' 
-                  ORDER BY k.id_kategori, d.id_detail_rab_upah";
-$rab_items_result = mysqli_query($koneksi, $sql_rab_items);
-
-// Ambil data progress yang sudah ada untuk pengajuan ini ke dalam array (sudah benar)
+// Fetch data lainnya (termin, rab items, progress, bukti)
+// ... (Kode untuk mengambil data lainnya tetap sama seperti yang Anda miliki)
+$sql_termin = "SELECT COUNT(id_pengajuan_upah) AS urutan FROM pengajuan_upah WHERE id_rab_upah = ? AND id_pengajuan_upah <= ?";
+$stmt_termin = mysqli_prepare($koneksi, $sql_termin); mysqli_stmt_bind_param($stmt_termin, 'ii', $id_rab_upah, $id_pengajuan_upah); mysqli_stmt_execute($stmt_termin); $termin_result = mysqli_stmt_get_result($stmt_termin); $termin_data = mysqli_fetch_assoc($termin_result); $termin_ke = $termin_data['urutan'] ?? 0; mysqli_stmt_close($stmt_termin);
+$sql_rab_items = "SELECT d.id_detail_rab_upah, k.nama_kategori, mp.uraian_pekerjaan, d.sub_total FROM detail_rab_upah d LEFT JOIN master_pekerjaan mp ON d.id_pekerjaan = mp.id_pekerjaan LEFT JOIN master_kategori k ON d.id_kategori = k.id_kategori WHERE d.id_rab_upah = ? ORDER BY k.id_kategori, d.id_detail_rab_upah";
+$stmt_rab_items = mysqli_prepare($koneksi, $sql_rab_items); mysqli_stmt_bind_param($stmt_rab_items, 'i', $id_rab_upah); mysqli_stmt_execute($stmt_rab_items); $rab_items_result = mysqli_stmt_get_result($stmt_rab_items); mysqli_stmt_close($stmt_rab_items);
 $existing_progress = [];
-$sql_detail_pengajuan = "SELECT id_detail_rab_upah, progress_pekerjaan FROM detail_pengajuan_upah WHERE id_pengajuan_upah = '$id_pengajuan_upah'";
-$detail_pengajuan_result = mysqli_query($koneksi, $sql_detail_pengajuan);
-while($row = mysqli_fetch_assoc($detail_pengajuan_result)) {
-    $existing_progress[$row['id_detail_rab_upah']] = $row['progress_pekerjaan'];
-}
-
-// Ambil data bukti yang sudah ada
+$sql_detail_pengajuan = "SELECT id_detail_rab_upah, progress_pekerjaan FROM detail_pengajuan_upah WHERE id_pengajuan_upah = ?";
+$stmt_detail = mysqli_prepare($koneksi, $sql_detail_pengajuan); mysqli_stmt_bind_param($stmt_detail, 'i', $id_pengajuan_upah); mysqli_stmt_execute($stmt_detail); $detail_pengajuan_result = mysqli_stmt_get_result($stmt_detail); while($row = mysqli_fetch_assoc($detail_pengajuan_result)) { $existing_progress[$row['id_detail_rab_upah']] = $row['progress_pekerjaan']; } mysqli_stmt_close($stmt_detail);
 $existing_bukti = [];
-$sql_bukti = "SELECT id_bukti, nama_file, path_file FROM bukti_pengajuan_upah WHERE id_pengajuan_upah = $id_pengajuan_upah";
-$bukti_result = mysqli_query($koneksi, $sql_bukti);
-while($row = mysqli_fetch_assoc($bukti_result)) {
-    $existing_bukti[] = $row;
-}
-
-// Fungsi untuk mengambil akumulasi progress dari pengajuan lain (sudah benar)
-function getProgressLalu($koneksi, $id_detail_rab_upah, $id_pengajuan_to_exclude) {
-    $query = "SELECT SUM(dpu.progress_pekerjaan) AS total_progress 
-              FROM detail_pengajuan_upah dpu
-              JOIN pengajuan_upah pu ON dpu.id_pengajuan_upah = pu.id_pengajuan_upah
-              WHERE dpu.id_detail_rab_upah = ".(int)$id_detail_rab_upah." 
-                AND pu.id_pengajuan_upah != ".(int)$id_pengajuan_to_exclude."
-                AND pu.status_pengajuan IN ('diajukan', 'disetujui', 'ditolak', 'dibayar')";
-    $result = mysqli_query($koneksi, $query);
-    $data = mysqli_fetch_assoc($result);
-    return (float)($data['total_progress'] ?? 0);
-}
-
-// Fungsi toRoman (sudah benar)
-function toRoman($num) {
-    $map = ['M' => 1000, 'CM' => 900, 'D' => 500, 'CD' => 400, 'C' => 100, 'XC' => 90, 'L' => 50, 'XL' => 40, 'X' => 10, 'IX' => 9, 'V' => 5, 'IV' => 4, 'I' => 1];
-    $result = '';
-    foreach ($map as $roman => $value) {
-        while ($num >= $value) {
-            $result .= $roman; $num -= $value;
-        }
-    }
-    return $result;
-}
-
+$sql_bukti = "SELECT id_bukti, nama_file, path_file FROM bukti_pengajuan_upah WHERE id_pengajuan_upah = ?";
+$stmt_bukti = mysqli_prepare($koneksi, $sql_bukti); mysqli_stmt_bind_param($stmt_bukti, 'i', $id_pengajuan_upah); mysqli_stmt_execute($stmt_bukti); $bukti_result = mysqli_stmt_get_result($stmt_bukti); while($row = mysqli_fetch_assoc($bukti_result)) { $existing_bukti[] = $row; } mysqli_stmt_close($stmt_bukti);
+function getProgressLalu($koneksi, $id_detail_rab_upah, $id_pengajuan_to_exclude) { $query = "SELECT SUM(dpu.progress_pekerjaan) AS total_progress FROM detail_pengajuan_upah dpu JOIN pengajuan_upah pu ON dpu.id_pengajuan_upah = pu.id_pengajuan_upah WHERE dpu.id_detail_rab_upah = ".(int)$id_detail_rab_upah." AND pu.id_pengajuan_upah != ".(int)$id_pengajuan_to_exclude." AND pu.status_pengajuan IN ('diajukan', 'disetujui', 'ditolak', 'dibayar')"; $result = mysqli_query($koneksi, $query); $data = mysqli_fetch_assoc($result); return (float)($data['total_progress'] ?? 0); }
+function toRoman($num) { $map = ['M' => 1000, 'CM' => 900, 'D' => 500, 'CD' => 400, 'C' => 100, 'XC' => 90, 'L' => 50, 'XL' => 40, 'X' => 10, 'IX' => 9, 'V' => 5, 'IV' => 4, 'I' => 1]; $result = ''; foreach ($map as $roman => $value) { while ($num >= $value) { $result .= $roman; $num -= $value; } } return $result; }
 ?>
 
+<!DOCTYPE html>
+<html lang="en">
+<form id="pengajuan-form" action="proses_update_pengajuan.php" method="POST" enctype="multipart/form-data">
+    </form>
+
+</html>
 
 <!DOCTYPE html>
 <html lang="en">
@@ -841,9 +793,10 @@ function toRoman($num) {
               <h3 class="fw-bold mb-3">Form Update Pengajuan RAB Upah</h3>
             </div>
 
-                <form method="POST" action="proses_update_pengajuan.php">
-      <input type="hidden" name="id_pengajuan_upah" value="<?= htmlspecialchars($id_pengajuan_upah) ?>">
-
+            <!-- [PERBAIKAN UTAMA] Atribut 'enctype' ditambahkan di sini. Inilah penyebab masalahnya. -->
+            <form id="pengajuan-form" action="proses_update_pengajuan.php" method="POST" enctype="multipart/form-data">
+                <input type="hidden" name="id_pengajuan_upah" value="<?= htmlspecialchars($id_pengajuan_upah) ?>">
+              
                <!-- Informasi Proyek & RAB -->
                 <div class="card shadow-sm mb-4">
                     <div class="card-header bg-light d-flex justify-content-between align-items-center">
@@ -862,7 +815,7 @@ function toRoman($num) {
                             </div>
                             <div class="col-md-6">
                                 <dl class="row">
-                                    <dt class="col-sm-4">ID RAB</dt><dd class="col-sm-8">: <?= htmlspecialchars($pengajuan_info['id_rab_upah']) ?></dd>
+                                    <dt class="col-sm-4">ID RAB</dt><dd class="col-sm-8">: RABP<?= htmlspecialchars($pengajuan_info['id_rab_upah']) ?></dd>
                                     <dt class="col-sm-4">Mandor</dt><dd class="col-sm-8">: <?= htmlspecialchars($pengajuan_info['nama_mandor']) ?></dd>
                                     <dt class="col-sm-4">PJ Proyek</dt><dd class="col-sm-8">: <?= htmlspecialchars($pengajuan_info['pj_proyek']) ?></dd>
                                 </dl>
@@ -926,147 +879,162 @@ function toRoman($num) {
                     </div>
                 </div>
 
-                <div class="card shadow-sm">
-                    <div class="card-header bg-light"><h4 class="card-title mb-0">Update Ringkasan, Bukti, & Kirim Pengajuan</h4></div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-7">
-                                <div class="mb-3">
-                                    <label class="form-label fw-bold">Upload/Kelola Bukti</label>
-                                    <div id="upload-card" class="upload-card"><label for="file-input" class="upload-label"><i class="fas fa-cloud-upload-alt upload-icon mb-2"></i><h6 class="fw-bold">Seret & lepas file baru di sini</h6><p class="text-muted small mb-0">atau klik untuk menambah file</p></label><input type="file" id="file-input" name="bukti_pekerjaan_baru[]" multiple accept="image/*,application/pdf" class="d-none"></div>
-                                </div>
-                                <div id="preview-container">
-                                    <?php foreach ($existing_bukti as $bukti): ?>
-                                        <div class="preview-item" data-id-bukti="<?= $bukti['id_bukti'] ?>" data-filename="<?= htmlspecialchars($bukti['nama_file']) ?>">
-                                            <img src="../<?= htmlspecialchars($bukti['path_file']) ?>" alt="<?= htmlspecialchars($bukti['nama_file']) ?>" onerror="this.onerror=null;this.src='https://placehold.co/400x400/EEE/31343C?text=File';">
-                                            <button type="button" class="remove-btn" title="Hapus file ini">&times;</button>
-                                        </div>
-                                    <?php endforeach; ?>
-                                </div>
-                                <input type="hidden" name="bukti_dihapus" id="bukti_dihapus" value="">
-                            </div>
-                            <div class="col-md-5">
-                                <!-- [DIUBAH] Tanggal Pengajuan dipindah ke sini -->
-                                <div class="mb-3"><label for="tanggal_pengajuan" class="form-label fw-bold">Tanggal Pengajuan</label><input type="date" id="tanggal_pengajuan" name="tanggal_pengajuan" class="form-control" value="<?= htmlspecialchars($pengajuan_info['tanggal_pengajuan']) ?>" required></div>
-                                <div class="mb-3"><label for="nominal-pengajuan" class="form-label fw-bold">Nominal Final</label><input type="number" class="form-control form-control-lg text-end" id="nominal-pengajuan" name="nominal_pengajuan_final" value="<?= round($pengajuan_info['total_pengajuan']) ?>"><div id="error-nominal" class="form-text text-danger d-none">Nominal tidak valid.</div></div>
-                                <div class="d-grid gap-2 d-md-flex justify-content-md-end"><a href="pengajuan_upah.php" class="btn btn-secondary">Kembali</a><button type="submit" id="btn-submit" class="btn btn-warning"><i class="fa fa-save"></i> Update Pengajuan</button></div>
-                            </div>
-                        </div>
-                    </div>
+             <div class="card shadow-sm">
+                  <div class="card-header bg-light"><h4 class="card-title mb-0">Update Ringkasan, Bukti, & Kirim Pengajuan</h4></div>
+                  <div class="card-body">
+                      <div class="row">
+                          <div class="col-md-7">
+                              <div class="mb-3">
+                                  <label class="form-label fw-bold">Upload/Kelola Bukti</label>
+                                  <div id="upload-card" class="border border-dashed rounded d-flex flex-column align-items-center justify-content-center text-center p-4" style="height: 160px; cursor: pointer; background-color: #fdfdfd;">
+                                      <label for="file-input" class="d-block" style="cursor:pointer;">
+                                          <i class="fas fa-cloud-upload-alt fa-2x text-secondary mb-2"></i>
+                                          <h6 class="fw-bold mb-1">Seret & lepas file baru di sini</h6>
+                                          <p class="text-muted small mb-0">atau klik untuk menambah file</p>
+                                      </label>
+                                      <input type="file" id="file-input" name="bukti_pengajuan[]" multiple accept="image/*,application/pdf" class="d-none">
+                                  </div>
+                              </div>
+                              <div id="preview-container" class="d-flex flex-wrap gap-2 mt-3">
+                                  <?php foreach ($existing_bukti as $bukti): ?>
+                                      <div class="preview-item" data-id-bukti="<?= $bukti['id_bukti'] ?>" data-filename="<?= htmlspecialchars($bukti['nama_file']) ?>">
+                                          <img src="../<?= htmlspecialchars($bukti['path_file']) ?>" alt="<?= htmlspecialchars($bukti['nama_file']) ?>" onerror="this.onerror=null;this.src='https://placehold.co/120x120/EEE/31343C?text=File';">
+                                          <button type="button" class="remove-btn" title="Hapus file ini">&times;</button>
+                                      </div>
+                                  <?php endforeach; ?>
+                              </div>
+                              <input type="hidden" name="bukti_dihapus" id="bukti_dihapus" value="">
+                          </div>
+                          <div class="col-md-5">
+                              <div class="mb-3"><label for="tanggal_pengajuan" class="form-label fw-bold">Tanggal Pengajuan</label><input type="date" id="tanggal_pengajuan" name="tanggal_pengajuan" class="form-control" value="<?= htmlspecialchars($pengajuan_info['tanggal_pengajuan']) ?>" required></div>
+                              <div class="mb-3"><label for="keterangan" class="form-label fw-bold">Keterangan</label><textarea class="form-control" id="keterangan" name="keterangan" rows="3"><?= htmlspecialchars($pengajuan_info['keterangan'] ?? '') ?></textarea></div>
+                              <div class="mb-3"><label for="nominal-pengajuan" class="form-label fw-bold">Nominal Final</label><input type="number" class="form-control form-control-lg text-end" id="nominal-pengajuan" name="nominal_pengajuan_final" value="<?= round($pengajuan_info['total_pengajuan']) ?>"><div id="error-nominal" class="form-text text-danger d-none">Nominal tidak valid.</div></div>
+                              <div class="d-grid gap-2 d-md-flex justify-content-md-end"><a href="pengajuan_upah.php" class="btn btn-secondary">Kembali</a><button type="submit" id="btn-submit" class="btn btn-warning"><i class="fa fa-save"></i> Update Pengajuan</button></div>
+                          </div>
+                      </div>
+                  </div>
                 </div>
-            </form> 
+            </form>
           </div>
         </div>
       </div>
     </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script>
-    document.addEventListener("DOMContentLoaded", function() {
-        const tableBody = document.querySelector("#tblDetailRAB tbody");
-        const totalPengajuanEl = document.getElementById('total-pengajuan-saat-ini');
-        const nominalPengajuanInput = document.getElementById('nominal-pengajuan');
-        const errorNominalEl = document.getElementById('error-nominal');
-        const btnSubmit = document.getElementById('btn-submit');
-        const uploadCard = document.getElementById('upload-card');
-        const fileInput = document.getElementById('file-input');
-        const previewContainer = document.getElementById('preview-container');
-        const buktiDihapusInput = document.getElementById('bukti_dihapus');
-        const dataTransfer = new DataTransfer();
+    <!-- Core JS Files -->
+    <script src="assets/js/core/jquery-3.7.1.min.js"></script>
+    <script src="assets/js/core/popper.min.js"></script>
+    <script src="assets/js/core/bootstrap.min.js"></script>
+    <script src="assets/js/plugin/jquery-scrollbar/jquery.scrollbar.min.js"></script>
+    <script src="assets/js/kaiadmin.min.js"></script>
 
-        function formatRupiah(angka) { return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka || 0); }
-        function unformatRupiah(rupiahStr) { return parseInt(String(rupiahStr).replace(/[^0-9]/g, '')) || 0; }
-        
-        function calculateTotals(updateFinalInput = false) {
-            let totalPengajuan = 0;
-            document.querySelectorAll('.progress-input').forEach(input => {
-                if (input.disabled) return;
-                const subtotal = parseFloat(input.dataset.subtotal);
-                let progress = parseFloat(input.value) || 0;
-                const maxProgress = parseFloat(input.max);
-                if (progress > maxProgress) { progress = maxProgress; input.value = maxProgress.toFixed(2); }
-                if (progress < 0) { progress = 0; input.value = '0.00'; }
-                const nilaiPengajuan = (progress / 100) * subtotal;
-                document.querySelector(`.nilai-pengajuan[data-id='${input.dataset.id}']`).textContent = formatRupiah(nilaiPengajuan);
-                totalPengajuan += nilaiPengajuan;
-            });
-            if (totalPengajuanEl) totalPengajuanEl.textContent = formatRupiah(totalPengajuan);
-            if (updateFinalInput) { nominalPengajuanInput.value = Math.round(totalPengajuan); }
-            validateNominal();
-        }
-        
-        function validateNominal() {
-            const totalDihitung = unformatRupiah(totalPengajuanEl.textContent);
-            const nominalFinal = parseFloat(nominalPengajuanInput.value) || 0;
-            if (nominalFinal > Math.ceil(totalDihitung)) {
-                errorNominalEl.classList.remove('d-none');
-                btnSubmit.disabled = true;
+   <!-- [PERBAIKAN TOTAL] Logika JavaScript di-refactor agar lebih kuat dan anti-bug -->
+    <script>
+document.addEventListener("DOMContentLoaded", function() {
+    const uploadCard = document.getElementById('upload-card');
+    const fileInput = document.getElementById('file-input');
+    const previewContainer = document.getElementById('preview-container');
+    const buktiDihapusInput = document.getElementById('bukti_dihapus');
+    
+    // Gunakan satu DataTransfer object sebagai "source of truth" untuk file-file BARU.
+    const newFilesDataTransfer = new DataTransfer();
+
+    function renderNewFilePreview(file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const previewItem = document.createElement('div');
+            previewItem.className = 'preview-item';
+            previewItem.dataset.newFile = true;
+            previewItem.dataset.filename = file.name;
+            
+            const removeBtnHTML = `<button type="button" class="remove-btn" title="Hapus">&times;</button>`;
+            let previewContent = '';
+
+            if (file.type.startsWith('image/')) {
+                previewContent = `<img src="${e.target.result}" alt="${file.name}">`;
             } else {
-                errorNominalEl.classList.add('d-none');
-                btnSubmit.disabled = nominalFinal <= 0;
+                let iconClass = 'fas fa-file-alt text-secondary';
+                if (file.type.includes('pdf')) iconClass = 'fas fa-file-pdf text-danger';
+                previewContent = `
+                <div class="file-icon-preview d-flex flex-column align-items-center justify-content-center h-100">
+                    <i class="${iconClass} fa-3x"></i>
+                    <small class="text-muted mt-2 text-truncate" style="max-width: 90px;">${file.name}</small>
+                </div>`;
             }
+            previewItem.innerHTML = previewContent + removeBtnHTML;
+            previewContainer.appendChild(previewItem);
         }
-        
-        if (tableBody) tableBody.addEventListener('input', e => { if (e.target.classList.contains('progress-input')) calculateTotals(true); });
-        if (nominalPengajuanInput) nominalPengajuanInput.addEventListener('input', validateNominal);
-        calculateTotals(false);
-        
-        function updateFileInput() { fileInput.files = dataTransfer.files; }
-        
-        function renderNewFilePreview(file) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                let previewContent = `<div class="d-flex flex-column align-items-center justify-content-center h-100 bg-light p-2"><i class="fas fa-file fa-3x text-secondary"></i><small class="text-muted mt-2 text-truncate" style="max-width: 90px;">${file.name}</small></div>`;
-                if (file.type.startsWith('image/')) {
-                    previewContent = `<img src="${e.target.result}" alt="${file.name}">`;
-                } else if (file.type.includes('pdf')) {
-                    previewContent = `<div class="d-flex flex-column align-items-center justify-content-center h-100 bg-light p-2"><i class="fas fa-file-pdf fa-3x text-danger"></i><small class="text-muted mt-2 text-truncate" style="max-width: 90px;">${file.name}</small></div>`;
-                }
-                previewContainer.insertAdjacentHTML('beforeend', `<div class="preview-item" data-filename="${file.name}">${previewContent}<button type="button" class="remove-btn" title="Hapus">&times;</button></div>`);
-            }
-            reader.readAsDataURL(file);
-        }
+        reader.readAsDataURL(file);
+    }
 
-        function handleNewFiles(newFiles) {
-            for(const file of newFiles) {
-                dataTransfer.items.add(file);
+    // Fungsi untuk MENAMBAH file ke `newFilesDataTransfer`
+    function addFilesToUpload(files) {
+        for(const file of files) {
+            if (!Array.from(newFilesDataTransfer.files).some(f => f.name === file.name && f.size === file.size)) {
+                newFilesDataTransfer.items.add(file);
                 renderNewFilePreview(file);
             }
-            updateFileInput();
         }
+        // Sinkronkan DataTransfer dengan input file asli setiap kali ada perubahan
+        fileInput.files = newFilesDataTransfer.files;
+    }
 
-        if (uploadCard) {
-            uploadCard.addEventListener('click', () => fileInput.click());
-            uploadCard.addEventListener('dragover', e => { e.preventDefault(); uploadCard.classList.add('is-dragging'); });
-            uploadCard.addEventListener('dragleave', () => uploadCard.classList.remove('is-dragging'));
-            uploadCard.addEventListener('drop', e => { e.preventDefault(); uploadCard.classList.remove('is-dragging'); handleNewFiles(e.dataTransfer.files); });
-            fileInput.addEventListener('change', e => { handleNewFiles(e.target.files); e.target.value = ''; });
-        }
-
-        previewContainer.addEventListener('click', function(e){
-            const removeButton = e.target.closest('.remove-btn');
-            if (removeButton) {
-                const previewItem = removeButton.closest('.preview-item');
-                const fileId = previewItem.dataset.idBukti;
-                const fileName = previewItem.dataset.filename;
-
-                if (fileId) {
-                    let currentDeleted = buktiDihapusInput.value ? buktiDihapusInput.value.split(',') : [];
-                    if (!currentDeleted.includes(fileId)) currentDeleted.push(fileId);
-                    buktiDihapusInput.value = currentDeleted.join(',');
-                    previewItem.style.display = 'none';
-                } else {
-                    const newFiles = new DataTransfer();
-                    for (let i = 0; i < dataTransfer.files.length; i++) { if (dataTransfer.files[i].name !== fileName) newFiles.items.add(dataTransfer.files[i]); }
-                    dataTransfer.items.clear();
-                    for(const file of newFiles.files) dataTransfer.items.add(file);
-                    previewItem.remove();
-                    updateFileInput();
-                }
-            }
+    if (uploadCard) {
+        uploadCard.addEventListener('click', () => fileInput.click());
+        uploadCard.addEventListener('dragover', e => { e.preventDefault(); uploadCard.classList.add('is-dragging'); });
+        uploadCard.addEventListener('dragleave', () => uploadCard.classList.remove('is-dragging'));
+        uploadCard.addEventListener('drop', e => { 
+            e.preventDefault(); 
+            uploadCard.classList.remove('is-dragging'); 
+            addFilesToUpload(e.dataTransfer.files); 
         });
+        fileInput.addEventListener('change', e => {
+            if(e.target.files.length > 0) {
+                addFilesToUpload(e.target.files);
+            }
+            e.target.value = ''; // Reset untuk event change
+        });
+    }
+
+    previewContainer.addEventListener('click', function(e) {
+        const removeButton = e.target.closest('.remove-btn');
+        if (removeButton) {
+            const previewItem = removeButton.closest('.preview-item');
+            const fileId = previewItem.dataset.idBukti; // Untuk file lama
+            const isNewFile = previewItem.dataset.newFile; // Untuk file baru
+
+            if (fileId) { // Ini adalah file LAMA dari database
+                let currentDeleted = buktiDihapusInput.value ? buktiDihapusInput.value.split(',') : [];
+                if (!currentDeleted.includes(fileId)) {
+                    currentDeleted.push(fileId);
+                }
+                buktiDihapusInput.value = currentDeleted.join(',');
+                previewItem.style.display = 'none'; // Cukup sembunyikan
+            } 
+            
+            if (isNewFile) { // Ini adalah file BARU yang baru dipilih
+                const fileNameToRemove = previewItem.dataset.filename;
+                const tempDt = new DataTransfer();
+                
+                // Buat ulang DataTransfer tanpa file yang dihapus
+                for (const file of newFilesDataTransfer.files) {
+                    if (file.name !== fileNameToRemove) {
+                        tempDt.items.add(file);
+                    }
+                }
+
+                // Ganti DataTransfer lama dengan yang baru
+                newFilesDataTransfer.items.clear();
+                for (const file of tempDt.files) {
+                    newFilesDataTransfer.items.add(file);
+                }
+                
+                previewItem.remove(); // Hapus elemen preview dari tampilan
+                fileInput.files = newFilesDataTransfer.files; // Sinkronkan lagi dengan input
+            }
+        }
     });
+});
+
     </script>
 </body>
 </html>

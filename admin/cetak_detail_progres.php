@@ -237,7 +237,7 @@ setlocale(LC_TIME, 'id_ID.utf8', 'id_ID');
             <tr>
                 <td><strong>ID RAB</strong></td>
                 <td>:</td>
-                <td><?= 'RABU' . date('ym', strtotime($proyek_info['tanggal_mulai'])) . str_pad($proyek_info['id_rab_upah'], 2, '0', STR_PAD_LEFT) ?></td>
+<td><?= 'RABP' . $proyek_info['id_rab_upah'] ?></td>
             </tr>
             <tr>
                 <td><strong>Nama Perumahan</strong></td>

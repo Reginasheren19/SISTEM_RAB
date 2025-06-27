@@ -81,7 +81,7 @@ function tampilkan_header_detail($koneksi, $id_proyek) {
 body { 
     font-family: 'Tahoma', sans-serif; 
     font-size: 12px; 
-    color: #000; 
+    color: #000;
     margin: 0; 
     padding: 0;
 }
@@ -224,14 +224,16 @@ th {
             echo "<p class='filter-info'>Periode: " . date('d M Y', strtotime($tanggal_mulai)) . " s/d " . date('d M Y', strtotime($tanggal_selesai)) . "</p>";
         }
         
-        echo "<table><thead><tr><th>No</th><th>ID</th><th>Proyek</th><th>Mandor</th><th>Tanggal</th><th class='text-end'>Total</th><th>Status</th></tr></thead><tbody>";
+        echo "<table><thead><tr><th>No</th><th class='text-center'>ID Pengajuan</th><th>Proyek</th><th>Mandor</th><th>Tanggal</th><th class='text-end'>Total</th><th>Status</th></tr></thead><tbody>";
         
         if ($result && mysqli_num_rows($result) > 0) {
             $no = 1; $total_semua = 0;
-            while ($row = mysqli_fetch_assoc($result)) {
-                echo "<tr><td class='text-center'>{$no}</td><td>" . htmlspecialchars($row['id_pengajuan_upah']) . "</td><td>" . htmlspecialchars($row['nama_proyek']) . "</td><td>" . htmlspecialchars($row['nama_mandor']) . "</td><td class='text-center'>" . date("d-m-Y", strtotime($row['tanggal_pengajuan'])) . "</td><td class='text-end'>Rp " . number_format($row['total_pengajuan'], 0, ',', '.') . "</td><td class='text-center'>" . htmlspecialchars(ucwords($row['status_pengajuan'])) . "</td></tr>";
-                $no++; $total_semua += $row['total_pengajuan'];
-            }
+        while ($row = mysqli_fetch_assoc($result)) {
+            // Format ID Pengajuan menjadi PU + ID
+            $formatted_id = 'PU' . $row['id_pengajuan_upah'];
+            echo "<tr><td class='text-center'>{$no}</td><td class='text-center'>" . htmlspecialchars($formatted_id) . "</td><td>" . htmlspecialchars($row['nama_proyek']) . "</td><td>" . htmlspecialchars($row['nama_mandor']) . "</td><td class='text-center'>" . date("d-m-Y", strtotime($row['tanggal_pengajuan'])) . "</td><td class='text-end'>Rp " . number_format($row['total_pengajuan'], 0, ',', '.') . "</td><td class='text-center'>" . htmlspecialchars(ucwords($row['status_pengajuan'])) . "</td></tr>";
+            $no++; $total_semua += $row['total_pengajuan'];
+        }
             echo "<tr class='fw-bold'><td colspan='5' class='text-center'>TOTAL KESELURUHAN</td><td class='text-end'>Rp " . number_format($total_semua, 0, ',', '.') . "</td><td></td></tr>";
         } else { 
             echo "<tr><td colspan='7' class='text-center'>Tidak ada data.</td></tr>"; 

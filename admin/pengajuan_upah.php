@@ -362,9 +362,11 @@ if (isset($_SESSION['flash_message'])) {
                                         <?php if (mysqli_num_rows($pengajuanresult) > 0): ?>
                                             <?php while ($row = mysqli_fetch_assoc($pengajuanresult)):
                                                 $is_deletable = ($row['id_pengajuan_upah'] == $row['id_pengajuan_terakhir'] && in_array($row['status_pengajuan'], ['diajukan', 'ditolak']));
+$formattedpengajuan = 'PU' . $row['id_pengajuan_upah'];
+
                                             ?>
                                             <tr>
-                                                <td class="text-center"><?= htmlspecialchars($row['id_pengajuan_upah']) ?></td>
+<td class="text-center"><?= htmlspecialchars($formattedpengajuan) ?></td>
                                                 <td><?= htmlspecialchars($row['nama_perumahan']) . ' - ' . htmlspecialchars($row['kavling']) ?></td>
                                                 <td><?= htmlspecialchars($row['nama_mandor']) ?></td>
                                                 <td class="text-center"><?= date('d-m-Y', strtotime($row['tanggal_pengajuan'])) ?></td>
@@ -449,10 +451,10 @@ if (isset($_SESSION['flash_message'])) {
                         mysqli_data_seek($rabUpahUntukModalResult, 0);
                         while ($rab = mysqli_fetch_assoc($rabUpahUntukModalResult)) :
                             $id_rab_asli = $rab['id_rab_upah'];
-                            $id_tampilan = 'RABP' . date('y') . date('m') . $rab['id_proyek'] . $id_rab_asli;
+$formatted_id = 'RABP' . $rab['id_rab_upah'];
                     ?>
                         <tr>
-                            <td><?= htmlspecialchars($id_tampilan) ?></td>
+    <td><?= htmlspecialchars($formatted_id) ?></td>
                             <td><?= htmlspecialchars($rab['nama_perumahan']) ?></td>
                             <td><?= htmlspecialchars($rab['kavling']) ?></td>
                             <td><?= htmlspecialchars($rab['nama_mandor']) ?></td>

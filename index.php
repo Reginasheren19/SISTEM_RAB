@@ -267,30 +267,37 @@
       <div class="forms">
         <div class="form-content">
 
-          <div class="login-form">
-            <div class="title">Masuk</div>
-            <form action="login.php" method="post">
-              <div class="input-boxes">
-                <div class="input-box">
-                  <i class="fas fa-envelope"></i>
-                  <input type="text" name="username" placeholder="Masukkan username" required>
+                <div class="login-form">
+                    <div class="title">Masuk</div>
+                    <!-- Form Login -->
+                    <form action="login.php" method="post">
+                        <!-- Pesan Kesalahan -->
+                        <?php if (isset($_SESSION['error_message'])): ?>
+                            <div class="alert alert-danger" role="alert">
+                                <?= htmlspecialchars($_SESSION['error_message']) ?>
+                            </div>
+                            <?php unset($_SESSION['error_message']); ?>
+                        <?php endif; ?>
+                        <div class="input-boxes">
+                            <div class="input-box">
+                                <i class="fas fa-envelope"></i>
+                                <input type="text" name="username" placeholder="Masukkan username" required>
+                            </div>
+                            <div class="input-box" style="position: relative;">
+                                <i class="fas fa-lock"></i>
+                                <input type="password" id="password" name="password" placeholder="Masukkan password" required>
+                                <i class="far fa-eye" id="togglePassword" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; color:rgb(187, 160, 101);"></i>
+                            </div>
+                            <div class="text"><a href="register.php">Lupa password?</a></div>
+                            <div class="button input-box">
+                                <input type="submit" value="Kirim">
+                            </div>
+                        </div>
+                    </form>
                 </div>
-                  <div class="input-box" style="position: relative;">
-                    <i class="fas fa-lock"></i>
-                    <input type="password" id="password" name="password" placeholder="Masukkan password" required>
-                    <i class="far fa-eye" id="togglePassword" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; color:rgb(187, 160, 101);"></i>
-                  </div>
-                <div class="text"><a href="register.php">Lupa password?</a></div>
-                <div class="button input-box">
-                  <input type="submit" value="Kirim">
-                </div>
-              </div>
-            </form>
-          </div>
+            </div>
         </div>
-      </div>
     </div>
-
       <script>
         const togglePassword = document.querySelector('#togglePassword');
         const password = document.querySelector('#password');

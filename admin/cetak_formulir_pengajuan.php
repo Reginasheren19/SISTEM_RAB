@@ -128,7 +128,7 @@ setlocale(LC_TIME, 'id_ID.utf8', 'id_ID');
             <div class="row">
                 <div class="col-7">
                     <table class="table table-sm">
-                        <tr><td>No. Pengajuan</td><td>: <?= htmlspecialchars($id_pengajuan_upah) ?> / Termin Pengajuan ke-<?= $termin_ke ?></td></tr>
+                        <tr><td>ID Pengajuan</td><td>: PU<?= htmlspecialchars($id_pengajuan_upah) ?>/ Termin Pengajuan ke-<?= $termin_ke ?></td></tr>
                         <tr><td>Nama Perumahan</td><td>: <?= htmlspecialchars($info['nama_perumahan']) ?></td></tr>
                         <tr><td>Kavling / Blok</td><td>: <?= htmlspecialchars($info['kavling']) ?></td></tr>
                     </table>
@@ -201,6 +201,10 @@ setlocale(LC_TIME, 'id_ID.utf8', 'id_ID');
                 <?php endif; ?>
             </tbody>
         </table>
+        <!-- Tambahkan tempat tanggal -->
+<div class="date-box">
+    <p class="text-end" style="margin-top: 30px;">Ponorogo, <?= date("d F Y") ?></p>
+</div>
         <div style="clear: both;"></div>
         <div class="signature-section">
             <div class="signature-box"><p>Diajukan oleh,</p><div class="name"><?= htmlspecialchars($info['pj_proyek']) ?></div><p>PJ Proyek</p></div>

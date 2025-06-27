@@ -296,7 +296,8 @@ if (!$perumahanResult) {
                           <?php
                             $tahun = date('Y', strtotime($row['tanggal_mulai']));
                             $bulan = date('m', strtotime($row['tanggal_mulai']));
-$formatted_id = 'RABP' . $row['id_rab_upah'];                            $totalFormatted = 'Rp ' . number_format($row['total_rab_upah'], 0, ',', '.');
+$formatted_id = 'RABP' . $row['id_rab_upah'];                            
+$totalFormatted = 'Rp ' . number_format($row['total_rab_upah'], 0, ',', '.');
                           ?>
                           <tr>
                             <td><?= htmlspecialchars($formatted_id) ?></td>

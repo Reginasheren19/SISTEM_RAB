@@ -114,6 +114,20 @@ function toRoman($num) {
     <link rel="stylesheet" href="assets/css/bootstrap.min.css" />
     <link rel="stylesheet" href="assets/css/plugins.min.css" />
     <link rel="stylesheet" href="assets/css/kaiadmin.min.css" />
+
+        <!-- CSS Just for demo purpose, don't include it in your project -->
+    <link rel="stylesheet" href="assets/css/demo.css" />
+        <style>
+        .upload-card { border: 2px dashed #e0e0e0; border-radius: 0.5rem; transition: all 0.3s ease; background-color: #ffffff; }
+        .upload-card.is-dragging { border-color: #0d6efd; background-color: #f0f8ff; }
+        .upload-label { display: block; text-align: center; padding: 20px; cursor: pointer; }
+        .upload-icon { font-size: 2.5rem; color: #adb5bd; }
+        #preview-container { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 1rem; }
+        .preview-item { position: relative; width: 100px; height: 100px; border-radius: 0.5rem; overflow: hidden; border: 1px solid #dee2e6; }
+        .preview-item img { width: 100%; height: 100%; object-fit: cover; }
+        .preview-item .remove-btn { position: absolute; top: 5px; right: 5px; width: 22px; height: 22px; background-color: rgba(0, 0, 0, 0.6); color: white; border: none; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; opacity: 0; transition: opacity 0.3s ease; font-size: 0.75rem; }
+        .preview-item:hover .remove-btn { opacity: 1; }
+    </style>
 </head>
 <body>
     <div class="wrapper">
@@ -313,8 +327,8 @@ function toRoman($num) {
                             </div>
                             <div class="col-md-6">
                                 <dl class="row">
-                                    <dt class="col-sm-4">ID RAB</dt><dd class="col-sm-8">: <?= htmlspecialchars($rab_info['id_rab_upah']) ?></dd>
-                                    <dt class="col-sm-4">Mandor</dt><dd class="col-sm-8">: <?= htmlspecialchars($rab_info['nama_mandor']) ?></dd>
+                    <dt class="col-sm-4">ID RAB</dt>
+                    <dd class="col-sm-8">: RABP<?= htmlspecialchars($rab_info['id_rab_upah']) ?></dd>                                    <dt class="col-sm-4">Mandor</dt><dd class="col-sm-8">: <?= htmlspecialchars($rab_info['nama_mandor']) ?></dd>
                                     <dt class="col-sm-4">PJ Proyek</dt><dd class="col-sm-8">: <?= htmlspecialchars($rab_info['pj_proyek']) ?></dd>
                                 </dl>
                             </div>
@@ -393,27 +407,54 @@ function toRoman($num) {
                     </div>
                 </div>
 
-                <!-- [DIUBAH] Ringkasan, Bukti, & Kirim Pengajuan -->
-                <div class="card shadow-sm">
-                    <div class="card-header bg-light"><h4 class="card-title mb-0">Ringkasan & Kirim Pengajuan</h4></div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-7">
-                                <div class="mb-3">
-                                    <label class="form-label fw-bold">Upload Bukti Progress Pekerjaan</label>
-                                    <div id="upload-card" class="upload-card"><label for="file-input" class="upload-label"><i class="fas fa-cloud-upload-alt upload-icon mb-2"></i><h6 class="fw-bold">Seret & lepas file di sini</h6><p class="text-muted small mb-0">atau klik untuk memilih file</p></label><input type="file" id="file-input" name="bukti_pengajuan[]" multiple accept="image/*,application/pdf" class="d-none"></div>
-                                </div>
-                                <div id="preview-container"></div>
-                            </div>
-                            <div class="col-md-5">
-                                <!-- [DIUBAH] Tanggal Pengajuan dipindah ke sini -->
-                                <div class="mb-3"><label for="tanggal_pengajuan" class="form-label fw-bold">Tanggal Pengajuan</label><input type="date" id="tanggal_pengajuan" name="tanggal_pengajuan" class="form-control" value="<?= date('Y-m-d') ?>" required></div>
-                                <div class="mb-3"><label for="nominal-pengajuan" class="form-label fw-bold">Nominal Final Diajukan</label><input type="number" class="form-control form-control-lg text-end" id="nominal-pengajuan" name="nominal_pengajuan_final" placeholder="0"><div id="error-nominal" class="form-text text-danger d-none">Nominal tidak boleh melebihi Total Pengajuan Dihitung.</div></div>
-                                <div class="d-grid gap-2 d-md-flex justify-content-md-end"><a href="pengajuan_upah.php" class="btn btn-secondary">Kembali</a><button type="submit" id="btn-submit" class="btn btn-primary" disabled><i class="fa fa-paper-plane"></i> Kirim Pengajuan</button></div>
-                            </div>
-                        </div>
-                    </div>
+<!-- Upload File Section - Tampilan Input Pengajuan Baru -->
+<div class="card shadow-sm">
+    <div class="card-header bg-light">
+        <h4 class="card-title mb-0">Ringkasan & Kirim Pengajuan</h4>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-7">
+<!-- Upload/Kelola Bukti -->
+<div class="mb-3">
+  <label class="form-label fw-bold">Upload/Kelola Bukti</label>
+  <div id="upload-card" 
+       class="border border-dashed rounded d-flex flex-column align-items-center justify-content-center text-center p-4" 
+       style="height: 160px; cursor: pointer; background-color: #fdfdfd;">
+    
+    <label for="file-input" class="d-block" style="cursor:pointer;">
+      <i class="fas fa-cloud-upload-alt fa-2x text-secondary mb-2"></i>
+      <h6 class="fw-bold mb-1">Seret & lepas file baru di sini</h6>
+      <p class="text-muted small mb-0">atau klik untuk menambah file</p>
+    </label>
+
+    <input type="file" id="file-input" name="bukti_pengajuan[]" multiple accept="image/*,application/pdf" class="d-none">
+  </div>
+</div>
+
+<div id="preview-container" class="d-flex flex-wrap gap-2 mt-3"></div>
+
+            </div>
+            <div class="col-md-5">
+                <div class="mb-3">
+                    <label for="tanggal_pengajuan" class="form-label fw-bold">Tanggal Pengajuan</label>
+                    <input type="date" id="tanggal_pengajuan" name="tanggal_pengajuan" class="form-control" value="<?= date('Y-m-d') ?>" required>
                 </div>
+                <div class="mb-3">
+                    <label for="nominal-pengajuan" class="form-label fw-bold">Nominal Final Diajukan</label>
+                    <input type="number" class="form-control form-control-lg text-end" id="nominal-pengajuan" name="nominal_pengajuan_final" placeholder="0">
+                    <div id="error-nominal" class="form-text text-danger d-none">Nominal tidak boleh melebihi Total Pengajuan Dihitung.</div>
+                </div>
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                    <a href="pengajuan_upah.php" class="btn btn-secondary">Kembali</a>
+                    <button type="submit" id="btn-submit" class="btn btn-primary" disabled>
+                        <i class="fa fa-paper-plane"></i> Kirim Pengajuan
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
             </form> 
           </div>
         </div>
@@ -429,48 +470,45 @@ function toRoman($num) {
 
 <script>
     document.addEventListener("DOMContentLoaded", function() {
-        // --- Variabel Elemen ---
         const tableBody = document.querySelector("#tblDetailRAB tbody");
-        const totalPengajuanEl = document.querySelectorAll('#total-pengajuan-saat-ini');
+        const totalPengajuanEl = document.getElementById('total-pengajuan-saat-ini');
         const nominalPengajuanInput = document.getElementById('nominal-pengajuan');
         const errorNominalEl = document.getElementById('error-nominal');
         const btnSubmit = document.getElementById('btn-submit');
         const uploadCard = document.getElementById('upload-card');
         const fileInput = document.getElementById('file-input');
         const previewContainer = document.getElementById('preview-container');
+        // [PERBAIKAN] Gunakan satu DataTransfer sebagai "source of truth" yang persisten
+        const dataTransfer = new DataTransfer();
 
-        // --- Fungsi Helper ---
-        function formatRupiah(angka) {
-            return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka || 0);
-        }
-
-        // --- Logika Kalkulasi Tabel ---
+        function formatRupiah(angka) { return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka || 0); }
+        
         function calculateTotals() {
             let totalPengajuan = 0;
             document.querySelectorAll('.progress-input').forEach(input => {
-                if (input.disabled) return;
-                const id = input.dataset.id;
+                if (input.disabled && !input.closest('tr').querySelector('.lunas-checkbox')?.checked) return;
+
                 const subtotal = parseFloat(input.dataset.subtotal);
                 let progressDiajukan = parseFloat(input.value) || 0;
                 const maxProgress = parseFloat(input.max);
-
+                
                 if (progressDiajukan > maxProgress) { progressDiajukan = maxProgress; input.value = maxProgress.toFixed(2); }
                 if (progressDiajukan < 0) { progressDiajukan = 0; input.value = '0.00'; }
 
                 const nilaiPengajuan = (progressDiajukan / 100) * subtotal;
-                const nilaiCell = document.querySelector(`.nilai-pengajuan[data-id='${id}']`);
+                const nilaiCell = document.querySelector(`.nilai-pengajuan[data-id='${input.dataset.id}']`);
                 if (nilaiCell) { nilaiCell.textContent = formatRupiah(nilaiPengajuan); }
                 totalPengajuan += nilaiPengajuan;
             });
-            totalPengajuanEl.forEach(el => { el.textContent = formatRupiah(totalPengajuan); });
+            totalPengajuanEl.textContent = formatRupiah(totalPengajuan);
             nominalPengajuanInput.value = Math.round(totalPengajuan);
             validateNominal();
         }
         
         function validateNominal() {
-            const totalPengajuan = parseFloat((totalPengajuanEl[0].textContent || 'Rp 0').replace(/[^0-9]/g, '')) || 0;
+            const totalDihitung = parseFloat((totalPengajuanEl.textContent || 'Rp 0').replace(/[^0-9]/g, '')) || 0;
             const nominalFinal = parseFloat(nominalPengajuanInput.value) || 0;
-            if (nominalFinal > Math.ceil(totalPengajuan)) {
+            if (nominalFinal > Math.ceil(totalDihitung)) {
                 errorNominalEl.classList.remove('d-none');
                 btnSubmit.disabled = true;
             } else {
@@ -481,11 +519,13 @@ function toRoman($num) {
 
         if (tableBody) {
             tableBody.addEventListener('input', e => { if (e.target.classList.contains('progress-input')) calculateTotals(); });
+            
             tableBody.addEventListener('change', function(e) {
                 if (e.target.classList.contains('lunas-checkbox')) {
                     const tr = e.target.closest('tr');
                     const progressInput = tr.querySelector('.progress-input');
                     if (!progressInput) return;
+                    
                     const maxProgress = parseFloat(progressInput.max);
                     if (e.target.checked) {
                         progressInput.value = maxProgress.toFixed(2);
@@ -494,75 +534,81 @@ function toRoman($num) {
                         progressInput.value = '';
                         progressInput.disabled = false;
                     }
-                    calculateTotals();
+                    calculateTotals(); 
                 }
             });
         }
+        
         if (nominalPengajuanInput) nominalPengajuanInput.addEventListener('input', validateNominal);
         calculateTotals();
 
-        // =========================================================================
-        // [PERBAIKAN UTAMA] - LOGIKA UPLOAD FILE
-        // =========================================================================
-        
-        // Fungsi untuk menampilkan semua file yang ada di 'fileInput'
-        function renderPreviews() {
-            previewContainer.innerHTML = ''; // Kosongkan preview sebelum render ulang
-            const files = fileInput.files;
+        // [PERBAIKAN TOTAL] Logika upload file dibuat lebih robust
+        function updatePreviewsAndInput() {
+            // 1. Sinkronkan `fileInput` dengan `dataTransfer`
+            fileInput.files = dataTransfer.files;
 
-            for (const file of files) {
+            // 2. Kosongkan container dan render ulang semua preview dari `dataTransfer`
+            previewContainer.innerHTML = '';
+            Array.from(dataTransfer.files).forEach(file => {
                 const previewItem = document.createElement('div');
                 previewItem.className = 'preview-item';
-                
-                // Tambahkan data-filename untuk memudahkan penghapusan
                 previewItem.dataset.filename = file.name;
 
-                if (file.type.includes('pdf')) {
-                    previewItem.classList.add('d-flex', 'flex-column', 'align-items-center', 'justify-content-center', 'bg-light');
-                    previewItem.innerHTML = `<i class="fas fa-file-pdf fa-3x text-danger"></i><small class="text-muted mt-2 text-truncate" style="max-width: 90px;">${file.name}</small><button type="button" class="remove-btn" title="Hapus">&times;</button>`;
-                } else if (file.type.startsWith('image/')) {
+                const removeBtnHTML = `<button type="button" class="remove-btn" title="Hapus">&times;</button>`;
+                
+                if (file.type.startsWith('image/')) {
                     const reader = new FileReader();
                     reader.onload = function(e) {
-                        previewItem.innerHTML = `<img src="${e.target.result}" alt="${file.name}"><button type="button" class="remove-btn" title="Hapus">&times;</button>`;
+                        previewItem.innerHTML = `<img src="${e.target.result}" alt="${file.name}">${removeBtnHTML}`;
                     }
                     reader.readAsDataURL(file);
+                } else { // Untuk PDF dan file lainnya
+                     let iconClass = 'fas fa-file-alt'; // Icon default
+                     let colorClass = 'text-secondary';
+                     if (file.type.includes('pdf')) {
+                         iconClass = 'fas fa-file-pdf';
+                         colorClass = 'text-danger';
+                     }
+                     previewItem.innerHTML = `
+                        <div class="file-icon-preview d-flex flex-column align-items-center justify-content-center h-100">
+                            <i class="${iconClass} fa-3x ${colorClass}"></i>
+                            <small class="text-muted mt-2 text-truncate" style="max-width: 90px;">${file.name}</small>
+                        </div>
+                        ${removeBtnHTML}`;
                 }
                 previewContainer.appendChild(previewItem);
-            }
+            });
         }
 
-        // [DIUBAH TOTAL] Fungsi untuk menangani file baru dan menggabungkannya dengan yang lama
-        function handleFiles(newFiles) {
-            const dt = new DataTransfer();
-            const existingFiles = fileInput.files;
-            const existingFileNames = Array.from(existingFiles).map(f => f.name);
-
-            // 1. Tambahkan file yang sudah ada ke daftar
-            for (const file of existingFiles) {
-                dt.items.add(file);
-            }
-
-            // 2. Tambahkan file baru, tapi lewati jika namanya sudah ada (mencegah duplikat)
-            for (const newFile of newFiles) {
-                if (!existingFileNames.includes(newFile.name)) {
-                     if (newFile.type.startsWith('image/') || newFile.type.includes('pdf')) {
-                        dt.items.add(newFile);
-                     }
+        // Fungsi untuk MENAMBAH file ke `dataTransfer`
+        function addFiles(newFiles) {
+            Array.from(newFiles).forEach(newFile => {
+                // Mencegah duplikat file dengan nama yang sama
+                if (!Array.from(dataTransfer.files).some(f => f.name === newFile.name && f.size === newFile.size)) {
+                    dataTransfer.items.add(newFile);
                 }
-            }
-            
-            // 3. Update input file dengan daftar gabungan dan render ulang preview
-            fileInput.files = dt.files;
-            renderPreviews();
+            });
+            // Setelah data diubah, panggil fungsi update utama
+            updatePreviewsAndInput();
         }
 
-        // Event listener untuk upload
+        // Event listeners untuk upload
         if (uploadCard) {
             uploadCard.addEventListener('click', () => fileInput.click());
             uploadCard.addEventListener('dragover', e => { e.preventDefault(); uploadCard.classList.add('is-dragging'); });
             uploadCard.addEventListener('dragleave', () => uploadCard.classList.remove('is-dragging'));
-            uploadCard.addEventListener('drop', e => { e.preventDefault(); uploadCard.classList.remove('is-dragging'); handleFiles(e.dataTransfer.files); });
-            fileInput.addEventListener('change', e => handleFiles(e.target.files));
+            uploadCard.addEventListener('drop', e => { 
+                e.preventDefault(); 
+                uploadCard.classList.remove('is-dragging'); 
+                addFiles(e.dataTransfer.files); 
+            });
+            fileInput.addEventListener('change', e => {
+                if (e.target.files.length > 0) {
+                    addFiles(e.target.files);
+                }
+                // Reset input value agar 'change' event bisa ter-trigger lagi untuk file yang sama
+                e.target.value = '';
+            });
         }
 
         // Event listener untuk tombol hapus pada preview
@@ -571,19 +617,20 @@ function toRoman($num) {
                 const previewItem = e.target.closest('.preview-item');
                 const fileNameToRemove = previewItem.dataset.filename;
                 
-                const dt = new DataTransfer();
-                const currentFiles = fileInput.files;
-
                 // Buat daftar file baru tanpa file yang akan dihapus
-                for (let i = 0; i < currentFiles.length; i++) {
-                    if (currentFiles[i].name !== fileNameToRemove) {
-                        dt.items.add(currentFiles[i]);
+                const newDt = new DataTransfer();
+                Array.from(dataTransfer.files).forEach(file => {
+                    if (file.name !== fileNameToRemove) {
+                        newDt.items.add(file);
                     }
-                }
+                });
+
+                // Ganti `dataTransfer` lama dengan yang baru
+                dataTransfer.items.clear();
+                for (const file of newDt.files) dataTransfer.items.add(file);
                 
-                // Update input file dan render ulang preview
-                fileInput.files = dt.files;
-                renderPreviews();
+                // Panggil fungsi update utama
+                updatePreviewsAndInput();
             }
         });
     });
