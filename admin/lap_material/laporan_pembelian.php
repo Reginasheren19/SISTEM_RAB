@@ -322,7 +322,7 @@ $result = mysqli_stmt_get_result($stmt);
                 <h3 class="fw-bold mb-3">Laporan Pencatatan Pembelian</h3>
                 <ul class="breadcrumbs mb-3">
                     <li class="nav-home">
-                        <a href="dashboard.php">
+                        <a href="../dashboard.php">
                             <i class="icon-home"></i>
                         </a>
                     </li>

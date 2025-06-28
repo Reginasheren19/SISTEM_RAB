@@ -140,6 +140,12 @@ include("../config/koneksi_mysql.php");
                   <p>Laporan Distribusi</p>
                 </a>
               </li>
+              <li class="nav-item">
+                <a href="lap_material/lap_realisasi_anggaran.php">
+                  <i class="fas fa-file"></i>
+                  <p>Laporan Realisasi</p>
+                </a>
+              </li>
               <li class="nav-section">
                 <span class="sidebar-mini-icon">
                   <i class="fa fa-ellipsis-h"></i>

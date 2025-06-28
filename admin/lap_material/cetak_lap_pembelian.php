@@ -77,8 +77,9 @@ $logo_base64 = 'data:image/' . $tipe_logo . ';base64,' . base64_encode($data_log
                     <td style="width: 20%;"><img src="<?= $logo_base64 ?>" alt="Logo" class="logo"></td>
                     <td style="width: 80%;" class="text-kop">
                         <h4>PT. HASTA BANGUN NUSANTARA</h4>
-                        <p>Jalan Cokroaminoto 63414 Ponorogo Jawa Timur</p>
-                        <p>Telp: (0352) 123-456 | Email: kontak@hastabangun.co.id</p>
+                        <h2 class ="tagline">General Contractor & Developer</h2>
+                                <p>Jalan Cakraninggrat, Kauman, Kabupaten Ponorogo, Jawa Timur 63414</p>
+                                <p>Telp: (0352) 123-456 | Email: kontak@hastabangun.co.id</p>
                     </td>
                 </tr>
             </table>
