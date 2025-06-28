@@ -1,4 +1,6 @@
 <?php
+session_start();
+
 include("../config/koneksi_mysql.php");
 
 if (!isset($_GET['id_rab_upah'])) {
@@ -353,9 +355,12 @@ $detail_result = mysqli_query($koneksi, $sql_detail);
             <div class="card shadow-sm">
 <div class="card-header bg-light d-flex justify-content-between align-items-center">
   <h4 class="card-title mb-0">Rincian RAB Upah</h4>
-<a href="cetak_rab_upah.php?id_rab_upah=<?= $id_rab_upah ?>" target="_blank" class="btn btn-outline-primary btn-sm">
-  <i class="fas fa-print me-1"></i> Cetak
-</a>
+                        <a href="cetak_rab_upah.php?id_rab_upah=<?= $id_rab_upah ?>" target="_blank" class="btn btn-label-info btn-round btn-sm">
+                          <span class="btn-label">
+                            <i class="fa fa-print"></i>
+                          </span>
+                          Cetak
+                        </a>
 </div>
 
   <div class="card-body p-0">

@@ -1,4 +1,7 @@
 <?php
+
+session_start();
+
 include("../config/koneksi_mysql.php");
 
 

@@ -1,29 +1,38 @@
 <?php
-// FILE: update_pengajuan_upah.php (Dibersihkan dari logika POST yang tidak perlu)
+// FILE: update_pengajuan_upah.php (VERSI FINAL - LENGKAP & AMAN)
 
-// Selalu sertakan file koneksi dan session di bagian paling atas
-include("../config/koneksi_mysql.php");
 session_start();
+include("../config/koneksi_mysql.php");
 
-// Aktifkan error reporting untuk mempermudah debugging
+// Aktifkan error reporting untuk development
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-//======================================================================
-// BLOK PEMROSESAN POST DIHAPUS DARI FILE INI
-// Karena form di-submit ke "proses_update_pengajuan.php"
-//======================================================================
+// [AMAN] Fungsi getProgressLalu menggunakan Prepared Statements
+function getProgressLalu($koneksi, $id_detail_rab_upah, $id_pengajuan_to_exclude) {
+    $query = "SELECT SUM(dpu.progress_pekerjaan) AS total_progress 
+              FROM detail_pengajuan_upah dpu 
+              JOIN pengajuan_upah pu ON dpu.id_pengajuan_upah = pu.id_pengajuan_upah 
+              WHERE dpu.id_detail_rab_upah = ? AND pu.id_pengajuan_upah != ? 
+              AND pu.status_pengajuan IN ('diajukan', 'disetujui', 'ditolak', 'dibayar')";
+    $stmt = mysqli_prepare($koneksi, $query);
+    mysqli_stmt_bind_param($stmt, "ii", $id_detail_rab_upah, $id_pengajuan_to_exclude);
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
+    $data = mysqli_fetch_assoc($result);
+    mysqli_stmt_close($stmt);
+    return (float)($data['total_progress'] ?? 0);
+}
 
+function toRoman($num) { $map = ['M' => 1000, 'CM' => 900, 'D' => 500, 'CD' => 400, 'C' => 100, 'XC' => 90, 'L' => 50, 'XL' => 40, 'X' => 10, 'IX' => 9, 'V' => 5, 'IV' => 4, 'I' => 1]; $result = ''; foreach ($map as $roman => $value) { while ($num >= $value) { $result .= $roman; $num -= $value; } } return $result; }
 
-//=========================================================
-// BLOK 2: MENAMPILKAN DATA (METHOD GET) - TIDAK BERUBAH
-//=========================================================
-if (!isset($_GET['id_pengajuan_upah'])) {
+// Validasi & Ambil Data Utama
+if (!isset($_GET['id_pengajuan_upah']) || !is_numeric($_GET['id_pengajuan_upah'])) {
     die("Akses tidak sah. ID Pengajuan Upah tidak ditemukan.");
 }
 $id_pengajuan_upah = (int)$_GET['id_pengajuan_upah'];
 
-// Pemeriksaan apakah pengajuan ada dan boleh di-update
+// [AMAN] Mengambil data pengajuan utama
 $sql_pengajuan = "SELECT pu.*, CONCAT(mpe.nama_perumahan, ' - ', mpr.kavling) AS pekerjaan, mpr.type_proyek, mpe.lokasi, mm.nama_mandor, u.nama_lengkap AS pj_proyek FROM pengajuan_upah pu LEFT JOIN rab_upah ru ON pu.id_rab_upah = ru.id_rab_upah LEFT JOIN master_proyek mpr ON ru.id_proyek = mpr.id_proyek LEFT JOIN master_perumahan mpe ON mpr.id_perumahan = mpe.id_perumahan LEFT JOIN master_mandor mm ON mpr.id_mandor = mm.id_mandor LEFT JOIN master_user u ON mpr.id_user_pj = u.id_user WHERE pu.id_pengajuan_upah = ?";
 $stmt_pengajuan = mysqli_prepare($koneksi, $sql_pengajuan);
 mysqli_stmt_bind_param($stmt_pengajuan, 'i', $id_pengajuan_upah);
@@ -31,28 +40,45 @@ mysqli_stmt_execute($stmt_pengajuan);
 $pengajuan_result = mysqli_stmt_get_result($stmt_pengajuan);
 if (mysqli_num_rows($pengajuan_result) == 0) { die("Data Pengajuan Upah dengan ID $id_pengajuan_upah tidak ditemukan."); }
 $pengajuan_info = mysqli_fetch_assoc($pengajuan_result);
-$id_rab_upah = $pengajuan_info['id_rab_upah'];
+$id_rab_upah = (int)$pengajuan_info['id_rab_upah'];
 mysqli_stmt_close($stmt_pengajuan);
 
-// Pastikan hanya status tertentu yang boleh diupdate
 if (!in_array($pengajuan_info['status_pengajuan'], ['diajukan', 'ditolak'])) {
     die("Pengajuan dengan status '" . htmlspecialchars($pengajuan_info['status_pengajuan']) . "' tidak dapat diupdate lagi.");
 }
 
-// Fetch data lainnya (termin, rab items, progress, bukti)
-// ... (Kode untuk mengambil data lainnya tetap sama seperti yang Anda miliki)
+// [AMAN] Fetch data pendukung (termin, RAB items, progress, bukti)
 $sql_termin = "SELECT COUNT(id_pengajuan_upah) AS urutan FROM pengajuan_upah WHERE id_rab_upah = ? AND id_pengajuan_upah <= ?";
-$stmt_termin = mysqli_prepare($koneksi, $sql_termin); mysqli_stmt_bind_param($stmt_termin, 'ii', $id_rab_upah, $id_pengajuan_upah); mysqli_stmt_execute($stmt_termin); $termin_result = mysqli_stmt_get_result($stmt_termin); $termin_data = mysqli_fetch_assoc($termin_result); $termin_ke = $termin_data['urutan'] ?? 0; mysqli_stmt_close($stmt_termin);
+$stmt_termin = mysqli_prepare($koneksi, $sql_termin);
+mysqli_stmt_bind_param($stmt_termin, 'ii', $id_rab_upah, $id_pengajuan_upah);
+mysqli_stmt_execute($stmt_termin);
+$termin_data = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt_termin));
+$termin_ke = $termin_data['urutan'] ?? 0;
+mysqli_stmt_close($stmt_termin);
+
 $sql_rab_items = "SELECT d.id_detail_rab_upah, k.nama_kategori, mp.uraian_pekerjaan, d.sub_total FROM detail_rab_upah d LEFT JOIN master_pekerjaan mp ON d.id_pekerjaan = mp.id_pekerjaan LEFT JOIN master_kategori k ON d.id_kategori = k.id_kategori WHERE d.id_rab_upah = ? ORDER BY k.id_kategori, d.id_detail_rab_upah";
-$stmt_rab_items = mysqli_prepare($koneksi, $sql_rab_items); mysqli_stmt_bind_param($stmt_rab_items, 'i', $id_rab_upah); mysqli_stmt_execute($stmt_rab_items); $rab_items_result = mysqli_stmt_get_result($stmt_rab_items); mysqli_stmt_close($stmt_rab_items);
+$stmt_rab_items = mysqli_prepare($koneksi, $sql_rab_items);
+mysqli_stmt_bind_param($stmt_rab_items, 'i', $id_rab_upah);
+mysqli_stmt_execute($stmt_rab_items);
+$rab_items_result = mysqli_stmt_get_result($stmt_rab_items);
+
 $existing_progress = [];
 $sql_detail_pengajuan = "SELECT id_detail_rab_upah, progress_pekerjaan FROM detail_pengajuan_upah WHERE id_pengajuan_upah = ?";
-$stmt_detail = mysqli_prepare($koneksi, $sql_detail_pengajuan); mysqli_stmt_bind_param($stmt_detail, 'i', $id_pengajuan_upah); mysqli_stmt_execute($stmt_detail); $detail_pengajuan_result = mysqli_stmt_get_result($stmt_detail); while($row = mysqli_fetch_assoc($detail_pengajuan_result)) { $existing_progress[$row['id_detail_rab_upah']] = $row['progress_pekerjaan']; } mysqli_stmt_close($stmt_detail);
+$stmt_detail = mysqli_prepare($koneksi, $sql_detail_pengajuan);
+mysqli_stmt_bind_param($stmt_detail, 'i', $id_pengajuan_upah);
+mysqli_stmt_execute($stmt_detail);
+$detail_pengajuan_result = mysqli_stmt_get_result($stmt_detail);
+while($row = mysqli_fetch_assoc($detail_pengajuan_result)) { $existing_progress[$row['id_detail_rab_upah']] = $row['progress_pekerjaan']; }
+mysqli_stmt_close($stmt_detail);
+
 $existing_bukti = [];
 $sql_bukti = "SELECT id_bukti, nama_file, path_file FROM bukti_pengajuan_upah WHERE id_pengajuan_upah = ?";
-$stmt_bukti = mysqli_prepare($koneksi, $sql_bukti); mysqli_stmt_bind_param($stmt_bukti, 'i', $id_pengajuan_upah); mysqli_stmt_execute($stmt_bukti); $bukti_result = mysqli_stmt_get_result($stmt_bukti); while($row = mysqli_fetch_assoc($bukti_result)) { $existing_bukti[] = $row; } mysqli_stmt_close($stmt_bukti);
-function getProgressLalu($koneksi, $id_detail_rab_upah, $id_pengajuan_to_exclude) { $query = "SELECT SUM(dpu.progress_pekerjaan) AS total_progress FROM detail_pengajuan_upah dpu JOIN pengajuan_upah pu ON dpu.id_pengajuan_upah = pu.id_pengajuan_upah WHERE dpu.id_detail_rab_upah = ".(int)$id_detail_rab_upah." AND pu.id_pengajuan_upah != ".(int)$id_pengajuan_to_exclude." AND pu.status_pengajuan IN ('diajukan', 'disetujui', 'ditolak', 'dibayar')"; $result = mysqli_query($koneksi, $query); $data = mysqli_fetch_assoc($result); return (float)($data['total_progress'] ?? 0); }
-function toRoman($num) { $map = ['M' => 1000, 'CM' => 900, 'D' => 500, 'CD' => 400, 'C' => 100, 'XC' => 90, 'L' => 50, 'XL' => 40, 'X' => 10, 'IX' => 9, 'V' => 5, 'IV' => 4, 'I' => 1]; $result = ''; foreach ($map as $roman => $value) { while ($num >= $value) { $result .= $roman; $num -= $value; } } return $result; }
+$stmt_bukti = mysqli_prepare($koneksi, $sql_bukti);
+mysqli_stmt_bind_param($stmt_bukti, 'i', $id_pengajuan_upah);
+mysqli_stmt_execute($stmt_bukti);
+$bukti_result = mysqli_stmt_get_result($stmt_bukti);
+while($row = mysqli_fetch_assoc($bukti_result)) { $existing_bukti[] = $row; }
+mysqli_stmt_close($stmt_bukti);
 ?>
 
 <!DOCTYPE html>
@@ -114,6 +140,17 @@ function toRoman($num) { $map = ['M' => 1000, 'CM' => 900, 'D' => 500, 'CD' => 4
         .preview-item img { width: 100%; height: 100%; object-fit: cover; }
         .preview-item .remove-btn { position: absolute; top: 5px; right: 5px; width: 22px; height: 22px; background-color: rgba(0, 0, 0, 0.6); color: white; border: none; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; opacity: 0; transition: opacity 0.3s ease; font-size: 0.75rem; }
         .preview-item:hover .remove-btn { opacity: 1; }
+                /* Ini membuat gambar menjadi redup saat ditandai */
+        .preview-item.marked-for-deletion {
+            opacity: 0.5;
+            border-style: dashed;
+        }
+
+        /* INI KUNCINYA: Menyembunyikan tombol 'X' jika gambarnya sudah ditandai */
+        .preview-item.marked-for-deletion .remove-btn {
+            display: none;
+        }
+
     </style>
   </head>
   <body>
@@ -884,27 +921,30 @@ function toRoman($num) { $map = ['M' => 1000, 'CM' => 900, 'D' => 500, 'CD' => 4
                   <div class="card-body">
                       <div class="row">
                           <div class="col-md-7">
-                              <div class="mb-3">
-                                  <label class="form-label fw-bold">Upload/Kelola Bukti</label>
-                                  <div id="upload-card" class="border border-dashed rounded d-flex flex-column align-items-center justify-content-center text-center p-4" style="height: 160px; cursor: pointer; background-color: #fdfdfd;">
-                                      <label for="file-input" class="d-block" style="cursor:pointer;">
-                                          <i class="fas fa-cloud-upload-alt fa-2x text-secondary mb-2"></i>
-                                          <h6 class="fw-bold mb-1">Seret & lepas file baru di sini</h6>
-                                          <p class="text-muted small mb-0">atau klik untuk menambah file</p>
-                                      </label>
-                                      <input type="file" id="file-input" name="bukti_pengajuan[]" multiple accept="image/*,application/pdf" class="d-none">
-                                  </div>
-                              </div>
-                              <div id="preview-container" class="d-flex flex-wrap gap-2 mt-3">
-                                  <?php foreach ($existing_bukti as $bukti): ?>
-                                      <div class="preview-item" data-id-bukti="<?= $bukti['id_bukti'] ?>" data-filename="<?= htmlspecialchars($bukti['nama_file']) ?>">
-                                          <img src="../<?= htmlspecialchars($bukti['path_file']) ?>" alt="<?= htmlspecialchars($bukti['nama_file']) ?>" onerror="this.onerror=null;this.src='https://placehold.co/120x120/EEE/31343C?text=File';">
-                                          <button type="button" class="remove-btn" title="Hapus file ini">&times;</button>
-                                      </div>
-                                  <?php endforeach; ?>
-                              </div>
-                              <input type="hidden" name="bukti_dihapus" id="bukti_dihapus" value="">
-                          </div>
+                                        <div class="mb-3">
+                                            <label class="form-label fw-bold">Bukti Tersimpan (Klik X untuk Hapus)</label>
+                                            <div id="existing-preview-container" class="d-flex flex-wrap gap-2">
+                                                <?php if (empty($existing_bukti)): ?>
+                                                    <p class="text-muted small">Tidak ada bukti tersimpan.</p>
+                                                <?php else: ?>
+                                                    <?php foreach ($existing_bukti as $bukti): ?>
+                                                    <div class="preview-item existing-proof" data-id-bukti="<?= $bukti['id_bukti'] ?>">
+                                                        <img src="../<?= htmlspecialchars($bukti['path_file']) ?>" alt="<?= htmlspecialchars($bukti['nama_file']) ?>" onerror="this.onerror=null;this.src='https://placehold.co/100x100/EEE/31343C?text=File';">
+                                                        <button type="button" class="remove-btn" title="Hapus file ini">&times;</button>
+                                                    </div>
+                                                    <?php endforeach; ?>
+                                                <?php endif; ?>
+                                            </div>
+                                            <input type="hidden" name="bukti_dihapus" id="bukti_dihapus">
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <label for="file-input-baru" class="form-label fw-bold">Upload Bukti Baru:</label>
+                                            <input class="form-control" type="file" id="file-input-baru" name="bukti_baru[]" multiple accept="image/*,application/pdf">
+                                        </div>
+                                        <div id="new-preview-container" class="mt-2 d-flex flex-wrap gap-2"></div>
+
+                                    </div>
                           <div class="col-md-5">
                               <div class="mb-3"><label for="tanggal_pengajuan" class="form-label fw-bold">Tanggal Pengajuan</label><input type="date" id="tanggal_pengajuan" name="tanggal_pengajuan" class="form-control" value="<?= htmlspecialchars($pengajuan_info['tanggal_pengajuan']) ?>" required></div>
                               <div class="mb-3"><label for="keterangan" class="form-label fw-bold">Keterangan</label><textarea class="form-control" id="keterangan" name="keterangan" rows="3"><?= htmlspecialchars($pengajuan_info['keterangan'] ?? '') ?></textarea></div>
@@ -928,114 +968,147 @@ function toRoman($num) { $map = ['M' => 1000, 'CM' => 900, 'D' => 500, 'CD' => 4
     <script src="assets/js/kaiadmin.min.js"></script>
 
    <!-- [PERBAIKAN TOTAL] Logika JavaScript di-refactor agar lebih kuat dan anti-bug -->
-    <script>
+<script>
 document.addEventListener("DOMContentLoaded", function() {
-    const uploadCard = document.getElementById('upload-card');
-    const fileInput = document.getElementById('file-input');
-    const previewContainer = document.getElementById('preview-container');
+
+    // ========================================================
+    // BAGIAN KALKULASI OTOMATIS (JANGAN DIHAPUS)
+    // ========================================================
+    const tableBody = document.querySelector("#tblDetailRAB tbody");
+    const totalPengajuanEl = document.getElementById('total-pengajuan-saat-ini');
+    const nominalPengajuanInput = document.getElementById('nominal-pengajuan');
+    const errorNominalEl = document.getElementById('error-nominal');
+    const btnSubmit = document.getElementById('btn-submit');
+
+    function formatRupiah(angka) {
+        return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka || 0);
+    }
+
+    function parseRupiah(rupiahStr) {
+        return parseFloat(rupiahStr.replace(/[^0-9]/g, '')) || 0;
+    }
+
+    function calculateTotals() {
+        let totalPengajuan = 0;
+        document.querySelectorAll('.progress-input').forEach(input => {
+            const subtotal = parseFloat(input.dataset.subtotal);
+            let progressDiajukan = parseFloat(input.value) || 0;
+            const maxProgress = parseFloat(input.max);
+
+            if (progressDiajukan > maxProgress) {
+                progressDiajukan = maxProgress;
+                input.value = maxProgress.toFixed(2);
+            }
+            if (progressDiajukan < 0) {
+                progressDiajukan = 0;
+                input.value = '0.00';
+            }
+
+            const nilaiPengajuan = (progressDiajukan / 100) * subtotal;
+            const nilaiCell = document.querySelector(`.nilai-pengajuan[data-id='${input.dataset.id}']`);
+            if (nilaiCell) {
+                nilaiCell.textContent = formatRupiah(nilaiPengajuan);
+            }
+            totalPengajuan += nilaiPengajuan;
+        });
+
+        totalPengajuanEl.textContent = formatRupiah(totalPengajuan);
+        // Jangan update nominal final secara otomatis di halaman update, biarkan pengguna yang edit
+        validateNominal();
+    }
+
+    function validateNominal() {
+        const nominalFinal = parseRupiah(nominalPengajuanInput.value);
+        btnSubmit.disabled = nominalFinal <= 0;
+    }
+
+    if (tableBody) {
+        tableBody.addEventListener('input', e => {
+            if (e.target.classList.contains('progress-input')) {
+                calculateTotals();
+            }
+        });
+    }
+
+    if (nominalPengajuanInput) {
+        // Format input nominal saat diketik
+        nominalPengajuanInput.addEventListener('keyup', function(e) {
+            let cursorPosition = this.selectionStart;
+            let value = this.value;
+            let originalLength = value.length;
+            
+            let number = parseRupiah(value);
+            this.value = number.toLocaleString('id-ID');
+            
+            let newLength = this.value.length;
+            cursorPosition = newLength - originalLength + cursorPosition;
+            this.setSelectionRange(cursorPosition, cursorPosition);
+
+            validateNominal();
+        });
+    }
+
+    // Panggil kalkulasi saat halaman pertama kali dimuat
+    calculateTotals();
+
+
+    // ========================================================
+    // BAGIAN MENGELOLA BUKTI (JANGAN DIHAPUS)
+    // ========================================================
+    const existingContainer = document.getElementById('existing-preview-container');
     const buktiDihapusInput = document.getElementById('bukti_dihapus');
-    
-    // Gunakan satu DataTransfer object sebagai "source of truth" untuk file-file BARU.
-    const newFilesDataTransfer = new DataTransfer();
+    let idBuktiDihapus = [];
 
-    function renderNewFilePreview(file) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const previewItem = document.createElement('div');
-            previewItem.className = 'preview-item';
-            previewItem.dataset.newFile = true;
-            previewItem.dataset.filename = file.name;
-            
-            const removeBtnHTML = `<button type="button" class="remove-btn" title="Hapus">&times;</button>`;
-            let previewContent = '';
+    if (existingContainer) {
+        existingContainer.addEventListener('click', function(e) {
+            // Cek apakah yang diklik adalah tombol remove di dalam preview-item
+            if (e.target.classList.contains('remove-btn')) {
+                const previewItem = e.target.closest('.preview-item');
+                const idToRemove = previewItem.dataset.idBukti;
 
-            if (file.type.startsWith('image/')) {
-                previewContent = `<img src="${e.target.result}" alt="${file.name}">`;
-            } else {
-                let iconClass = 'fas fa-file-alt text-secondary';
-                if (file.type.includes('pdf')) iconClass = 'fas fa-file-pdf text-danger';
-                previewContent = `
-                <div class="file-icon-preview d-flex flex-column align-items-center justify-content-center h-100">
-                    <i class="${iconClass} fa-3x"></i>
-                    <small class="text-muted mt-2 text-truncate" style="max-width: 90px;">${file.name}</small>
-                </div>`;
-            }
-            previewItem.innerHTML = previewContent + removeBtnHTML;
-            previewContainer.appendChild(previewItem);
-        }
-        reader.readAsDataURL(file);
-    }
-
-    // Fungsi untuk MENAMBAH file ke `newFilesDataTransfer`
-    function addFilesToUpload(files) {
-        for(const file of files) {
-            if (!Array.from(newFilesDataTransfer.files).some(f => f.name === file.name && f.size === file.size)) {
-                newFilesDataTransfer.items.add(file);
-                renderNewFilePreview(file);
-            }
-        }
-        // Sinkronkan DataTransfer dengan input file asli setiap kali ada perubahan
-        fileInput.files = newFilesDataTransfer.files;
-    }
-
-    if (uploadCard) {
-        uploadCard.addEventListener('click', () => fileInput.click());
-        uploadCard.addEventListener('dragover', e => { e.preventDefault(); uploadCard.classList.add('is-dragging'); });
-        uploadCard.addEventListener('dragleave', () => uploadCard.classList.remove('is-dragging'));
-        uploadCard.addEventListener('drop', e => { 
-            e.preventDefault(); 
-            uploadCard.classList.remove('is-dragging'); 
-            addFilesToUpload(e.dataTransfer.files); 
-        });
-        fileInput.addEventListener('change', e => {
-            if(e.target.files.length > 0) {
-                addFilesToUpload(e.target.files);
-            }
-            e.target.value = ''; // Reset untuk event change
-        });
-    }
-
-    previewContainer.addEventListener('click', function(e) {
-        const removeButton = e.target.closest('.remove-btn');
-        if (removeButton) {
-            const previewItem = removeButton.closest('.preview-item');
-            const fileId = previewItem.dataset.idBukti; // Untuk file lama
-            const isNewFile = previewItem.dataset.newFile; // Untuk file baru
-
-            if (fileId) { // Ini adalah file LAMA dari database
-                let currentDeleted = buktiDihapusInput.value ? buktiDihapusInput.value.split(',') : [];
-                if (!currentDeleted.includes(fileId)) {
-                    currentDeleted.push(fileId);
+                if (idToRemove && !idBuktiDihapus.includes(idToRemove)) {
+                    idBuktiDihapus.push(idToRemove);
+                    // Beri tanda visual bahwa item akan dihapus
+                    previewItem.classList.add('marked-for-deletion');
                 }
-                buktiDihapusInput.value = currentDeleted.join(',');
-                previewItem.style.display = 'none'; // Cukup sembunyikan
-            } 
-            
-            if (isNewFile) { // Ini adalah file BARU yang baru dipilih
-                const fileNameToRemove = previewItem.dataset.filename;
-                const tempDt = new DataTransfer();
-                
-                // Buat ulang DataTransfer tanpa file yang dihapus
-                for (const file of newFilesDataTransfer.files) {
-                    if (file.name !== fileNameToRemove) {
-                        tempDt.items.add(file);
+                // Update nilai input hidden
+                buktiDihapusInput.value = idBuktiDihapus.join(',');
+            }
+        });
+    }
+
+    const fileInputBaru = document.getElementById('file-input-baru');
+    const newPreviewContainer = document.getElementById('new-preview-container');
+
+    if (fileInputBaru) {
+        fileInputBaru.addEventListener('change', function() {
+            // Kosongkan preview lama setiap kali ada pemilihan file baru
+            newPreviewContainer.innerHTML = '';
+            if (!this.files) return;
+
+            // Loop dan tampilkan preview untuk setiap file yang baru dipilih
+            Array.from(this.files).forEach(file => {
+                const previewItem = document.createElement('div');
+                previewItem.className = 'preview-item';
+
+                if (file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = e => {
+                        previewItem.innerHTML = `<img src="${e.target.result}" alt="${file.name}">`;
                     }
+                    reader.readAsDataURL(file);
+                } else {
+                    // Tampilkan icon untuk file non-gambar (seperti PDF)
+                    let iconClass = 'fa-file-alt';
+                    if (file.type.includes('pdf')) iconClass = 'fa-file-pdf text-danger';
+                    previewItem.innerHTML = `<div class="file-icon-preview"><i class="fas ${iconClass} file-icon"></i><span class="file-name" title="${file.name}">${file.name}</span></div>`;
                 }
-
-                // Ganti DataTransfer lama dengan yang baru
-                newFilesDataTransfer.items.clear();
-                for (const file of tempDt.files) {
-                    newFilesDataTransfer.items.add(file);
-                }
-                
-                previewItem.remove(); // Hapus elemen preview dari tampilan
-                fileInput.files = newFilesDataTransfer.files; // Sinkronkan lagi dengan input
-            }
-        }
-    });
+                newPreviewContainer.appendChild(previewItem);
+            });
+        });
+    }
 });
-
-    </script>
+</script>
 </body>
 </html>
 

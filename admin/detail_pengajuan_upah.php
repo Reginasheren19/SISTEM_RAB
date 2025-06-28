@@ -1,4 +1,7 @@
 <?php
+
+session_start();
+
 // Include file koneksi Anda
 include("../config/koneksi_mysql.php");
 
@@ -11,24 +14,22 @@ $id_rab_upah = mysqli_real_escape_string($koneksi, $_GET['id_rab_upah']);
 
 // [PERBAIKAN] Query utama untuk mendapatkan informasi header RAB
 // JOIN diubah agar melalui master_proyek terlebih dahulu
+// [PERBAIKAN KEAMANAN] Menggunakan Prepared Statements
 $sql_rab = "SELECT 
-                tr.id_rab_upah,
-                                       tr.tanggal_mulai,
-           tr.tanggal_selesai,
-                CONCAT(mpe.nama_perumahan, ' - ', mpr.kavling) AS pekerjaan,
-                mpr.type_proyek,
-                u.nama_lengkap AS pj_proyek,
-                mpe.lokasi,
-                YEAR(tr.tanggal_mulai) AS tahun,
-                mm.nama_mandor
+              tr.id_rab_upah, tr.tanggal_mulai, tr.tanggal_selesai,
+              CONCAT(mpe.nama_perumahan, ' - ', mpr.kavling) AS pekerjaan,
+              mpr.type_proyek, u.nama_lengkap AS pj_proyek, mpe.lokasi, mm.nama_mandor
             FROM rab_upah tr
             JOIN master_proyek mpr ON tr.id_proyek = mpr.id_proyek
             LEFT JOIN master_perumahan mpe ON mpr.id_perumahan = mpe.id_perumahan
             LEFT JOIN master_mandor mm ON mpr.id_mandor = mm.id_mandor
-                    LEFT JOIN master_user u ON mpr.id_user_pj = u.id_user
-            WHERE tr.id_rab_upah = '$id_rab_upah'";
-
-$rab_result = mysqli_query($koneksi, $sql_rab);
+            LEFT JOIN master_user u ON mpr.id_user_pj = u.id_user
+            WHERE tr.id_rab_upah = ?";
+            
+$stmt_rab = mysqli_prepare($koneksi, $sql_rab);
+mysqli_stmt_bind_param($stmt_rab, 'i', $id_rab_upah);
+mysqli_stmt_execute($stmt_rab);
+$rab_result = mysqli_stmt_get_result($stmt_rab);
 if (!$rab_result || mysqli_num_rows($rab_result) == 0) {
     // Jika query gagal atau tidak ada baris yang ditemukan, berikan pesan error yang lebih detail
     die("Data RAB Upah dengan ID '$id_rab_upah' tidak ditemukan atau terjadi error. Query: " . mysqli_error($koneksi));
@@ -117,17 +118,14 @@ function toRoman($num) {
 
         <!-- CSS Just for demo purpose, don't include it in your project -->
     <link rel="stylesheet" href="assets/css/demo.css" />
-        <style>
-        .upload-card { border: 2px dashed #e0e0e0; border-radius: 0.5rem; transition: all 0.3s ease; background-color: #ffffff; }
-        .upload-card.is-dragging { border-color: #0d6efd; background-color: #f0f8ff; }
-        .upload-label { display: block; text-align: center; padding: 20px; cursor: pointer; }
-        .upload-icon { font-size: 2.5rem; color: #adb5bd; }
-        #preview-container { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 1rem; }
-        .preview-item { position: relative; width: 100px; height: 100px; border-radius: 0.5rem; overflow: hidden; border: 1px solid #dee2e6; }
+    <style>
+        .preview-item { position: relative; width: 120px; height: 120px; border-radius: 0.5rem; overflow: hidden; border: 1px solid #dee2e6; background-color: #f8f9fa; }
         .preview-item img { width: 100%; height: 100%; object-fit: cover; }
-        .preview-item .remove-btn { position: absolute; top: 5px; right: 5px; width: 22px; height: 22px; background-color: rgba(0, 0, 0, 0.6); color: white; border: none; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; opacity: 0; transition: opacity 0.3s ease; font-size: 0.75rem; }
-        .preview-item:hover .remove-btn { opacity: 1; }
+        .file-icon-preview { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; padding: 10px; box-sizing: border-box; }
+        .file-icon-preview .file-icon { font-size: 2.5rem; color: #adb5bd; }
+        .file-icon-preview .file-name { font-size: 0.75rem; color: #6c757d; margin-top: 0.5rem; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: center; }
     </style>
+
 </head>
 <body>
     <div class="wrapper">
@@ -305,6 +303,15 @@ function toRoman($num) {
             <div class="page-header">
               <h3 class="fw-bold mb-3">Form Pengajuan RAB Upah</h3>
             </div>
+
+                                <!-- [BARU] Tempat untuk Notifikasi Flash Message -->
+                    <?php if (isset($_SESSION['flash_message'])): ?>
+                        <div class="alert alert-<?= $_SESSION['flash_message']['type'] == 'success' ? 'success' : 'danger' ?> alert-dismissible fade show" role="alert">
+                            <?= htmlspecialchars($_SESSION['flash_message']['message']) ?>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                        <?php unset($_SESSION['flash_message']); ?>
+                    <?php endif; ?>
             
             <form method="POST" action="add_pengajuan.php" enctype="multipart/form-data">
                 <input type="hidden" name="id_rab_upah" value="<?= htmlspecialchars($id_rab_upah) ?>">
@@ -416,23 +423,12 @@ function toRoman($num) {
         <div class="row">
             <div class="col-md-7">
 <!-- Upload/Kelola Bukti -->
-<div class="mb-3">
-  <label class="form-label fw-bold">Upload/Kelola Bukti</label>
-  <div id="upload-card" 
-       class="border border-dashed rounded d-flex flex-column align-items-center justify-content-center text-center p-4" 
-       style="height: 160px; cursor: pointer; background-color: #fdfdfd;">
-    
-    <label for="file-input" class="d-block" style="cursor:pointer;">
-      <i class="fas fa-cloud-upload-alt fa-2x text-secondary mb-2"></i>
-      <h6 class="fw-bold mb-1">Seret & lepas file baru di sini</h6>
-      <p class="text-muted small mb-0">atau klik untuk menambah file</p>
-    </label>
-
-    <input type="file" id="file-input" name="bukti_pengajuan[]" multiple accept="image/*,application/pdf" class="d-none">
-  </div>
-</div>
-
-<div id="preview-container" class="d-flex flex-wrap gap-2 mt-3"></div>
+                                        <div class="mb-3">
+                                            <label for="file-input-standar" class="form-label fw-bold">Upload Bukti Pekerjaan:</label>
+                                            <input class="form-control" type="file" id="file-input-standar" name="bukti_pengajuan[]" multiple accept="image/*,application/pdf">
+                                            <small class="form-text text-muted">Anda bisa memilih lebih dari satu file.</small>
+                                        </div>
+                                        <div id="preview-container" class="mt-3 d-flex flex-wrap gap-2"></div>
 
             </div>
             <div class="col-md-5">
@@ -469,171 +465,135 @@ function toRoman($num) {
     <script src="assets/js/kaiadmin.min.js"></script>
 
 <script>
-    document.addEventListener("DOMContentLoaded", function() {
-        const tableBody = document.querySelector("#tblDetailRAB tbody");
-        const totalPengajuanEl = document.getElementById('total-pengajuan-saat-ini');
-        const nominalPengajuanInput = document.getElementById('nominal-pengajuan');
-        const errorNominalEl = document.getElementById('error-nominal');
-        const btnSubmit = document.getElementById('btn-submit');
-        const uploadCard = document.getElementById('upload-card');
-        const fileInput = document.getElementById('file-input');
-        const previewContainer = document.getElementById('preview-container');
-        // [PERBAIKAN] Gunakan satu DataTransfer sebagai "source of truth" yang persisten
-        const dataTransfer = new DataTransfer();
+document.addEventListener("DOMContentLoaded", function() {
 
-        function formatRupiah(angka) { return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka || 0); }
-        
-        function calculateTotals() {
-            let totalPengajuan = 0;
-            document.querySelectorAll('.progress-input').forEach(input => {
-                if (input.disabled && !input.closest('tr').querySelector('.lunas-checkbox')?.checked) return;
+    // ========================================================
+    // Definisi Variabel Elemen Halaman
+    // ========================================================
+    const tableBody = document.querySelector("#tblDetailRAB tbody");
+    const totalPengajuanEl = document.getElementById('total-pengajuan-saat-ini');
+    const nominalPengajuanInput = document.getElementById('nominal-pengajuan');
+    const errorNominalEl = document.getElementById('error-nominal');
+    const btnSubmit = document.getElementById('btn-submit');
+    const fileInput = document.getElementById('file-input-standar');
+    const previewContainer = document.getElementById('preview-container');
 
-                const subtotal = parseFloat(input.dataset.subtotal);
-                let progressDiajukan = parseFloat(input.value) || 0;
-                const maxProgress = parseFloat(input.max);
-                
-                if (progressDiajukan > maxProgress) { progressDiajukan = maxProgress; input.value = maxProgress.toFixed(2); }
-                if (progressDiajukan < 0) { progressDiajukan = 0; input.value = '0.00'; }
+    // ========================================================
+    // BAGIAN FUNGSI KALKULASI OTOMATIS
+    // ========================================================
 
-                const nilaiPengajuan = (progressDiajukan / 100) * subtotal;
-                const nilaiCell = document.querySelector(`.nilai-pengajuan[data-id='${input.dataset.id}']`);
-                if (nilaiCell) { nilaiCell.textContent = formatRupiah(nilaiPengajuan); }
-                totalPengajuan += nilaiPengajuan;
-            });
-            totalPengajuanEl.textContent = formatRupiah(totalPengajuan);
-            nominalPengajuanInput.value = Math.round(totalPengajuan);
-            validateNominal();
-        }
-        
-        function validateNominal() {
-            const totalDihitung = parseFloat((totalPengajuanEl.textContent || 'Rp 0').replace(/[^0-9]/g, '')) || 0;
-            const nominalFinal = parseFloat(nominalPengajuanInput.value) || 0;
-            if (nominalFinal > Math.ceil(totalDihitung)) {
-                errorNominalEl.classList.remove('d-none');
-                btnSubmit.disabled = true;
-            } else {
-                errorNominalEl.classList.add('d-none');
-                btnSubmit.disabled = nominalFinal <= 0;
+    // Fungsi untuk format angka ke Rupiah
+    function formatRupiah(angka) {
+        return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka || 0);
+    }
+
+    // Fungsi utama untuk menghitung semua total
+    function calculateTotals() {
+        let totalPengajuan = 0;
+        document.querySelectorAll('.progress-input').forEach(input => {
+            if (input.disabled) return; // Abaikan input yang statusnya sudah lunas dari awal
+
+            const subtotal = parseFloat(input.dataset.subtotal) || 0;
+            let progressDiajukan = parseFloat(input.value) || 0;
+            const maxProgress = parseFloat(input.max);
+
+            // Validasi input progress agar tidak melebihi sisa
+            if (progressDiajukan > maxProgress) {
+                progressDiajukan = maxProgress;
+                input.value = maxProgress.toFixed(2);
             }
-        }
+            if (progressDiajukan < 0) {
+                progressDiajukan = 0;
+                input.value = '0.00';
+            }
 
-        if (tableBody) {
-            tableBody.addEventListener('input', e => { if (e.target.classList.contains('progress-input')) calculateTotals(); });
-            
-            tableBody.addEventListener('change', function(e) {
-                if (e.target.classList.contains('lunas-checkbox')) {
-                    const tr = e.target.closest('tr');
-                    const progressInput = tr.querySelector('.progress-input');
-                    if (!progressInput) return;
-                    
-                    const maxProgress = parseFloat(progressInput.max);
-                    if (e.target.checked) {
-                        progressInput.value = maxProgress.toFixed(2);
-                        progressInput.disabled = true;
-                    } else {
-                        progressInput.value = '';
-                        progressInput.disabled = false;
-                    }
-                    calculateTotals(); 
-                }
-            });
-        }
+            const nilaiPengajuan = (progressDiajukan / 100) * subtotal;
+            const nilaiCell = document.querySelector(`.nilai-pengajuan[data-id='${input.dataset.id}']`);
+            if (nilaiCell) {
+                nilaiCell.textContent = formatRupiah(nilaiPengajuan);
+            }
+            totalPengajuan += nilaiPengajuan;
+        });
+
+        // Update tampilan total dan input nominal final
+        totalPengajuanEl.textContent = formatRupiah(totalPengajuan);
+        nominalPengajuanInput.value = Math.round(totalPengajuan);
+        validateNominal();
+    }
+
+    // Fungsi untuk validasi tombol submit
+    function validateNominal() {
+        const nominalFinal = parseFloat(nominalPengajuanInput.value) || 0;
+        // Tombol submit hanya aktif jika ada nominal yang diajukan
+        btnSubmit.disabled = nominalFinal <= 0;
+    }
+
+    // Event listener untuk tabel progress
+    if (tableBody) {
+        // Memicu kalkulasi saat angka diinput
+        tableBody.addEventListener('input', e => {
+            if (e.target.classList.contains('progress-input')) {
+                calculateTotals();
+            }
+        });
         
-        if (nominalPengajuanInput) nominalPengajuanInput.addEventListener('input', validateNominal);
-        calculateTotals();
+        // Memicu kalkulasi saat checkbox "Lunas" dicentang
+        tableBody.addEventListener('change', function(e) {
+            if (e.target.classList.contains('lunas-checkbox')) {
+                const tr = e.target.closest('tr');
+                const progressInput = tr.querySelector('.progress-input');
+                if (!progressInput) return;
 
-        // [PERBAIKAN TOTAL] Logika upload file dibuat lebih robust
-        function updatePreviewsAndInput() {
-            // 1. Sinkronkan `fileInput` dengan `dataTransfer`
-            fileInput.files = dataTransfer.files;
+                const maxProgress = parseFloat(progressInput.max);
+                if (e.target.checked) {
+                    progressInput.value = maxProgress.toFixed(2);
+                    progressInput.readOnly = true;
+                    progressInput.style.backgroundColor = '#e9ecef';
+                } else {
+                    progressInput.value = '';
+                    progressInput.readOnly = false;
+                    progressInput.style.backgroundColor = '#ffffff';
+                }
+                calculateTotals();
+            }
+        });
+    }
 
-            // 2. Kosongkan container dan render ulang semua preview dari `dataTransfer`
-            previewContainer.innerHTML = '';
-            Array.from(dataTransfer.files).forEach(file => {
+    // Panggil kalkulasi saat halaman pertama kali dimuat
+    calculateTotals();
+
+
+    // ========================================================
+    // BAGIAN UNTUK PREVIEW FILE UPLOAD
+    // ========================================================
+    if (fileInput) {
+        fileInput.addEventListener('change', function() {
+            previewContainer.innerHTML = ''; // Kosongkan preview lama setiap kali ada perubahan
+            if (!this.files || this.files.length === 0) return;
+
+            // Loop dan tampilkan preview untuk setiap file yang baru dipilih
+            Array.from(this.files).forEach(file => {
                 const previewItem = document.createElement('div');
                 previewItem.className = 'preview-item';
-                previewItem.dataset.filename = file.name;
 
-                const removeBtnHTML = `<button type="button" class="remove-btn" title="Hapus">&times;</button>`;
-                
                 if (file.type.startsWith('image/')) {
                     const reader = new FileReader();
-                    reader.onload = function(e) {
-                        previewItem.innerHTML = `<img src="${e.target.result}" alt="${file.name}">${removeBtnHTML}`;
+                    reader.onload = e => {
+                        previewItem.innerHTML = `<img src="${e.target.result}" alt="${file.name}">`;
                     }
                     reader.readAsDataURL(file);
-                } else { // Untuk PDF dan file lainnya
-                     let iconClass = 'fas fa-file-alt'; // Icon default
-                     let colorClass = 'text-secondary';
-                     if (file.type.includes('pdf')) {
-                         iconClass = 'fas fa-file-pdf';
-                         colorClass = 'text-danger';
-                     }
-                     previewItem.innerHTML = `
-                        <div class="file-icon-preview d-flex flex-column align-items-center justify-content-center h-100">
-                            <i class="${iconClass} fa-3x ${colorClass}"></i>
-                            <small class="text-muted mt-2 text-truncate" style="max-width: 90px;">${file.name}</small>
-                        </div>
-                        ${removeBtnHTML}`;
+                } else {
+                    // Tampilkan icon untuk file non-gambar (seperti PDF)
+                    let iconClass = 'fa-file-alt';
+                    if (file.type.includes('pdf')) iconClass = 'fa-file-pdf text-danger';
+                    previewItem.innerHTML = `<div class="file-icon-preview"><i class="fas ${iconClass} file-icon"></i><span class="file-name" title="${file.name}">${file.name}</span></div>`;
                 }
                 previewContainer.appendChild(previewItem);
             });
-        }
-
-        // Fungsi untuk MENAMBAH file ke `dataTransfer`
-        function addFiles(newFiles) {
-            Array.from(newFiles).forEach(newFile => {
-                // Mencegah duplikat file dengan nama yang sama
-                if (!Array.from(dataTransfer.files).some(f => f.name === newFile.name && f.size === newFile.size)) {
-                    dataTransfer.items.add(newFile);
-                }
-            });
-            // Setelah data diubah, panggil fungsi update utama
-            updatePreviewsAndInput();
-        }
-
-        // Event listeners untuk upload
-        if (uploadCard) {
-            uploadCard.addEventListener('click', () => fileInput.click());
-            uploadCard.addEventListener('dragover', e => { e.preventDefault(); uploadCard.classList.add('is-dragging'); });
-            uploadCard.addEventListener('dragleave', () => uploadCard.classList.remove('is-dragging'));
-            uploadCard.addEventListener('drop', e => { 
-                e.preventDefault(); 
-                uploadCard.classList.remove('is-dragging'); 
-                addFiles(e.dataTransfer.files); 
-            });
-            fileInput.addEventListener('change', e => {
-                if (e.target.files.length > 0) {
-                    addFiles(e.target.files);
-                }
-                // Reset input value agar 'change' event bisa ter-trigger lagi untuk file yang sama
-                e.target.value = '';
-            });
-        }
-
-        // Event listener untuk tombol hapus pada preview
-        previewContainer.addEventListener('click', function(e){
-            if (e.target.classList.contains('remove-btn')) {
-                const previewItem = e.target.closest('.preview-item');
-                const fileNameToRemove = previewItem.dataset.filename;
-                
-                // Buat daftar file baru tanpa file yang akan dihapus
-                const newDt = new DataTransfer();
-                Array.from(dataTransfer.files).forEach(file => {
-                    if (file.name !== fileNameToRemove) {
-                        newDt.items.add(file);
-                    }
-                });
-
-                // Ganti `dataTransfer` lama dengan yang baru
-                dataTransfer.items.clear();
-                for (const file of newDt.files) dataTransfer.items.add(file);
-                
-                // Panggil fungsi update utama
-                updatePreviewsAndInput();
-            }
         });
-    });
+    }
+
+});
 </script>
 
 </body>

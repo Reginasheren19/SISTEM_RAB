@@ -350,7 +350,7 @@ function toRoman($num) {
                     <th>URAIAN</th>
                     <th style="width: 8%;">SAT</th>
                     <th style="width: 10%;">VOL</th>
-                    <th style="width: 20%;">HARGA SAT</th>
+                    <th style="width: 20%;">HARGA SATUAN</th>
                     <th style="width: 22%;">JUMLAH</th>
                 </tr>
                  <tr>

@@ -367,9 +367,12 @@ function toRoman($num) {
             <div class="card shadow-sm">
 <div class="card-header bg-light d-flex justify-content-between align-items-center">
   <h4 class="card-title mb-0">Rincian Pekerjaan yang Diajukan</h4>
-  <a href="cetak_formulir_pengajuan.php?id=<?= $id_pengajuan_upah ?>" target="_blank" class="btn btn-outline-primary btn-sm">
-    <i class="fas fa-print me-1"></i> Cetak
-  </a>
+                          <a href="cetak_formulir_pengajuan.php?id=<?= $id_pengajuan_upah ?>" target="_blank" class="btn btn-label-info btn-round btn-sm">
+                          <span class="btn-label">
+                            <i class="fa fa-print"></i>
+                          </span>
+                          Cetak
+                        </a>
 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">

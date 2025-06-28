@@ -322,7 +322,7 @@ setlocale(LC_TIME, 'id_ID.utf8', 'id_ID');
                         echo "<td class='text-end'><strong>" . number_format($data_kat['anggaran'], 0, ',', '.') . "</strong></td>";
                         echo "<td colspan='" . count($termins) . "'></td>";
                         $progress_kategori = ($data_kat['anggaran'] > 0) ? ($data_kat['dibayar'] / $data_kat['anggaran']) * 100 : 0;
-                        echo "<td class='text-center'><strong>". number_format($progress_kategori, 2) ."%</strong></td>";
+                        echo "<td class='text-center'><strong>". number_format($progress_kategori) ."%</strong></td>";
                         echo "<td class='text-end'><strong>" . number_format($data_kat['dibayar'], 0, ',', '.') . "</strong></td>";
                         echo "<td class='text-end'><strong>" . number_format($data_kat['anggaran'] - $data_kat['dibayar'], 0, ',', '.') . "</strong></td></tr>";
                         
@@ -336,10 +336,10 @@ setlocale(LC_TIME, 'id_ID.utf8', 'id_ID');
                                     <td class="text-end"><?= number_format($item['anggaran'], 0, ',', '.') ?></td>
                                     <?php foreach($termins as $termin): ?>
                                         <td class="text-center">
-                                            <?= isset($item['progres_per_termin'][$termin['id_pengajuan_upah']]) ? number_format($item['progres_per_termin'][$termin['id_pengajuan_upah']], 2) . '%' : '-' ?>
+                                            <?= isset($item['progres_per_termin'][$termin['id_pengajuan_upah']]) ? number_format($item['progres_per_termin'][$termin['id_pengajuan_upah']]) . '%' : '-' ?>
                                         </td>
                                     <?php endforeach; ?>
-                                    <td class="text-center"><?= number_format($item['total_progress_dibayar'], 2) ?>%</td>
+                                    <td class="text-center"><?= number_format($item['total_progress_dibayar']) ?>%</td>
                                     <td class="text-end"><?= number_format($item['total_dibayar'], 0, ',', '.') ?></td>
                                     <td class="text-end"><?= number_format($item['anggaran'] - $item['total_dibayar'], 0, ',', '.') ?></td>
                                 </tr>

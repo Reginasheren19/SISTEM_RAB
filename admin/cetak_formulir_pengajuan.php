@@ -15,10 +15,10 @@ function toRoman($num) {
     return $result;
 }
 
-// 1. Ambil Info Utama Pengajuan & Proyek
+// [AMAN] 1. Ambil Info Utama Pengajuan (termasuk bukti bayar)
 $info_sql = "
     SELECT 
-        pu.tanggal_pengajuan, pu.total_pengajuan, pu.id_rab_upah,
+        pu.tanggal_pengajuan, pu.total_pengajuan, pu.id_rab_upah, pu.bukti_bayar,
         mpe.nama_perumahan, mpr.kavling, mm.nama_mandor, u.nama_lengkap AS pj_proyek,
         ru.total_rab_upah, ru.tanggal_mulai, ru.tanggal_selesai
     FROM pengajuan_upah pu
@@ -27,12 +27,15 @@ $info_sql = "
     LEFT JOIN master_perumahan mpe ON mpr.id_perumahan = mpe.id_perumahan
     LEFT JOIN master_mandor mm ON mpr.id_mandor = mm.id_mandor
     LEFT JOIN master_user u ON mpr.id_user_pj = u.id_user
-    WHERE pu.id_pengajuan_upah = $id_pengajuan_upah
+    WHERE pu.id_pengajuan_upah = ?
 ";
-$info_result = mysqli_query($koneksi, $info_sql);
-if (!$info_result || mysqli_num_rows($info_result) == 0) { die("Data pengajuan tidak ditemukan."); }
+$stmt_info = mysqli_prepare($koneksi, $info_sql);
+mysqli_stmt_bind_param($stmt_info, 'i', $id_pengajuan_upah);
+mysqli_stmt_execute($stmt_info);
+$info_result = mysqli_stmt_get_result($stmt_info);
+if (mysqli_num_rows($info_result) == 0) { die("Data pengajuan tidak ditemukan."); }
 $info = mysqli_fetch_assoc($info_result);
-$id_rab_upah = $info['id_rab_upah'];
+$id_rab_upah = (int)$info['id_rab_upah'];
 
 // 2. Hitung ini termin ke berapa
 $sql_termin = "SELECT COUNT(id_pengajuan_upah) AS termin_ke FROM pengajuan_upah WHERE id_rab_upah = $id_rab_upah AND id_pengajuan_upah <= $id_pengajuan_upah";
@@ -60,6 +63,15 @@ $detail_sql = "
 $detail_result = mysqli_query($koneksi, $detail_sql);
 if (!$detail_result) { die("Gagal mengambil detail pekerjaan: " . mysqli_error($koneksi)); }
 
+// [BARU & AMAN] 4. Ambil Bukti Progress Pekerjaan
+$bukti_progress = [];
+$sql_bukti = "SELECT nama_file, path_file FROM bukti_pengajuan_upah WHERE id_pengajuan_upah = ?";
+$stmt_bukti = mysqli_prepare($koneksi, $sql_bukti);
+mysqli_stmt_bind_param($stmt_bukti, 'i', $id_pengajuan_upah);
+mysqli_stmt_execute($stmt_bukti);
+$bukti_result = mysqli_stmt_get_result($stmt_bukti);
+while($row = mysqli_fetch_assoc($bukti_result)) { $bukti_progress[] = $row; }
+
 // 4. Ambil nama Direktur & Komisaris untuk TTD
 $sql_direktur = "SELECT nama_lengkap FROM master_user WHERE role = 'direktur' LIMIT 1";
 $nama_direktur = mysqli_fetch_assoc(mysqli_query($koneksi, $sql_direktur))['nama_lengkap'] ?? '.....................';
@@ -72,41 +84,53 @@ setlocale(LC_TIME, 'id_ID.utf8', 'id_ID');
     <meta charset="UTF-8">
     <title>Cetak Formulir Pengajuan #<?= $id_pengajuan_upah ?></title>
     <link rel="stylesheet" href="assets/css/bootstrap.min.css" />
-    <style>
-        body { font-family: 'Tahoma', sans-serif; background-color: #fff; color: #000; font-size: 11px; }
-        .container { max-width: 800px; margin: auto; }
-        .kop-surat { display: flex; align-items: center; border-bottom: 3px double #000; padding-bottom: 15px; margin-bottom: 20px; }
-.kop-surat img { width: 100px; height: auto; margin-left: 40px; } /* Geser logo ke kanan */
-        .kop-surat .kop-text { text-align: center; flex-grow: 1; }
-        .kop-surat h3 { font-size: 22px; font-weight: bold; margin: 0; }
-                .kop-surat h2 { font-size: 18px; font-weight: bold; margin: 0; }
-        .kop-surat p { font-size: 14px; margin: 0; }
-        .report-title { text-align: center; margin-bottom: 20px; font-weight: bold; text-decoration: underline; font-size: 16px;}
-        .info-section .table { border: none !important; margin-bottom: 0; }
-        .info-section .table td { border: none !important; padding: 1px 0; font-size: 12px; vertical-align: top; }
-        .info-section td:nth-child(1) { width: 140px; font-weight: bold;}
-        table.report { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        table.report th, table.report td { border: 1px solid black; padding: 4px; vertical-align: middle; }
-        table.report th { background-color: #e9ecef !important; text-align: center; }
-        .category-row td { background-color: #f8f9fa; font-weight: bold; }
-        .text-end { text-align: right; } .text-center { text-align: center; }
-        .signature-section { margin-top: 30px; width: 100%; }
-        .signature-box { text-align: center; width: 33.33%; float: left; }
-        .signature-box .name { margin-top: 50px; font-weight: bold; text-decoration: underline; }
-        .clearfix { clear: both; }
-        .tagline {
-    font-style: italic;
-}
+<style>
+    body { font-family: 'Tahoma', sans-serif; background-color: #fff; color: #000; font-size: 11px; }
+    .container { max-width: 800px; margin: auto; }
+    .kop-surat { text-align: center; border-bottom: 3px double #000; padding-bottom: 15px; margin-bottom: 20px; }
+    .kop-surat img { width: 90px; height: auto; position: absolute; left: 10mm; top: 10mm; }
+    .kop-surat h3, .kop-surat h2, .kop-surat p { margin: 0; }
+    .kop-surat h3 { font-size: 22px; font-weight: bold; }
+    .kop-surat h2 { font-size: 18px; font-weight: bold; }
+    .kop-surat p { font-size: 14px; }
+    .tagline { font-style: italic; }
+    .report-title { text-align: center; margin-bottom: 20px; font-weight: bold; text-decoration: underline; font-size: 16px;}
+    .info-section .table td { border: none !important; padding: 1px 0; font-size: 12px; }
+    .info-section td:nth-child(1) { width: 140px; font-weight: bold;}
+    table.report { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    table.report th, table.report td { border: 1px solid black; padding: 4px; }
+    table.report th { background-color: #e9ecef !important; text-align: center; }
+    .text-end { text-align: right; } .text-center { text-align: center; }
+    .signature-section { margin-top: 40px; }
+    .signature-box { text-align: center; width: 33.33%; float: left; }
+    .signature-box .name { margin-top: 60px; font-weight: bold; text-decoration: underline; }
+    
+    /* Style untuk lampiran */
+    .page-break { page-break-before: always; }
+    .lampiran-title { font-size: 16px; font-weight: bold; text-align: center; margin-bottom: 20px; text-decoration: underline; }
+    
+    /* INI BAGIAN YANG DIPERBAIKI */
+    .lampiran-img {
+        max-width: 100%;
+        max-height: 280px; /* Batasan tinggi gambar */
+        width: auto;
+        height: auto;
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
+        border: 1px solid #ccc;
+        padding: 5px;
+        margin-bottom: 5px;
+    }
+    .img-caption { 
+        text-align: center; 
+        font-style: italic; 
+        margin-top: 2px; 
+        margin-bottom: 20px; 
+    }
 
-
-        @media print { 
-            .no-print { display: none; } 
-            @page { 
-                size: A4 portrait; 
-                margin: 10mm; 
-            } 
-        }
-    </style>
+    @media print { .no-print { display: none; } @page { size: A4 portrait; margin: 15mm; } }
+</style>
 </head>
 <body>
     <div class="container my-3">
@@ -212,6 +236,33 @@ setlocale(LC_TIME, 'id_ID.utf8', 'id_ID');
             <div class="signature-box"><p>Disetujui oleh,</p><div class="name"><?= htmlspecialchars($nama_direktur) ?></div><p>Direktur</p></div>
         </div>
     </div>
+
+
+<div class="lampiran-section page-break">
+    <h5 class="lampiran-title">LAMPIRAN</h5>
+
+    <h7 class="mt-4">A. Bukti Progress Pekerjaan</h6>
+    <div class="row">
+        <?php if (!empty($bukti_progress)): ?>
+            <?php foreach ($bukti_progress as $bukti): ?>
+                <div class="col-6">
+                    <img src="../<?= htmlspecialchars($bukti['path_file']) ?>" class="lampiran-img" alt="<?= htmlspecialchars($bukti['nama_file']) ?>">
+                </div>
+            <?php endforeach; ?>
+        <?php else: ?>
+            <p class="text-muted">Tidak ada bukti progress pekerjaan yang dilampirkan.</p>
+        <?php endif; ?>
+    </div>
+
+    <?php if (!empty($info['bukti_bayar'])): ?>
+    <h7 class="mt-4">B. Bukti Pembayaran</h6>
+    <div class="row">
+        <div class="col-12">
+            <img src="../<?= htmlspecialchars($info['bukti_bayar']) ?>" class="lampiran-img" alt="Bukti Pembayaran">
+        </div>
+    </div>
+    <?php endif; ?>
+</div>
     <script> window.onload = function() { window.print(); } </script>
 </body>
 </html>
