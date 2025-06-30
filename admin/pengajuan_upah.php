@@ -433,9 +433,9 @@ $formattedpengajuan = 'PU' . $row['id_pengajuan_upah'];
                         <tbody>
                         <?php if (mysqli_num_rows($rabUpahUntukModalResult) > 0): mysqli_data_seek($rabUpahUntukModalResult, 0); ?>
                             <?php while ($rab = mysqli_fetch_assoc($rabUpahUntukModalResult)):
-                                // [DIUBAH] Logika untuk menonaktifkan tombol jika termin sebelumnya masih 'diajukan'
+                                // [PERBAIKAN] Logika penguncian sekarang juga mengecek status 'ditolak'
                                 $status_terakhir = strtolower($rab['status_terakhir'] ?? '');
-                                $is_blocked = ($status_terakhir === 'diajukan');
+                                $is_blocked = in_array($status_terakhir, ['diajukan', 'ditolak']);
                             ?>
                                 <tr>
                                     <td><?= 'RABP' . $rab['id_rab_upah'] ?></td>
@@ -444,7 +444,7 @@ $formattedpengajuan = 'PU' . $row['id_pengajuan_upah'];
                                     <td class="text-end"><?= 'Rp ' . number_format($rab['total_rab_upah'], 0, ',', '.') ?></td>
                                     <td class="text-center">
                                         <?php if ($is_blocked): ?>
-                                            <button type="button" class="btn btn-secondary btn-sm disabled-pilih-btn" data-bs-toggle="modal" data-bs-target="#pengajuanBlockedModal">Pilih</button>
+                                            <button type="button" class="btn btn-secondary btn-sm disabled-pilih-btn" data-bs-toggle="modal" data-bs-target="#pengajuanBlockedModal" data-status-terakhir="<?= htmlspecialchars($status_terakhir) ?>">Pilih</button>
                                         <?php else: ?>
                                             <a href="detail_pengajuan_upah.php?id_rab_upah=<?= $rab['id_rab_upah'] ?>" class="btn btn-success btn-sm">Pilih</a>
                                         <?php endif; ?>
@@ -536,7 +536,7 @@ $formattedpengajuan = 'PU' . $row['id_pengajuan_upah'];
     </div>
 </div>
 
-    <!-- [BARU] Modal Notifikasi Pengajuan Diblokir -->
+    <!-- [PERBAIKAN] Modal Notifikasi Pengajuan Diblokir -->
     <div class="modal fade" id="pengajuanBlockedModal" tabindex="-1" aria-hidden="true">
       <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -546,7 +546,7 @@ $formattedpengajuan = 'PU' . $row['id_pengajuan_upah'];
           </div>
           <div class="modal-body">
             <p>Anda tidak dapat membuat pengajuan baru untuk proyek ini.</p>
-            <p class="mb-0"> Masih ada pengajuan termin sebelumnya yang berstatus <strong>"Diajukan"</strong> dan sedang menunggu persetujuan dari Direktur.</p>
+            <p class="mb-0"><strong>Alasan:</strong> <span id="blockReasonText"></span></p>
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Mengerti</button>
@@ -675,6 +675,18 @@ $(document).ready(function() {
             }
         });
     });
+
+            // [BARU] Script untuk menampilkan pesan yang dinamis di modal notifikasi
+        $('#tabel-proyek-modal').on('click', '.disabled-pilih-btn', function() {
+            const status = $(this).data('status-terakhir');
+            let reasonText = 'Masih ada pengajuan termin sebelumnya yang belum selesai.';
+            if (status === 'diajukan') {
+                reasonText = 'Masih ada termin sebelumnya yang berstatus <strong>"Diajukan"</strong> dan menunggu persetujuan Direktur.';
+            } else if (status === 'ditolak') {
+                reasonText = 'Termin sebelumnya berstatus <strong>"Ditolak"</strong>. Harap perbaiki atau hubungi Admin.';
+            }
+            $('#blockReasonText').html(reasonText);
+        });
 
     // Logika untuk notifikasi pop-up dari session
     <?php if ($flash_message): ?>
