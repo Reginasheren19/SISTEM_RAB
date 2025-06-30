@@ -81,6 +81,42 @@ $detail_result = mysqli_query($koneksi, $sql_detail);
     <link rel="stylesheet" href="assets/css/bootstrap.min.css" />
     <link rel="stylesheet" href="assets/css/plugins.min.css" />
     <link rel="stylesheet" href="assets/css/kaiadmin.min.css" />
+        <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" />
+    <style>
+      /* Style dasar autocomplete dropdown */
+.ui-autocomplete {
+    background: #fff;
+    border: 1px solid #ced4da;
+    max-height: 220px;
+    overflow-y: auto;
+    padding: 0;
+    font-size: 1rem;
+    border-radius: 8px;
+    box-shadow: 0 6px 24px rgba(60,60,60,.07);
+    z-index: 99999 !important;
+}
+
+.ui-menu-item {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.ui-menu-item-wrapper {
+    padding: 10px 18px;
+    cursor: pointer;
+    color: #222;
+    transition: background 0.1s;
+}
+
+.ui-menu-item-wrapper.ui-state-active, 
+.ui-menu-item-wrapper:hover {
+    background: #f1f3fa;
+    color: #1466cc;
+    border-radius: 4px;
+}
+</style>
 </head>
 <body>
     <div class="wrapper">
@@ -424,7 +460,7 @@ $detail_result = mysqli_query($koneksi, $sql_detail);
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
 <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
-  <script src="/SISTEM_RAB/assets/js/bootstrap.bundle.min.js"></script>
+<script src="/SISTEM_RAB/assets/js/bootstrap.bundle.min.js"></script>
 
 
 <script>

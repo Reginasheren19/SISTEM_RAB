@@ -475,13 +475,38 @@ $totalFormatted = 'Rp ' . number_format($row['total_rab_upah'], 0, ',', '.');
             resetProyekFields();
         });
 
-        // 4. LOGIKA UNTUK TOMBOL DELETE
-        $('#basic-datatables tbody').on('click', '.delete-btn', function() {
-            const idRabUpah = $(this).data('id_rab_upah');
-            $('#confirmDeleteLink').attr('href', 'delete_rab_upah.php?id_rab_upah=' + idRabUpah);
-            let deleteModal = new bootstrap.Modal(document.getElementById('confirmDeleteModal'));
-            deleteModal.show();
-        });
+            // 4. [DIUBAH] LOGIKA TOMBOL DELETE MENGGUNAKAN SWEETALERT
+            $('#basic-datatables tbody').on('click', '.delete-btn', function(e) {
+                e.preventDefault();
+                const idRabUpah = $(this).data('id_rab_upah');
+                
+                swal({
+                    title: "Apakah Anda Yakin?",
+                    text: "Data RAB yang dihapus tidak dapat dikembalikan.",
+                    icon: "warning",
+                    buttons: {
+                        cancel: {
+                            text: "Batal",
+                            value: null,
+                            visible: true,
+                            className: "btn btn-secondary",
+                            closeModal: true,
+                        },
+                        confirm: {
+                            text: "Ya, Hapus",
+                            value: true,
+                            visible: true,
+                            className: "btn btn-danger",
+                            closeModal: true
+                        }
+                    }
+                }).then((willDelete) => {
+                    if (willDelete) {
+                        // Jika pengguna mengklik "Ya, Hapus", arahkan ke skrip delete
+                        window.location.href = 'delete_rab_upah.php?id_rab_upah=' + idRabUpah;
+                    }
+                });
+            });
       });
     </script>
 </body>

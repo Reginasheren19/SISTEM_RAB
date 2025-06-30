@@ -3,22 +3,17 @@ session_start();
 include("../config/koneksi_mysql.php");
 
 // =========================================================================
-// [PENTING] Nama session disesuaikan dengan file login.php Anda
 $logged_in_user_id = $_SESSION['id_user'] ?? 0;
 $user_role = strtolower($_SESSION['role'] ?? 'guest');
-
-// Daftar peran yang bisa melihat semua data
 $can_see_all_roles = ['admin', 'super admin', 'direktur'];
 $is_editor_role = in_array($user_role, $can_see_all_roles);
 
-// Jika pengguna tidak login, arahkan ke halaman login
 if ($logged_in_user_id === 0) {
     header("Location: ../index.php?pesan=belum_login");
     exit();
 }
 // =========================================================================
 
-// Fungsi helper untuk warna dropdown
 function getStatusClass($status) {
     switch (strtolower(trim($status))) {
         case 'disetujui': return 'bg-success text-white';
@@ -29,59 +24,55 @@ function getStatusClass($status) {
     }
 }
 
-// [DIUBAH] Query utama dengan filter hak akses yang lebih baik
+// Query utama untuk daftar pengajuan yang sudah dibuat
 $sql = "SELECT 
     pu.id_pengajuan_upah, pu.tanggal_pengajuan, pu.total_pengajuan, pu.status_pengajuan, pu.keterangan,
     ru.id_rab_upah, mpe.nama_perumahan, mpr.kavling, mm.nama_mandor, pu.bukti_bayar,
     (SELECT MAX(p.id_pengajuan_upah) FROM pengajuan_upah p WHERE p.id_rab_upah = ru.id_rab_upah) AS id_pengajuan_terakhir
-FROM pengajuan_upah pu
-LEFT JOIN rab_upah ru ON pu.id_rab_upah = ru.id_rab_upah
-LEFT JOIN master_proyek mpr ON ru.id_proyek = mpr.id_proyek
-LEFT JOIN master_perumahan mpe ON mpr.id_perumahan = mpe.id_perumahan
-LEFT JOIN master_mandor mm ON mpr.id_mandor = mm.id_mandor
+    FROM pengajuan_upah pu
+    LEFT JOIN rab_upah ru ON pu.id_rab_upah = ru.id_rab_upah
+    LEFT JOIN master_proyek mpr ON ru.id_proyek = mpr.id_proyek
+    LEFT JOIN master_perumahan mpe ON mpr.id_perumahan = mpe.id_perumahan
+    LEFT JOIN master_mandor mm ON mpr.id_mandor = mm.id_mandor
 ";
-
 if ($user_role === 'pj proyek') {
     $safe_user_id = (int) $logged_in_user_id;
     $sql .= " WHERE mpr.id_user_pj = $safe_user_id";
 } 
-else if (!in_array($user_role, ['super admin', 'admin', 'direktur'])) {
-     $sql .= " WHERE 1=0"; // Kondisi yang selalu salah untuk role lain
+else if (!in_array($user_role, $can_see_all_roles)) {
+    $sql .= " WHERE 1=0";
 }
-
 $sql .= " GROUP BY pu.id_pengajuan_upah ORDER BY pu.id_pengajuan_upah DESC";
-
 $pengajuanresult = mysqli_query($koneksi, $sql);
-if (!$pengajuanresult) {
-    die("Query Error: " . mysqli_error($koneksi));
-}
+if (!$pengajuanresult) { die("Query Error (Main): " . mysqli_error($koneksi)); }
 
-
-// Query untuk modal juga difilter
-$rabUpahUntukModalSql = "SELECT 
-                            ru.id_rab_upah, ru.id_proyek,
-                            mpe.nama_perumahan, mpr.kavling, mm.nama_mandor, ru.total_rab_upah
-                        FROM rab_upah ru
-                        LEFT JOIN master_proyek mpr ON ru.id_proyek = mpr.id_proyek
-                        LEFT JOIN master_perumahan mpe ON mpr.id_perumahan = mpe.id_perumahan
-                        LEFT JOIN master_mandor mm ON mpr.id_mandor = mm.id_mandor ";
-
+// [DIUBAH] Query untuk modal, sekarang ikut mengambil status pengajuan terakhir
+$rabUpahUntukModalSql = "
+    SELECT 
+        ru.id_rab_upah, ru.id_proyek,
+        mpe.nama_perumahan, mpr.kavling, mm.nama_mandor, ru.total_rab_upah,
+        pu_last.status_pengajuan AS status_terakhir
+    FROM rab_upah ru
+    LEFT JOIN master_proyek mpr ON ru.id_proyek = mpr.id_proyek
+    LEFT JOIN master_perumahan mpe ON mpr.id_perumahan = mpe.id_perumahan
+    LEFT JOIN master_mandor mm ON mpr.id_mandor = mm.id_mandor
+    LEFT JOIN (
+        SELECT id_rab_upah, MAX(id_pengajuan_upah) as max_id
+        FROM pengajuan_upah
+        GROUP BY id_rab_upah
+    ) AS last_pengajuan ON ru.id_rab_upah = last_pengajuan.id_rab_upah
+    LEFT JOIN pengajuan_upah pu_last ON last_pengajuan.max_id = pu_last.id_pengajuan_upah
+";
 if ($user_role === 'pj proyek') {
     $safe_user_id = (int) $logged_in_user_id;
     $rabUpahUntukModalSql .= " WHERE mpr.id_user_pj = $safe_user_id";
 }
-
 $rabUpahUntukModalSql .= " ORDER BY ru.id_rab_upah DESC";
-
 $rabUpahUntukModalResult = mysqli_query($koneksi, $rabUpahUntukModalSql);
-if (!$rabUpahUntukModalResult) {
-    die("Query Error (Modal RAB): " . mysqli_error($koneksi));
-}
+if (!$rabUpahUntukModalResult) { die("Query Error (Modal RAB): " . mysqli_error($koneksi)); }
 
-// Ambil pesan flash dari session
-$flash_message = null;
+$flash_message = $_SESSION['flash_message'] ?? null;
 if (isset($_SESSION['flash_message'])) {
-    $flash_message = $_SESSION['flash_message'];
     unset($_SESSION['flash_message']);
 }
 ?>
@@ -431,45 +422,42 @@ $formattedpengajuan = 'PU' . $row['id_pengajuan_upah'];
     </div>
 </div>
 
-<!-- Modal: Pilih Proyek -->
-<div class="modal fade" id="selectProyekModal" tabindex="-1" aria-labelledby="selectProyekModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="selectProyekModalLabel">Pilih Proyek RAB</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <table id="tabel-proyek-modal" class="display table table-striped table-hover" style="width:100%">
-                    <thead>
-                        <tr>
-                            <th>ID RAB</th><th>Nama Perumahan</th><th>Kavling</th><th>Mandor</th><th class="text-end">Total RAB</th><th class="text-center">Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                    <?php if (mysqli_num_rows($rabUpahUntukModalResult) > 0) :
-                        mysqli_data_seek($rabUpahUntukModalResult, 0);
-                        while ($rab = mysqli_fetch_assoc($rabUpahUntukModalResult)) :
-                            $id_rab_asli = $rab['id_rab_upah'];
-$formatted_id = 'RABP' . $rab['id_rab_upah'];
-                    ?>
-                        <tr>
-    <td><?= htmlspecialchars($formatted_id) ?></td>
-                            <td><?= htmlspecialchars($rab['nama_perumahan']) ?></td>
-                            <td><?= htmlspecialchars($rab['kavling']) ?></td>
-                            <td><?= htmlspecialchars($rab['nama_mandor']) ?></td>
-                            <td class="text-end"><?= 'Rp ' . number_format($rab['total_rab_upah'], 0, ',', '.') ?></td>
-                            <td class="text-center">
-                                <a href="detail_pengajuan_upah.php?id_rab_upah=<?= htmlspecialchars($id_rab_asli) ?>" class="btn btn-success btn-sm">Pilih</a>
-                            </td>
-                        </tr>
-                    <?php endwhile; endif; ?>
-                    </tbody>
-                </table>
+    <!-- Modal: Pilih Proyek -->
+    <div class="modal fade" id="selectProyekModal" tabindex="-1" aria-labelledby="selectProyekModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title" id="selectProyekModalLabel">Pilih Proyek RAB</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
+                <div class="modal-body">
+                    <table id="tabel-proyek-modal" class="display table table-striped table-hover" style="width:100%">
+                        <thead><tr><th>ID RAB</th><th>Proyek</th><th>Mandor</th><th class="text-end">Total RAB</th><th class="text-center">Aksi</th></tr></thead>
+                        <tbody>
+                        <?php if (mysqli_num_rows($rabUpahUntukModalResult) > 0): mysqli_data_seek($rabUpahUntukModalResult, 0); ?>
+                            <?php while ($rab = mysqli_fetch_assoc($rabUpahUntukModalResult)):
+                                // [DIUBAH] Logika untuk menonaktifkan tombol jika termin sebelumnya masih 'diajukan'
+                                $status_terakhir = strtolower($rab['status_terakhir'] ?? '');
+                                $is_blocked = ($status_terakhir === 'diajukan');
+                            ?>
+                                <tr>
+                                    <td><?= 'RABP' . $rab['id_rab_upah'] ?></td>
+                                    <td><?= htmlspecialchars($rab['nama_perumahan'] . ' - ' . $rab['kavling']) ?></td>
+                                    <td><?= htmlspecialchars($rab['nama_mandor']) ?></td>
+                                    <td class="text-end"><?= 'Rp ' . number_format($rab['total_rab_upah'], 0, ',', '.') ?></td>
+                                    <td class="text-center">
+                                        <?php if ($is_blocked): ?>
+                                            <button type="button" class="btn btn-secondary btn-sm disabled-pilih-btn" data-bs-toggle="modal" data-bs-target="#pengajuanBlockedModal">Pilih</button>
+                                        <?php else: ?>
+                                            <a href="detail_pengajuan_upah.php?id_rab_upah=<?= $rab['id_rab_upah'] ?>" class="btn btn-success btn-sm">Pilih</a>
+                                        <?php endif; ?>
+                                    </td>
+                                </tr>
+                            <?php endwhile; ?>
+                        <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
-</div>
 
 <!-- [FIXED] Modal Konfirmasi Status (untuk 'Disetujui', 'Diajukan') -->
 <div class="modal fade" id="statusUpdateModal" tabindex="-1" aria-hidden="true">
@@ -547,6 +535,25 @@ $formatted_id = 'RABP' . $rab['id_rab_upah'];
         </div>
     </div>
 </div>
+
+    <!-- [BARU] Modal Notifikasi Pengajuan Diblokir -->
+    <div class="modal fade" id="pengajuanBlockedModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title text-warning"><i class="fas fa-exclamation-triangle"></i> Pengajuan Terkunci</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <p>Anda tidak dapat membuat pengajuan baru untuk proyek ini.</p>
+            <p class="mb-0"> Masih ada pengajuan termin sebelumnya yang berstatus <strong>"Diajukan"</strong> dan sedang menunggu persetujuan dari Direktur.</p>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Mengerti</button>
+          </div>
+        </div>
+      </div>
+    </div>
 
 
 <!-- Core JS Files -->
