@@ -46,16 +46,19 @@ if ($result->num_rows === 1) {
         // Arahkan berdasarkan role
         switch (strtolower($data['role'])) {
             case 'admin':
-                header("Location: admin/dashboard_admin.php");
+                //header("Location: admin/dashboard_admin.php");//
+                header("Location: admin/dashboard_admin_m.php");                
                 break;
             case 'direktur':
                 header("Location: admin/dashboard_direktur.php");
                 break;
             case 'pj proyek':
-                header("Location: admin/dashboard_pjproyek.php");
+                //header("Location: admin/dashboard_pjproyek.php");//
+                header("Location: admin/dashboard_pj_m.php");
                 break;
             case 'divisi teknik':
-                header("Location: admin/dashboard_teknik.php");
+                //header("Location: admin/dashboard_teknik.php");//
+                header("Location: admin/dashboard_divtek_m.php");
                 break;
             default:
                 // Jika role tidak dikenal, arahkan ke dashboard umum

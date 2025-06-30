@@ -2,104 +2,81 @@
 session_start();
 include("../config/koneksi_mysql.php");
 
-// =========================================================================
-// BAGIAN 1: PENGAMBILAN DATA UNTUK KARTU KPI
-// =========================================================================
-$q_proyek_rab = mysqli_query($koneksi, "SELECT COUNT(id_rab_material) as total FROM rab_material");
-$proyek_dengan_rab = mysqli_fetch_assoc($q_proyek_rab)['total'] ?? 0;
-
-$q_total_rab = mysqli_query($koneksi, "SELECT SUM(total_rab_material) as total FROM rab_material");
-$total_rab_material = mysqli_fetch_assoc($q_total_rab)['total'] ?? 0;
-
-$q_total_realisasi = mysqli_query($koneksi, "SELECT SUM(dd.jumlah_distribusi * COALESCE(harga.harga_rata_rata, 0)) as total FROM detail_distribusi dd LEFT JOIN (SELECT id_material, (SUM(sub_total_pp) / NULLIF(SUM(quantity), 0)) as harga_rata_rata FROM detail_pencatatan_pembelian WHERE quantity > 0 AND harga_satuan_pp > 0 GROUP BY id_material) as harga ON dd.id_material = harga.id_material");
-$total_realisasi_material = mysqli_fetch_assoc($q_total_realisasi)['total'] ?? 0;
-
-$selisih_total = $total_rab_material - $total_realisasi_material;
-
-
-// =========================================================================
-// BAGIAN 2: PENGAMBILAN DATA UNTUK GRAFIK & TABEL
-// =========================================================================
-
-// Grafik 1: Total Pembelian Material 6 Bulan Terakhir
-$pembelian_per_bulan = [];
-$labels_bulan = [];
-for ($i = 5; $i >= 0; $i--) {
-    $bulan = date('m', strtotime("-$i month"));
-    $tahun = date('Y', strtotime("-$i month"));
-    $labels_bulan[] = date('M Y', strtotime("-$i month"));
-    $q_pembelian_bulan = mysqli_query($koneksi, "SELECT SUM(total_biaya) as total FROM pencatatan_pembelian WHERE MONTH(tanggal_pembelian) = '$bulan' AND YEAR(tanggal_pembelian) = '$tahun'");
-    $pembelian_per_bulan[] = (int)(mysqli_fetch_assoc($q_pembelian_bulan)['total'] ?? 0);
+// Proteksi Halaman
+if (strtolower($_SESSION['role'] ?? '') !== 'admin') {
+    die("Akses ditolak. Halaman ini khusus untuk Admin.");
 }
 
-// Grafik 2: Perbandingan Proyek dengan Filter
-$perumahan_id_terpilih = $_GET['perumahan_id'] ?? 'semua';
-$q_daftar_perumahan = mysqli_query($koneksi, "SELECT id_perumahan, nama_perumahan FROM master_perumahan ORDER BY nama_perumahan ASC");
+// Inisialisasi variabel untuk mencegah warning
+$kpi_pembelian_bulan_ini = 0;
+$kpi_nilai_pembelian_bulan_ini = 0;
+$kpi_perlu_diproses = 0;
+$result_perlu_retur = false;
+$result_pembelian_terakhir = false;
+$pembelian_harian = [];
+$labels_harian = [];
+$result_stok_terendah = false;
 
-$sql_perbandingan = "SELECT p.id_proyek, CONCAT(per.nama_perumahan, ' - Kavling: ', p.kavling) as nama_proyek, r.total_rab_material FROM master_proyek p JOIN master_perumahan per ON p.id_perumahan = per.id_perumahan JOIN rab_material r ON p.id_proyek = r.id_proyek";
-if ($perumahan_id_terpilih !== 'semua' && is_numeric($perumahan_id_terpilih)) {
-    $sql_perbandingan .= " WHERE p.id_perumahan = " . (int)$perumahan_id_terpilih;
-}
-$sql_perbandingan .= " ORDER BY nama_proyek ASC LIMIT 10";
-$q_perbandingan = mysqli_query($koneksi, $sql_perbandingan);
-
-$labels_proyek = [];
-$data_rab = [];
-$data_realisasi = [];
-$tabel_data = []; // [PENTING] Inisialisasi $tabel_data di sini
-
-if ($q_perbandingan) {
-    while($row = mysqli_fetch_assoc($q_perbandingan)) {
-        $labels_proyek[] = $row['nama_proyek'];
-        $data_rab[] = (float)$row['total_rab_material'];
-        $id_proyek = $row['id_proyek'];
-        $realisasi_proyek = 0;
-
-        $stmt_dist = $koneksi->prepare("SELECT dd.id_material, SUM(dd.jumlah_distribusi) as total_distribusi FROM detail_distribusi dd JOIN distribusi_material dm ON dd.id_distribusi = dm.id_distribusi WHERE dm.id_proyek = ? GROUP BY dd.id_material");
-        $stmt_dist->bind_param("i", $id_proyek);
-        $stmt_dist->execute();
-        $res_dist = $stmt_dist->get_result();
-        while($item_dist = $res_dist->fetch_assoc()){
-            $id_mat = $item_dist['id_material'];
-            $qty_dist = $item_dist['total_distribusi'];
-            $stmt_hrg = $koneksi->prepare("SELECT SUM(sub_total_pp) / NULLIF(SUM(quantity), 0) AS harga_rata_rata FROM detail_pencatatan_pembelian WHERE id_material = ? AND quantity > 0");
-            $stmt_hrg->bind_param("i", $id_mat);
-            $stmt_hrg->execute();
-            $hrg_rata = (float)($stmt_hrg->get_result()->fetch_assoc()['harga_rata_rata'] ?? 0);
-            $stmt_hrg->close();
-            $realisasi_proyek += $qty_dist * $hrg_rata;
-        }
-        $stmt_dist->close();
-        $data_realisasi[] = $realisasi_proyek;
-
-        // Data untuk tabel disimpan di sini
-        $tabel_data[] = [
-            'nama_proyek' => $row['nama_proyek'],
-            'anggaran' => $row['total_rab_material'],
-            'realisasi' => $realisasi_proyek,
-            'selisih' => $row['total_rab_material'] - $realisasi_proyek
-        ];
-    }
+// --- KPI Pembelian Bulan Ini ---
+$bulan_ini = date('m');
+$tahun_ini = date('Y');
+$q_pembelian_bulan_ini = mysqli_query($koneksi, "SELECT COUNT(id_pembelian) as total_transaksi, SUM(total_biaya) as total_nilai FROM pencatatan_pembelian WHERE MONTH(tanggal_pembelian) = '$bulan_ini' AND YEAR(tanggal_pembelian) = '$tahun_ini'");
+if($q_pembelian_bulan_ini) {
+    $pembelian_bulan_ini = mysqli_fetch_assoc($q_pembelian_bulan_ini);
+    $kpi_pembelian_bulan_ini = $pembelian_bulan_ini['total_transaksi'] ?? 0;
+    $kpi_nilai_pembelian_bulan_ini = $pembelian_bulan_ini['total_nilai'] ?? 0;
 }
 
-// --- [DIPINDAHKAN] LOGIKA UNTUK PROYEK PALING BOROS SEKARANG ADA DI SINI ---
-$proyek_boros = [];
-// Pastikan $tabel_data sudah ada dan merupakan array sebelum di-loop
-if (is_array($tabel_data)) {
-    foreach ($tabel_data as $proyek) {
-        if ($proyek['selisih'] < 0) {
-            $proyek_boros[] = $proyek;
-        }
-    }
+// --- KPI & Widget "Menunggu Proses Retur" ---
+$sql_perlu_retur = "
+    SELECT p.id_pembelian, p.keterangan_pembelian, p.tanggal_pembelian
+    FROM pencatatan_pembelian p
+    WHERE EXISTS (SELECT 1 FROM log_penerimaan_material WHERE id_pembelian = p.id_pembelian AND jumlah_rusak > 0)
+    AND 
+    (SELECT COALESCE(SUM(jumlah_rusak), 0) FROM log_penerimaan_material WHERE id_pembelian = p.id_pembelian) > 
+    (SELECT COALESCE(SUM(quantity), 0) FROM detail_pencatatan_pembelian WHERE id_pembelian = p.id_pembelian AND harga_satuan_pp = 0)
+    ORDER BY p.tanggal_pembelian DESC
+";
+$result_perlu_retur = mysqli_query($koneksi, $sql_perlu_retur);
+if ($result_perlu_retur) {
+    $kpi_perlu_diproses = mysqli_num_rows($result_perlu_retur);
 }
-// Urutkan array $proyek_boros dari yang paling boros
-usort($proyek_boros, function($a, $b) {
-    return $a['selisih'] <=> $b['selisih'];
-});
-// Ambil 5 teratas saja
-$top_5_boros = array_slice($proyek_boros, 0, 5);
+
+// --- Widget "5 Pembelian Terakhir" ---
+$sql_pembelian_terakhir = "SELECT id_pembelian, tanggal_pembelian, keterangan_pembelian, total_biaya FROM pencatatan_pembelian ORDER BY id_pembelian DESC LIMIT 5";
+$result_pembelian_terakhir = mysqli_query($koneksi, $sql_pembelian_terakhir);
+
+// --- Data untuk Grafik Pembelian Harian ---
+for ($i = 6; $i >= 0; $i--) {
+    $hari = date('Y-m-d', strtotime("-$i days"));
+    $labels_harian[] = date('d M', strtotime("-$i days"));
+    $q_pembelian_harian = mysqli_query($koneksi, "SELECT SUM(total_biaya) as total FROM pencatatan_pembelian WHERE DATE(tanggal_pembelian) = '$hari'");
+    $pembelian_harian[] = (int)(mysqli_fetch_assoc($q_pembelian_harian)['total'] ?? 0);
+}
+
+// --- [DIUBAH] Data untuk Stok Terendah dengan query yang lebih akurat ---
+$sql_stok = "
+    SELECT 
+        m.nama_material, 
+        s.nama_satuan,
+        (
+            COALESCE((SELECT SUM(jumlah_diterima) FROM log_penerimaan_material WHERE id_material = m.id_material), 0)
+            - 
+            COALESCE((SELECT SUM(jumlah_distribusi) FROM detail_distribusi WHERE id_material = m.id_material), 0)
+        ) as sisa_stok
+    FROM 
+        master_material m
+    LEFT JOIN 
+        master_satuan s ON m.id_satuan = s.id_satuan
+    HAVING 
+        sisa_stok < 10
+    ORDER BY 
+        sisa_stok ASC
+    LIMIT 5
+";
+$result_stok_terendah = mysqli_query($koneksi, $sql_stok);
+
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -362,102 +339,117 @@ $top_5_boros = array_slice($proyek_boros, 0, 5);
                 <!-- End Navbar -->
             </div>
 
-
- <div class="container">
+<div class="container">
             <div class="page-inner">
                 <div class="d-flex align-items-left align-items-md-center flex-column flex-md-row pt-2 pb-4">
                     <div>
-                        <h3 class="fw-bold mb-3">Dashboard Direktur</h3>
-                        <h6 class="op-7 mb-2">Ringkasan Kinerja Proyek & Biaya Material</h6>
+                        <h3 class="fw-bold mb-3">Dashboard Admin</h3>
+                        <h6 class="op-7 mb-2">Ringkasan Transaksi & Tugas Harian</h6>
                     </div>
                 </div>
 
                 <div class="row">
-                    <div class="col-sm-6 col-md-3"><div class="card card-stats card-round"><div class="card-body"><div class="row align-items-center"><div class="col-icon"><div class="icon-big text-center icon-primary bubble-shadow-small"><i class="fas fa-building"></i></div></div><div class="col col-stats ms-3 ms-sm-0"><div class="numbers"><p class="card-category">Proyek dengan RAB</p><h4 class="card-title"><?= $proyek_dengan_rab ?></h4></div></div></div></div></div></div>
-                    <div class="col-sm-6 col-md-3"><div class="card card-stats card-round"><div class="card-body"><div class="row align-items-center"><div class="col-icon"><div class="icon-big text-center icon-info bubble-shadow-small"><i class="fas fa-file-contract"></i></div></div><div class="col col-stats ms-3 ms-sm-0"><div class="numbers"><p class="card-category">Total Anggaran</p><h4 class="card-title">Rp <?= number_format($total_rab_material, 0, ',', '.') ?></h4></div></div></div></div></div></div>
-                    <div class="col-sm-6 col-md-3"><div class="card card-stats card-round"><div class="card-body"><div class="row align-items-center"><div class="col-icon"><div class="icon-big text-center icon-success bubble-shadow-small"><i class="fas fa-truck-loading"></i></div></div><div class="col col-stats ms-3 ms-sm-0"><div class="numbers"><p class="card-category">Total Realisasi</p><h4 class="card-title">Rp <?= number_format($total_realisasi_material, 0, ',', '.') ?></h4></div></div></div></div></div></div>
-                    <div class="col-sm-6 col-md-3"><div class="card card-stats card-round"><div class="card-body"><div class="row align-items-center"><div class="col-icon"><div class="icon-big text-center <?= ($selisih_total >= 0) ? 'icon-success' : 'icon-danger' ?> bubble-shadow-small"><i class="fas fa-balance-scale-right"></i></div></div><div class="col col-stats ms-3 ms-sm-0"><div class="numbers"><p class="card-category">Selisih Total</p><h4 class="card-title">Rp <?= number_format($selisih_total, 0, ',', '.') ?></h4></div></div></div></div></div></div>
+                    <div class="col-sm-6 col-md-4"><div class="card card-stats card-round"><div class="card-body"><div class="row align-items-center"><div class="col-icon"><div class="icon-big text-center icon-primary bubble-shadow-small"><i class="fas fa-shopping-cart"></i></div></div><div class="col col-stats ms-3 ms-sm-0"><div class="numbers"><p class="card-category">Pembelian Bulan Ini</p><h4 class="card-title"><?= $kpi_pembelian_bulan_ini ?></h4></div></div></div></div></div></div>
+                    <div class="col-sm-6 col-md-4"><div class="card card-stats card-round"><div class="card-body"><div class="row align-items-center"><div class="col-icon"><div class="icon-big text-center icon-success bubble-shadow-small"><i class="fas fa-money-bill-wave"></i></div></div><div class="col col-stats ms-3 ms-sm-0"><div class="numbers"><p class="card-category">Nilai Pembelian</p><h4 class="card-title">Rp <?= number_format($kpi_nilai_pembelian_bulan_ini, 0, ',', '.') ?></h4></div></div></div></div></div></div>
+                    <div class="col-sm-6 col-md-4"><div class="card card-stats card-round"><div class="card-body"><div class="row align-items-center"><div class="col-icon"><div class="icon-big text-center icon-warning bubble-shadow-small"><i class="fas fa-sync-alt"></i></div></div><div class="col col-stats ms-3 ms-sm-0"><div class="numbers"><p class="card-category">Retur Perlu Diproses</p><h4 class="card-title"><?= $kpi_perlu_diproses ?></h4></div></div></div></div></div></div>
                 </div>
 
                 <div class="row">
-                    <div class="col-md-8">
+                    <div class="col-md-7">
                         <div class="card">
-                            <div class="card-header"><div class="card-title">Total Pembelian Material (6 Bulan Terakhir)</div></div>
-                            <div class="card-body"><div class="chart-container"><canvas id="pembelianBulananChart"></canvas></div></div>
+                            <div class="card-header"><h4 class="card-title">Aktivitas Pembelian (7 Hari Terakhir)</h4></div>
+                            <div class="card-body"><div class="chart-container"><canvas id="pembelianHarianChart"></canvas></div></div>
+                        </div>
+                        <div class="card">
+                            <div class="card-header"><h4 class="card-title">Pembelian Menunggu Proses Retur</h4></div>
+                            <div class="card-body">
+                                <ul class="list-group list-group-flush">
+                                    <?php if ($result_perlu_retur && mysqli_num_rows($result_perlu_retur) > 0): while($row = mysqli_fetch_assoc($result_perlu_retur)): ?>
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        <span>ID: PB<?= $row['id_pembelian'] . date('Y', strtotime($row['tanggal_pembelian'])) ?><br><small class="text-muted"><?= htmlspecialchars($row['keterangan_pembelian']) ?></small></span>
+                                        <a href="detail_pembelian.php?id=<?= $row['id_pembelian'] ?>" class="btn btn-warning btn-sm">Proses Retur</a>
+                                    </li>
+                                    <?php endwhile; else: ?>
+                                    <li class="list-group-item text-center text-muted">Tidak ada retur yang perlu diproses.</li>
+                                    <?php endif; ?>
+                                </ul>
+                            </div>
                         </div>
                     </div>
-<div class="col-md-4">
-    <div class="card">
-        <div class="card-header"><div class="card-title">Top 5 Proyek Paling Boros</div></div>
-        <div class="card-body">
-            <ul class="list-group list-group-flush">
-                <?php if (empty($top_5_boros)): ?>
-                    <li class="list-group-item text-center text-muted">Tidak ada proyek yang boros. Kerja bagus!</li>
-                <?php else: foreach ($top_5_boros as $pt): ?>
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                        <span><?= htmlspecialchars($pt['nama_proyek']) ?></span>
-                        <span class="badge bg-danger">Rp <?= number_format(abs($pt['selisih']),0,',','.') ?></span>
-                    </li>
-                <?php endforeach; endif; ?>
-            </ul>
+                    <div class="col-md-5">
+                        <div class="card">
+                            <div class="card-header"><h4 class="card-title">Peringatan: Stok Gudang Terendah</h4></div>
+                            <div class="card-body">
+                                <ul class="list-group list-group-flush">
+                                    <?php if($result_stok_terendah && mysqli_num_rows($result_stok_terendah) > 0): while($stok = mysqli_fetch_assoc($result_stok_terendah)): ?>
+                                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                                            <?= htmlspecialchars($stok['nama_material']) ?>
+                                            <span class="badge bg-warning text-dark"><?= number_format($stok['sisa_stok'], 2, ',', '.') ?> <?= $stok['nama_satuan'] ?></span>
+                                        </li>
+                                    <?php endwhile; else: ?>
+                                        <li class="list-group-item text-center text-muted">Stok aman.</li>
+                                    <?php endif; ?>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-header"><h4 class="card-title">5 Pembelian Terakhir</h4></div>
+                            <div class="card-body">
+                                <ul class="list-group list-group-flush">
+                                    <?php if ($result_pembelian_terakhir && mysqli_num_rows($result_pembelian_terakhir) > 0): while($row = mysqli_fetch_assoc($result_pembelian_terakhir)): ?>
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        <span>ID: PB<?= $row['id_pembelian'] . date('Y', strtotime($row['tanggal_pembelian'])) ?><br><small class="text-muted">Rp <?= number_format($row['total_biaya'], 0,',','.') ?></small></span>
+                                        <a href="detail_pembelian.php?id=<?= $row['id_pembelian'] ?>" class="btn btn-info btn-sm">Lihat</a>
+                                    </li>
+                                    <?php endwhile; else: ?>
+                                    <li class="list-group-item text-center text-muted">Belum ada transaksi pembelian.</li>
+                                    <?php endif; ?>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
-                <div class="row">
-                    <div class="col-md-12">
-                        <div class="card">
-                            <div class="card-header">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <h4 class="card-title">Perbandingan Anggaran vs Realisasi per Proyek</h4>
-                                    <form method="GET" action="" class="form-inline">
-                                        <div class="input-group">
-                                            <select class="form-select" name="perumahan_id" onchange="this.form.submit()">
-                                                <option value="semua">-- Semua Perumahan --</option>
-                                                <?php mysqli_data_seek($q_daftar_perumahan, 0); while($perumahan = mysqli_fetch_assoc($q_daftar_perumahan)): ?>
-                                                <option value="<?= $perumahan['id_perumahan'] ?>" <?= ($perumahan['id_perumahan'] == $perumahan_id_terpilih) ? 'selected' : '' ?>><?= htmlspecialchars($perumahan['nama_perumahan']) ?></option>
-                                                <?php endwhile; ?>
-                                            </select>
-                                        </div>
-                                    </form>
-                                </div>
-                            </div>
-                            <div class="card-body">
-                                <div class="chart-container" style="height: 350px">
-                                    <canvas id="perbandinganProyekChart"></canvas>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
 
-            </div>
-        </div>
-    <script src="assets/js/core/jquery-3.7.1.min.js"></script>
+<script src="assets/js/core/jquery-3.7.1.min.js"></script>
     <script src="assets/js/core/popper.min.js"></script>
     <script src="assets/js/core/bootstrap.min.js"></script>
     <script src="assets/js/plugin/datatables/datatables.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
-    const labelsProyek = <?= json_encode($labels_proyek) ?>;
-    const dataRab = <?= json_encode($data_rab) ?>;
-    const dataRealisasi = <?= json_encode($data_realisasi) ?>;
-    const labelsBulan = <?= json_encode($labels_bulan) ?>;
-    const dataPembelianBulanan = <?= json_encode($pembelian_per_bulan) ?>;
+$(document).ready(function() {
+    const labelsHarian = <?= json_encode($labels_harian) ?>;
+    const dataHarian = <?= json_encode($pembelian_harian) ?>;
 
-    if (labelsProyek && labelsProyek.length > 0) {
-        new Chart(document.getElementById('perbandinganProyekChart').getContext('2d'), {
-            type: 'bar',
-            data: { labels: labelsProyek, datasets: [{ label: 'Anggaran', data: dataRab, backgroundColor: 'rgba(54, 162, 235, 0.6)' }, { label: 'Realisasi', data: dataRealisasi, backgroundColor: 'rgba(40, 167, 69, 0.6)' }] },
-            options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, scales: { x: { beginAtZero: true } } }
+    if (dataHarian.some(v => v > 0)) {
+        const ctxHarian = document.getElementById('pembelianHarianChart').getContext('2d');
+        new Chart(ctxHarian, {
+            type: 'line',
+            data: {
+                labels: labelsHarian,
+                datasets: [{
+                    label: "Nilai Pembelian",
+                    borderColor: "#1d7af3",
+                    pointBackgroundColor: "#1d7af3",
+                    data: dataHarian,
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true, ticks: { callback: function(value) { return 'Rp ' + new Intl.NumberFormat('id-ID').format(value); } } } }
+            }
         });
+    } else {
+         $('#pembelianHarianChart').parent().html('<p class="text-center text-muted mt-5">Tidak ada aktivitas pembelian dalam 7 hari terakhir.</p>');
     }
-
-    new Chart(document.getElementById('pembelianBulananChart').getContext('2d'), {
-        type: 'bar',
-        data: { labels: labelsBulan, datasets: [{ label: "Total Pembelian", backgroundColor: '#0077b6', data: dataPembelianBulanan }] },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
-    });
+});
 </script>
 </body>
 </html>

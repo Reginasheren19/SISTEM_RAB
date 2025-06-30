@@ -2,104 +2,61 @@
 session_start();
 include("../config/koneksi_mysql.php");
 
-// =========================================================================
-// BAGIAN 1: PENGAMBILAN DATA UNTUK KARTU KPI
-// =========================================================================
-$q_proyek_rab = mysqli_query($koneksi, "SELECT COUNT(id_rab_material) as total FROM rab_material");
-$proyek_dengan_rab = mysqli_fetch_assoc($q_proyek_rab)['total'] ?? 0;
-
-$q_total_rab = mysqli_query($koneksi, "SELECT SUM(total_rab_material) as total FROM rab_material");
-$total_rab_material = mysqli_fetch_assoc($q_total_rab)['total'] ?? 0;
-
-$q_total_realisasi = mysqli_query($koneksi, "SELECT SUM(dd.jumlah_distribusi * COALESCE(harga.harga_rata_rata, 0)) as total FROM detail_distribusi dd LEFT JOIN (SELECT id_material, (SUM(sub_total_pp) / NULLIF(SUM(quantity), 0)) as harga_rata_rata FROM detail_pencatatan_pembelian WHERE quantity > 0 AND harga_satuan_pp > 0 GROUP BY id_material) as harga ON dd.id_material = harga.id_material");
-$total_realisasi_material = mysqli_fetch_assoc($q_total_realisasi)['total'] ?? 0;
-
-$selisih_total = $total_rab_material - $total_realisasi_material;
-
-
-// =========================================================================
-// BAGIAN 2: PENGAMBILAN DATA UNTUK GRAFIK & TABEL
-// =========================================================================
-
-// Grafik 1: Total Pembelian Material 6 Bulan Terakhir
-$pembelian_per_bulan = [];
-$labels_bulan = [];
-for ($i = 5; $i >= 0; $i--) {
-    $bulan = date('m', strtotime("-$i month"));
-    $tahun = date('Y', strtotime("-$i month"));
-    $labels_bulan[] = date('M Y', strtotime("-$i month"));
-    $q_pembelian_bulan = mysqli_query($koneksi, "SELECT SUM(total_biaya) as total FROM pencatatan_pembelian WHERE MONTH(tanggal_pembelian) = '$bulan' AND YEAR(tanggal_pembelian) = '$tahun'");
-    $pembelian_per_bulan[] = (int)(mysqli_fetch_assoc($q_pembelian_bulan)['total'] ?? 0);
+// Pastikan hanya PJ Proyek yang bisa akses
+if (($_SESSION['role'] ?? '') !== 'PJ Proyek' || !isset($_SESSION['id_user'])) {
+    die("Akses ditolak. Anda harus login sebagai PJ Proyek.");
 }
+$id_user_pj = $_SESSION['id_user'];
 
-// Grafik 2: Perbandingan Proyek dengan Filter
-$perumahan_id_terpilih = $_GET['perumahan_id'] ?? 'semua';
-$q_daftar_perumahan = mysqli_query($koneksi, "SELECT id_perumahan, nama_perumahan FROM master_perumahan ORDER BY nama_perumahan ASC");
+// =========================================================================
+// BAGIAN 1: PENGAMBILAN DATA UNTUK KPI & WIDGET
+// =========================================================================
 
-$sql_perbandingan = "SELECT p.id_proyek, CONCAT(per.nama_perumahan, ' - Kavling: ', p.kavling) as nama_proyek, r.total_rab_material FROM master_proyek p JOIN master_perumahan per ON p.id_perumahan = per.id_perumahan JOIN rab_material r ON p.id_proyek = r.id_proyek";
-if ($perumahan_id_terpilih !== 'semua' && is_numeric($perumahan_id_terpilih)) {
-    $sql_perbandingan .= " WHERE p.id_perumahan = " . (int)$perumahan_id_terpilih;
-}
-$sql_perbandingan .= " ORDER BY nama_proyek ASC LIMIT 10";
-$q_perbandingan = mysqli_query($koneksi, $sql_perbandingan);
+// --- KPI & Widget yang sudah ada (tidak diubah) ---
+$sql_menunggu = "SELECT COUNT(p.id_pembelian) as total FROM pencatatan_pembelian p WHERE (SELECT SUM(quantity) FROM detail_pencatatan_pembelian WHERE id_pembelian = p.id_pembelian) > (SELECT COALESCE(SUM(jumlah_diterima + jumlah_rusak), 0) FROM log_penerimaan_material WHERE id_pembelian = p.id_pembelian)";
+$kpi_menunggu = mysqli_fetch_assoc(mysqli_query($koneksi, $sql_menunggu))['total'] ?? 0;
 
-$labels_proyek = [];
-$data_rab = [];
-$data_realisasi = [];
-$tabel_data = []; // [PENTING] Inisialisasi $tabel_data di sini
+$tanggal_hari_ini = date('Y-m-d');
+$stmt_kpi_distribusi = $koneksi->prepare("SELECT COUNT(dd.id_detail) as total FROM detail_distribusi dd JOIN distribusi_material dm ON dd.id_distribusi = dm.id_distribusi WHERE dm.id_user_pj = ? AND DATE(dm.tanggal_distribusi) = ?");
+$stmt_kpi_distribusi->bind_param("is", $id_user_pj, $tanggal_hari_ini);
+$stmt_kpi_distribusi->execute();
+$kpi_distribusi_hari_ini = $stmt_kpi_distribusi->get_result()->fetch_assoc()['total'] ?? 0;
+$stmt_kpi_distribusi->close();
 
-if ($q_perbandingan) {
-    while($row = mysqli_fetch_assoc($q_perbandingan)) {
-        $labels_proyek[] = $row['nama_proyek'];
-        $data_rab[] = (float)$row['total_rab_material'];
-        $id_proyek = $row['id_proyek'];
-        $realisasi_proyek = 0;
+$sql_daftar_tunggu = "SELECT p.id_pembelian, p.tanggal_pembelian, p.keterangan_pembelian FROM pencatatan_pembelian p WHERE (SELECT SUM(quantity) FROM detail_pencatatan_pembelian WHERE id_pembelian = p.id_pembelian) > (SELECT COALESCE(SUM(jumlah_diterima + jumlah_rusak), 0) FROM log_penerimaan_material WHERE id_pembelian = p.id_pembelian) ORDER BY p.tanggal_pembelian ASC LIMIT 5";
+$result_daftar_tunggu = mysqli_query($koneksi, $sql_daftar_tunggu);
 
-        $stmt_dist = $koneksi->prepare("SELECT dd.id_material, SUM(dd.jumlah_distribusi) as total_distribusi FROM detail_distribusi dd JOIN distribusi_material dm ON dd.id_distribusi = dm.id_distribusi WHERE dm.id_proyek = ? GROUP BY dd.id_material");
-        $stmt_dist->bind_param("i", $id_proyek);
-        $stmt_dist->execute();
-        $res_dist = $stmt_dist->get_result();
-        while($item_dist = $res_dist->fetch_assoc()){
-            $id_mat = $item_dist['id_material'];
-            $qty_dist = $item_dist['total_distribusi'];
-            $stmt_hrg = $koneksi->prepare("SELECT SUM(sub_total_pp) / NULLIF(SUM(quantity), 0) AS harga_rata_rata FROM detail_pencatatan_pembelian WHERE id_material = ? AND quantity > 0");
-            $stmt_hrg->bind_param("i", $id_mat);
-            $stmt_hrg->execute();
-            $hrg_rata = (float)($stmt_hrg->get_result()->fetch_assoc()['harga_rata_rata'] ?? 0);
-            $stmt_hrg->close();
-            $realisasi_proyek += $qty_dist * $hrg_rata;
-        }
-        $stmt_dist->close();
-        $data_realisasi[] = $realisasi_proyek;
+$stmt_stok_proyek = $koneksi->prepare("SELECT m.nama_material, s.nama_satuan, SUM(dd.jumlah_distribusi) as total_kuantitas FROM detail_distribusi dd JOIN distribusi_material dm ON dd.id_distribusi = dm.id_distribusi JOIN master_material m ON dd.id_material = m.id_material LEFT JOIN master_satuan s ON m.id_satuan = s.id_satuan WHERE dm.id_user_pj = ? GROUP BY dd.id_material, m.nama_material, s.nama_satuan ORDER BY m.nama_material ASC");
+$stmt_stok_proyek->bind_param("i", $id_user_pj);
+$stmt_stok_proyek->execute();
+$result_stok_proyek = $stmt_stok_proyek->get_result();
 
-        // Data untuk tabel disimpan di sini
-        $tabel_data[] = [
-            'nama_proyek' => $row['nama_proyek'],
-            'anggaran' => $row['total_rab_material'],
-            'realisasi' => $realisasi_proyek,
-            'selisih' => $row['total_rab_material'] - $realisasi_proyek
-        ];
+// --- [BARU] Widget 3: Log Aktivitas Distribusi Terakhir (Top 5) ---
+$log_aktivitas = [];
+$stmt_log = $koneksi->prepare("
+    SELECT dm.tanggal_distribusi, m.nama_material, dd.jumlah_distribusi, s.nama_satuan, 
+           CONCAT(per.nama_perumahan, ' - Kavling: ', pro.kavling) as nama_proyek
+    FROM distribusi_material dm
+    JOIN detail_distribusi dd ON dm.id_distribusi = dd.id_distribusi
+    JOIN master_material m ON dd.id_material = m.id_material
+    JOIN master_proyek pro ON dm.id_proyek = pro.id_proyek
+    JOIN master_perumahan per ON pro.id_perumahan = per.id_perumahan
+    LEFT JOIN master_satuan s ON m.id_satuan = s.id_satuan
+    WHERE dm.id_user_pj = ?
+    ORDER BY dm.tanggal_distribusi DESC, dm.id_distribusi DESC
+    LIMIT 5
+");
+$stmt_log->bind_param("i", $id_user_pj);
+$stmt_log->execute();
+$result_log = $stmt_log->get_result();
+if($result_log) {
+    while($row_log = $result_log->fetch_assoc()) {
+        $log_aktivitas[] = $row_log;
     }
 }
+$stmt_log->close();
 
-// --- [DIPINDAHKAN] LOGIKA UNTUK PROYEK PALING BOROS SEKARANG ADA DI SINI ---
-$proyek_boros = [];
-// Pastikan $tabel_data sudah ada dan merupakan array sebelum di-loop
-if (is_array($tabel_data)) {
-    foreach ($tabel_data as $proyek) {
-        if ($proyek['selisih'] < 0) {
-            $proyek_boros[] = $proyek;
-        }
-    }
-}
-// Urutkan array $proyek_boros dari yang paling boros
-usort($proyek_boros, function($a, $b) {
-    return $a['selisih'] <=> $b['selisih'];
-});
-// Ambil 5 teratas saja
-$top_5_boros = array_slice($proyek_boros, 0, 5);
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -362,102 +319,100 @@ $top_5_boros = array_slice($proyek_boros, 0, 5);
                 <!-- End Navbar -->
             </div>
 
-
- <div class="container">
+            <div class="container">
             <div class="page-inner">
                 <div class="d-flex align-items-left align-items-md-center flex-column flex-md-row pt-2 pb-4">
                     <div>
-                        <h3 class="fw-bold mb-3">Dashboard Direktur</h3>
-                        <h6 class="op-7 mb-2">Ringkasan Kinerja Proyek & Biaya Material</h6>
+                        <h3 class="fw-bold mb-3">Dashboard PJ Proyek</h3>
+                        <h6 class="op-7 mb-2">Ringkasan Tugas & Stok Material di Proyek Anda</h6>
                     </div>
                 </div>
 
                 <div class="row">
-                    <div class="col-sm-6 col-md-3"><div class="card card-stats card-round"><div class="card-body"><div class="row align-items-center"><div class="col-icon"><div class="icon-big text-center icon-primary bubble-shadow-small"><i class="fas fa-building"></i></div></div><div class="col col-stats ms-3 ms-sm-0"><div class="numbers"><p class="card-category">Proyek dengan RAB</p><h4 class="card-title"><?= $proyek_dengan_rab ?></h4></div></div></div></div></div></div>
-                    <div class="col-sm-6 col-md-3"><div class="card card-stats card-round"><div class="card-body"><div class="row align-items-center"><div class="col-icon"><div class="icon-big text-center icon-info bubble-shadow-small"><i class="fas fa-file-contract"></i></div></div><div class="col col-stats ms-3 ms-sm-0"><div class="numbers"><p class="card-category">Total Anggaran</p><h4 class="card-title">Rp <?= number_format($total_rab_material, 0, ',', '.') ?></h4></div></div></div></div></div></div>
-                    <div class="col-sm-6 col-md-3"><div class="card card-stats card-round"><div class="card-body"><div class="row align-items-center"><div class="col-icon"><div class="icon-big text-center icon-success bubble-shadow-small"><i class="fas fa-truck-loading"></i></div></div><div class="col col-stats ms-3 ms-sm-0"><div class="numbers"><p class="card-category">Total Realisasi</p><h4 class="card-title">Rp <?= number_format($total_realisasi_material, 0, ',', '.') ?></h4></div></div></div></div></div></div>
-                    <div class="col-sm-6 col-md-3"><div class="card card-stats card-round"><div class="card-body"><div class="row align-items-center"><div class="col-icon"><div class="icon-big text-center <?= ($selisih_total >= 0) ? 'icon-success' : 'icon-danger' ?> bubble-shadow-small"><i class="fas fa-balance-scale-right"></i></div></div><div class="col col-stats ms-3 ms-sm-0"><div class="numbers"><p class="card-category">Selisih Total</p><h4 class="card-title">Rp <?= number_format($selisih_total, 0, ',', '.') ?></h4></div></div></div></div></div></div>
+                    <div class="col-md-6 mb-3">
+                        <a href="penerimaan_material.php" class="btn btn-primary btn-lg w-100"><i class="fas fa-box-open"></i> Konfirmasi Penerimaan Material</a>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <a href="distribusi_material.php" class="btn btn-success btn-lg w-100"><i class="fas fa-truck"></i> Distribusi Material ke Proyek</a>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-sm-6 col-md-6"><div class="card card-stats card-round"><div class="card-body "><div class="row align-items-center"><div class="col-icon"><div class="icon-big text-center icon-warning bubble-shadow-small"><i class="fas fa-dolly-flatbed"></i></div></div><div class="col col-stats ms-3 ms-sm-0"><div class="numbers"><p class="card-category">Pesanan Menunggu Penerimaan</p><h4 class="card-title"><?= $kpi_menunggu ?></h4></div></div></div></div></div></div>
+                    <div class="col-sm-6 col-md-6"><div class="card card-stats card-round"><div class="card-body "><div class="row align-items-center"><div class="col-icon"><div class="icon-big text-center icon-secondary bubble-shadow-small"><i class="fas fa-shipping-fast"></i></div></div><div class="col col-stats ms-3 ms-sm-0"><div class="numbers"><p class="card-category">Distribusi Hari Ini</p><h4 class="card-title"><?= $kpi_distribusi_hari_ini ?></h4></div></div></div></div></div></div>
                 </div>
 
-                <div class="row">
-                    <div class="col-md-8">
+<div class="row">
+                    <div class="col-md-7">
                         <div class="card">
-                            <div class="card-header"><div class="card-title">Total Pembelian Material (6 Bulan Terakhir)</div></div>
-                            <div class="card-body"><div class="chart-container"><canvas id="pembelianBulananChart"></canvas></div></div>
+                            <div class="card-header"><h4 class="card-title">Daftar Tunggu Penerimaan (Top 5)</h4></div>
+                            <div class="card-body">
+                                <ul class="list-group list-group-flush">
+                                <?php if (mysqli_num_rows($result_daftar_tunggu) > 0): while($row = mysqli_fetch_assoc($result_daftar_tunggu)): ?>
+                                    <li class="list-group-item">
+                                        <a href="detail_pembelian.php?id=<?= $row['id_pembelian'] ?>" class="text-decoration-none">
+                                            <strong>ID: PB<?= $row['id_pembelian'] . date('Y', strtotime($row['tanggal_pembelian'])) ?></strong>
+                                            <small class="d-block text-muted"><?= htmlspecialchars($row['keterangan_pembelian']) ?></small>
+                                        </a>
+                                    </li>
+                                <?php endwhile; else: ?>
+                                    <li class="list-group-item text-center text-muted">Tidak ada penerimaan yang tertunda.</li>
+                                <?php endif; ?>
+                                </ul>
+                            </div>
+                        </div>
+                        
+                        <div class="card">
+                            <div class="card-header"><h4 class="card-title">Log Aktivitas Distribusi Terakhir</h4></div>
+                            <div class="card-body">
+                                <ul class="list-group list-group-flush">
+                                <?php if (empty($log_aktivitas)): ?>
+                                    <li class="list-group-item text-center text-muted">Belum ada aktivitas distribusi.</li>
+                                <?php else: foreach ($log_aktivitas as $log): ?>
+                                    <li class="list-group-item">
+                                        <div class="d-flex">
+                                            <div class="avatar avatar-sm me-3"><i class="fas fa-truck-loading fa-2x text-primary"></i></div>
+                                            <div class="flex-1">
+                                                <span>Anda mendistribusikan <strong><?= number_format($log['jumlah_distribusi'], 2, ',', '.') ?> <?= $log['nama_satuan'] ?> <?= htmlspecialchars($log['nama_material']) ?></strong></span>
+                                                <small class="d-block text-muted">Ke: <?= htmlspecialchars($log['nama_proyek']) ?> - <?= date('d M Y', strtotime($log['tanggal_distribusi'])) ?></small>
+                                            </div>
+                                        </div>
+                                    </li>
+                                <?php endforeach; endif; ?>
+                                </ul>
+                            </div>
                         </div>
                     </div>
-<div class="col-md-4">
-    <div class="card">
-        <div class="card-header"><div class="card-title">Top 5 Proyek Paling Boros</div></div>
-        <div class="card-body">
-            <ul class="list-group list-group-flush">
-                <?php if (empty($top_5_boros)): ?>
-                    <li class="list-group-item text-center text-muted">Tidak ada proyek yang boros. Kerja bagus!</li>
-                <?php else: foreach ($top_5_boros as $pt): ?>
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                        <span><?= htmlspecialchars($pt['nama_proyek']) ?></span>
-                        <span class="badge bg-danger">Rp <?= number_format(abs($pt['selisih']),0,',','.') ?></span>
-                    </li>
-                <?php endforeach; endif; ?>
-            </ul>
+
+                    <div class="col-md-5">
+                        <div class="card">
+                            <div class="card-header"><h4 class="card-title">Ringkasan Stok Material di Proyek Anda</h4></div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-striped">
+                                        <thead><tr><th>Material</th><th class="text-end">Total Didistribusikan</th></tr></thead>
+                                        <tbody>
+                                        <?php if (mysqli_num_rows($result_stok_proyek) > 0): mysqli_data_seek($result_stok_proyek, 0); while($row = mysqli_fetch_assoc($result_stok_proyek)): ?>
+                                            <tr><td><?= htmlspecialchars($row['nama_material']) ?></td><td class="text-end"><?= number_format($row['total_kuantitas'], 2, ',', '.') ?> <?= $row['nama_satuan'] ?></td></tr>
+                                        <?php endwhile; else: ?>
+                                            <tr><td colspan="2" class="text-center text-muted">Belum ada material yang didistribusikan.</td></tr>
+                                        <?php endif; ?>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
-                <div class="row">
-                    <div class="col-md-12">
-                        <div class="card">
-                            <div class="card-header">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <h4 class="card-title">Perbandingan Anggaran vs Realisasi per Proyek</h4>
-                                    <form method="GET" action="" class="form-inline">
-                                        <div class="input-group">
-                                            <select class="form-select" name="perumahan_id" onchange="this.form.submit()">
-                                                <option value="semua">-- Semua Perumahan --</option>
-                                                <?php mysqli_data_seek($q_daftar_perumahan, 0); while($perumahan = mysqli_fetch_assoc($q_daftar_perumahan)): ?>
-                                                <option value="<?= $perumahan['id_perumahan'] ?>" <?= ($perumahan['id_perumahan'] == $perumahan_id_terpilih) ? 'selected' : '' ?>><?= htmlspecialchars($perumahan['nama_perumahan']) ?></option>
-                                                <?php endwhile; ?>
-                                            </select>
-                                        </div>
-                                    </form>
-                                </div>
-                            </div>
-                            <div class="card-body">
-                                <div class="chart-container" style="height: 350px">
-                                    <canvas id="perbandinganProyekChart"></canvas>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-            </div>
-        </div>
     <script src="assets/js/core/jquery-3.7.1.min.js"></script>
     <script src="assets/js/core/popper.min.js"></script>
     <script src="assets/js/core/bootstrap.min.js"></script>
     <script src="assets/js/plugin/datatables/datatables.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-<script>
-    const labelsProyek = <?= json_encode($labels_proyek) ?>;
-    const dataRab = <?= json_encode($data_rab) ?>;
-    const dataRealisasi = <?= json_encode($data_realisasi) ?>;
-    const labelsBulan = <?= json_encode($labels_bulan) ?>;
-    const dataPembelianBulanan = <?= json_encode($pembelian_per_bulan) ?>;
-
-    if (labelsProyek && labelsProyek.length > 0) {
-        new Chart(document.getElementById('perbandinganProyekChart').getContext('2d'), {
-            type: 'bar',
-            data: { labels: labelsProyek, datasets: [{ label: 'Anggaran', data: dataRab, backgroundColor: 'rgba(54, 162, 235, 0.6)' }, { label: 'Realisasi', data: dataRealisasi, backgroundColor: 'rgba(40, 167, 69, 0.6)' }] },
-            options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, scales: { x: { beginAtZero: true } } }
-        });
-    }
-
-    new Chart(document.getElementById('pembelianBulananChart').getContext('2d'), {
-        type: 'bar',
-        data: { labels: labelsBulan, datasets: [{ label: "Total Pembelian", backgroundColor: '#0077b6', data: dataPembelianBulanan }] },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
-    });
-</script>
 </body>
 </html>

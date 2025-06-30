@@ -2,104 +2,49 @@
 session_start();
 include("../config/koneksi_mysql.php");
 
-// =========================================================================
-// BAGIAN 1: PENGAMBILAN DATA UNTUK KARTU KPI
-// =========================================================================
-$q_proyek_rab = mysqli_query($koneksi, "SELECT COUNT(id_rab_material) as total FROM rab_material");
-$proyek_dengan_rab = mysqli_fetch_assoc($q_proyek_rab)['total'] ?? 0;
-
-$q_total_rab = mysqli_query($koneksi, "SELECT SUM(total_rab_material) as total FROM rab_material");
-$total_rab_material = mysqli_fetch_assoc($q_total_rab)['total'] ?? 0;
-
-$q_total_realisasi = mysqli_query($koneksi, "SELECT SUM(dd.jumlah_distribusi * COALESCE(harga.harga_rata_rata, 0)) as total FROM detail_distribusi dd LEFT JOIN (SELECT id_material, (SUM(sub_total_pp) / NULLIF(SUM(quantity), 0)) as harga_rata_rata FROM detail_pencatatan_pembelian WHERE quantity > 0 AND harga_satuan_pp > 0 GROUP BY id_material) as harga ON dd.id_material = harga.id_material");
-$total_realisasi_material = mysqli_fetch_assoc($q_total_realisasi)['total'] ?? 0;
-
-$selisih_total = $total_rab_material - $total_realisasi_material;
-
-
-// =========================================================================
-// BAGIAN 2: PENGAMBILAN DATA UNTUK GRAFIK & TABEL
-// =========================================================================
-
-// Grafik 1: Total Pembelian Material 6 Bulan Terakhir
-$pembelian_per_bulan = [];
-$labels_bulan = [];
-for ($i = 5; $i >= 0; $i--) {
-    $bulan = date('m', strtotime("-$i month"));
-    $tahun = date('Y', strtotime("-$i month"));
-    $labels_bulan[] = date('M Y', strtotime("-$i month"));
-    $q_pembelian_bulan = mysqli_query($koneksi, "SELECT SUM(total_biaya) as total FROM pencatatan_pembelian WHERE MONTH(tanggal_pembelian) = '$bulan' AND YEAR(tanggal_pembelian) = '$tahun'");
-    $pembelian_per_bulan[] = (int)(mysqli_fetch_assoc($q_pembelian_bulan)['total'] ?? 0);
+// Proteksi Halaman
+if (strtolower($_SESSION['role'] ?? '') !== 'divisi teknik') {
+    die("Akses ditolak. Halaman ini khusus untuk Divisi Teknik.");
 }
 
-// Grafik 2: Perbandingan Proyek dengan Filter
-$perumahan_id_terpilih = $_GET['perumahan_id'] ?? 'semua';
-$q_daftar_perumahan = mysqli_query($koneksi, "SELECT id_perumahan, nama_perumahan FROM master_perumahan ORDER BY nama_perumahan ASC");
+// Inisialisasi variabel
+$kpi_total_rab_dibuat = 0;
+$kpi_total_nilai_rab = 0;
+$kpi_proyek_tanpa_rab = 0;
+$proyek_tanpa_rab_list = [];
+$pie_chart_data = [];
+$rab_terakhir_list = [];
 
-$sql_perbandingan = "SELECT p.id_proyek, CONCAT(per.nama_perumahan, ' - Kavling: ', p.kavling) as nama_proyek, r.total_rab_material FROM master_proyek p JOIN master_perumahan per ON p.id_perumahan = per.id_perumahan JOIN rab_material r ON p.id_proyek = r.id_proyek";
-if ($perumahan_id_terpilih !== 'semua' && is_numeric($perumahan_id_terpilih)) {
-    $sql_perbandingan .= " WHERE p.id_perumahan = " . (int)$perumahan_id_terpilih;
-}
-$sql_perbandingan .= " ORDER BY nama_proyek ASC LIMIT 10";
-$q_perbandingan = mysqli_query($koneksi, $sql_perbandingan);
-
-$labels_proyek = [];
-$data_rab = [];
-$data_realisasi = [];
-$tabel_data = []; // [PENTING] Inisialisasi $tabel_data di sini
-
-if ($q_perbandingan) {
-    while($row = mysqli_fetch_assoc($q_perbandingan)) {
-        $labels_proyek[] = $row['nama_proyek'];
-        $data_rab[] = (float)$row['total_rab_material'];
-        $id_proyek = $row['id_proyek'];
-        $realisasi_proyek = 0;
-
-        $stmt_dist = $koneksi->prepare("SELECT dd.id_material, SUM(dd.jumlah_distribusi) as total_distribusi FROM detail_distribusi dd JOIN distribusi_material dm ON dd.id_distribusi = dm.id_distribusi WHERE dm.id_proyek = ? GROUP BY dd.id_material");
-        $stmt_dist->bind_param("i", $id_proyek);
-        $stmt_dist->execute();
-        $res_dist = $stmt_dist->get_result();
-        while($item_dist = $res_dist->fetch_assoc()){
-            $id_mat = $item_dist['id_material'];
-            $qty_dist = $item_dist['total_distribusi'];
-            $stmt_hrg = $koneksi->prepare("SELECT SUM(sub_total_pp) / NULLIF(SUM(quantity), 0) AS harga_rata_rata FROM detail_pencatatan_pembelian WHERE id_material = ? AND quantity > 0");
-            $stmt_hrg->bind_param("i", $id_mat);
-            $stmt_hrg->execute();
-            $hrg_rata = (float)($stmt_hrg->get_result()->fetch_assoc()['harga_rata_rata'] ?? 0);
-            $stmt_hrg->close();
-            $realisasi_proyek += $qty_dist * $hrg_rata;
-        }
-        $stmt_dist->close();
-        $data_realisasi[] = $realisasi_proyek;
-
-        // Data untuk tabel disimpan di sini
-        $tabel_data[] = [
-            'nama_proyek' => $row['nama_proyek'],
-            'anggaran' => $row['total_rab_material'],
-            'realisasi' => $realisasi_proyek,
-            'selisih' => $row['total_rab_material'] - $realisasi_proyek
-        ];
-    }
+// --- KPI 1 & 2 ---
+$q_rab_summary = mysqli_query($koneksi, "SELECT COUNT(id_rab_material) as total_rab, SUM(total_rab_material) as total_nilai FROM rab_material");
+if ($q_rab_summary) {
+    $rab_summary = mysqli_fetch_assoc($q_rab_summary);
+    $kpi_total_rab_dibuat = $rab_summary['total_rab'] ?? 0;
+    $kpi_total_nilai_rab = $rab_summary['total_nilai'] ?? 0;
 }
 
-// --- [DIPINDAHKAN] LOGIKA UNTUK PROYEK PALING BOROS SEKARANG ADA DI SINI ---
-$proyek_boros = [];
-// Pastikan $tabel_data sudah ada dan merupakan array sebelum di-loop
-if (is_array($tabel_data)) {
-    foreach ($tabel_data as $proyek) {
-        if ($proyek['selisih'] < 0) {
-            $proyek_boros[] = $proyek;
-        }
-    }
+// --- KPI 3 & Widget "Proyek Menunggu RAB" ---
+$sql_proyek_tanpa_rab = "SELECT p.id_proyek, CONCAT(per.nama_perumahan, ' - Kavling: ', p.kavling) AS nama_proyek_lengkap FROM master_proyek p JOIN master_perumahan per ON p.id_perumahan = per.id_perumahan LEFT JOIN rab_material r ON p.id_proyek = r.id_proyek WHERE r.id_rab_material IS NULL ORDER BY p.id_proyek DESC LIMIT 5";
+$result_proyek_tanpa_rab = mysqli_query($koneksi, $sql_proyek_tanpa_rab);
+if ($result_proyek_tanpa_rab) {
+    $proyek_tanpa_rab_list = mysqli_fetch_all($result_proyek_tanpa_rab, MYSQLI_ASSOC);
+    $kpi_proyek_tanpa_rab = count($proyek_tanpa_rab_list);
 }
-// Urutkan array $proyek_boros dari yang paling boros
-usort($proyek_boros, function($a, $b) {
-    return $a['selisih'] <=> $b['selisih'];
-});
-// Ambil 5 teratas saja
-$top_5_boros = array_slice($proyek_boros, 0, 5);
+
+// --- Data untuk Grafik Lingkaran ---
+$sql_pie_chart = "SELECT mk.nama_kategori, SUM(drm.sub_total) AS total_anggaran_kategori FROM detail_rab_material drm JOIN master_kategori mk ON drm.id_kategori = mk.id_kategori GROUP BY mk.nama_kategori HAVING SUM(drm.sub_total) > 0 ORDER BY total_anggaran_kategori DESC";
+$result_pie_chart = mysqli_query($koneksi, $sql_pie_chart);
+if($result_pie_chart) {
+    $pie_chart_data = mysqli_fetch_all($result_pie_chart, MYSQLI_ASSOC);
+}
+
+// --- Data untuk Widget "5 RAB Terakhir Dibuat" ---
+$sql_rab_terakhir = "SELECT r.id_rab_material, r.tanggal_mulai_mt, CONCAT(per.nama_perumahan, ' - Kavling: ', p.kavling) AS nama_proyek FROM rab_material r JOIN master_proyek p ON r.id_proyek = p.id_proyek JOIN master_perumahan per ON p.id_perumahan = per.id_perumahan ORDER BY r.id_rab_material DESC LIMIT 5";
+$result_rab_terakhir = mysqli_query($koneksi, $sql_rab_terakhir);
+if($result_rab_terakhir) {
+    $rab_terakhir_list = mysqli_fetch_all($result_rab_terakhir, MYSQLI_ASSOC);
+}
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -361,103 +306,104 @@ $top_5_boros = array_slice($proyek_boros, 0, 5);
                 </nav>
                 <!-- End Navbar -->
             </div>
-
-
- <div class="container">
+<div class="container">
             <div class="page-inner">
                 <div class="d-flex align-items-left align-items-md-center flex-column flex-md-row pt-2 pb-4">
                     <div>
-                        <h3 class="fw-bold mb-3">Dashboard Direktur</h3>
-                        <h6 class="op-7 mb-2">Ringkasan Kinerja Proyek & Biaya Material</h6>
+                        <h3 class="fw-bold mb-3">Dashboard Divisi Teknik</h3>
+                        <h6 class="op-7 mb-2">Ringkasan Perencanaan & Pengelolaan Data Master</h6>
                     </div>
                 </div>
 
                 <div class="row">
-                    <div class="col-sm-6 col-md-3"><div class="card card-stats card-round"><div class="card-body"><div class="row align-items-center"><div class="col-icon"><div class="icon-big text-center icon-primary bubble-shadow-small"><i class="fas fa-building"></i></div></div><div class="col col-stats ms-3 ms-sm-0"><div class="numbers"><p class="card-category">Proyek dengan RAB</p><h4 class="card-title"><?= $proyek_dengan_rab ?></h4></div></div></div></div></div></div>
-                    <div class="col-sm-6 col-md-3"><div class="card card-stats card-round"><div class="card-body"><div class="row align-items-center"><div class="col-icon"><div class="icon-big text-center icon-info bubble-shadow-small"><i class="fas fa-file-contract"></i></div></div><div class="col col-stats ms-3 ms-sm-0"><div class="numbers"><p class="card-category">Total Anggaran</p><h4 class="card-title">Rp <?= number_format($total_rab_material, 0, ',', '.') ?></h4></div></div></div></div></div></div>
-                    <div class="col-sm-6 col-md-3"><div class="card card-stats card-round"><div class="card-body"><div class="row align-items-center"><div class="col-icon"><div class="icon-big text-center icon-success bubble-shadow-small"><i class="fas fa-truck-loading"></i></div></div><div class="col col-stats ms-3 ms-sm-0"><div class="numbers"><p class="card-category">Total Realisasi</p><h4 class="card-title">Rp <?= number_format($total_realisasi_material, 0, ',', '.') ?></h4></div></div></div></div></div></div>
-                    <div class="col-sm-6 col-md-3"><div class="card card-stats card-round"><div class="card-body"><div class="row align-items-center"><div class="col-icon"><div class="icon-big text-center <?= ($selisih_total >= 0) ? 'icon-success' : 'icon-danger' ?> bubble-shadow-small"><i class="fas fa-balance-scale-right"></i></div></div><div class="col col-stats ms-3 ms-sm-0"><div class="numbers"><p class="card-category">Selisih Total</p><h4 class="card-title">Rp <?= number_format($selisih_total, 0, ',', '.') ?></h4></div></div></div></div></div></div>
+                    <div class="col-sm-6 col-md-4"><div class="card card-stats card-round"><div class="card-body"><div class="row align-items-center"><div class="col-icon"><div class="icon-big text-center icon-success bubble-shadow-small"><i class="fas fa-check-circle"></i></div></div><div class="col col-stats ms-3 ms-sm-0"><div class="numbers"><p class="card-category">RAB Dibuat</p><h4 class="card-title"><?= $kpi_total_rab_dibuat ?></h4></div></div></div></div></div></div>
+                    <div class="col-sm-6 col-md-4"><div class="card card-stats card-round"><div class="card-body"><div class="row align-items-center"><div class="col-icon"><div class="icon-big text-center icon-info bubble-shadow-small"><i class="fas fa-file-invoice-dollar"></i></div></div><div class="col col-stats ms-3 ms-sm-0"><div class="numbers"><p class="card-category">Total Nilai Anggaran</p><h4 class="card-title">Rp <?= number_format($kpi_total_nilai_rab, 0, ',', '.') ?></h4></div></div></div></div></div></div>
+                    <div class="col-sm-6 col-md-4"><div class="card card-stats card-round"><div class="card-body"><div class="row align-items-center"><div class="col-icon"><div class="icon-big text-center icon-warning bubble-shadow-small"><i class="fas fa-exclamation-triangle"></i></div></div><div class="col col-stats ms-3 ms-sm-0"><div class="numbers"><p class="card-category">Proyek Menunggu RAB</p><h4 class="card-title"><?= $kpi_proyek_tanpa_rab ?></h4></div></div></div></div></div></div>
                 </div>
 
-                <div class="row">
-                    <div class="col-md-8">
+<div class="row">
+                    <div class="col-md-7">
                         <div class="card">
-                            <div class="card-header"><div class="card-title">Total Pembelian Material (6 Bulan Terakhir)</div></div>
-                            <div class="card-body"><div class="chart-container"><canvas id="pembelianBulananChart"></canvas></div></div>
-                        </div>
-                    </div>
-<div class="col-md-4">
-    <div class="card">
-        <div class="card-header"><div class="card-title">Top 5 Proyek Paling Boros</div></div>
-        <div class="card-body">
-            <ul class="list-group list-group-flush">
-                <?php if (empty($top_5_boros)): ?>
-                    <li class="list-group-item text-center text-muted">Tidak ada proyek yang boros. Kerja bagus!</li>
-                <?php else: foreach ($top_5_boros as $pt): ?>
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                        <span><?= htmlspecialchars($pt['nama_proyek']) ?></span>
-                        <span class="badge bg-danger">Rp <?= number_format(abs($pt['selisih']),0,',','.') ?></span>
-                    </li>
-                <?php endforeach; endif; ?>
-            </ul>
-        </div>
-    </div>
-</div>
-                <div class="row">
-                    <div class="col-md-12">
-                        <div class="card">
-                            <div class="card-header">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <h4 class="card-title">Perbandingan Anggaran vs Realisasi per Proyek</h4>
-                                    <form method="GET" action="" class="form-inline">
-                                        <div class="input-group">
-                                            <select class="form-select" name="perumahan_id" onchange="this.form.submit()">
-                                                <option value="semua">-- Semua Perumahan --</option>
-                                                <?php mysqli_data_seek($q_daftar_perumahan, 0); while($perumahan = mysqli_fetch_assoc($q_daftar_perumahan)): ?>
-                                                <option value="<?= $perumahan['id_perumahan'] ?>" <?= ($perumahan['id_perumahan'] == $perumahan_id_terpilih) ? 'selected' : '' ?>><?= htmlspecialchars($perumahan['nama_perumahan']) ?></option>
-                                                <?php endwhile; ?>
-                                            </select>
-                                        </div>
-                                    </form>
-                                </div>
-                            </div>
+                            <div class="card-header"><h4 class="card-title">Proyek Baru Menunggu Anggaran (Top 5)</h4></div>
                             <div class="card-body">
-                                <div class="chart-container" style="height: 350px">
-                                    <canvas id="perbandinganProyekChart"></canvas>
-                                </div>
+                                <ul class="list-group list-group-flush">
+                                    <?php if (empty($proyek_tanpa_rab_list)): ?>
+                                        <li class="list-group-item text-center text-muted">Semua proyek sudah memiliki RAB. Kerja bagus!</li>
+                                    <?php else: foreach ($proyek_tanpa_rab_list as $proyek): ?>
+                                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                                            <span><?= htmlspecialchars($proyek['nama_proyek_lengkap']) ?></span>
+                                            <a href="transaksi_rab_material.php?action=add&id_proyek=<?= $proyek['id_proyek'] ?>" class="btn btn-primary btn-sm">Buat RAB</a>
+                                        </li>
+                                    <?php endforeach; endif; ?>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-header"><h4 class="card-title">5 RAB Terakhir Dibuat</h4></div>
+                            <div class="card-body">
+                                <ul class="list-group list-group-flush">
+                                    <?php if (empty($rab_terakhir_list)): ?>
+                                        <li class="list-group-item text-center text-muted">Belum ada RAB yang dibuat.</li>
+                                    <?php else: foreach($rab_terakhir_list as $rab): ?>
+                                        <li class="list-group-item">
+                                            <a href="detail_rab_material.php?id_rab_material=<?= $rab['id_rab_material'] ?>" class="text-decoration-none" title="Lihat detail RAB">
+                                                <strong><?= htmlspecialchars($rab['nama_proyek']) ?></strong>
+                                                <small class="d-block text-muted">Dibuat pada: <?= date('d M Y', strtotime($rab['tanggal_mulai_mt'])) ?></small>
+                                            </a>
+                                        </li>
+                                    <?php endforeach; endif; ?>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-5">
+                        <div class="card">
+                            <div class="card-header"><h4 class="card-title">Alokasi Anggaran per Kategori</h4></div>
+                            <div class="card-body">
+                                <div class="chart-container" style="min-height: 350px;"><canvas id="pieChart"></canvas></div>
                             </div>
                         </div>
                     </div>
                 </div>
-
-            </div>
-        </div>
-    <script src="assets/js/core/jquery-3.7.1.min.js"></script>
-    <script src="assets/js/core/popper.min.js"></script>
-    <script src="assets/js/core/bootstrap.min.js"></script>
-    <script src="assets/js/plugin/datatables/datatables.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
+<script src="assets/js/core/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    const labelsProyek = <?= json_encode($labels_proyek) ?>;
-    const dataRab = <?= json_encode($data_rab) ?>;
-    const dataRealisasi = <?= json_encode($data_realisasi) ?>;
-    const labelsBulan = <?= json_encode($labels_bulan) ?>;
-    const dataPembelianBulanan = <?= json_encode($pembelian_per_bulan) ?>;
-
-    if (labelsProyek && labelsProyek.length > 0) {
-        new Chart(document.getElementById('perbandinganProyekChart').getContext('2d'), {
-            type: 'bar',
-            data: { labels: labelsProyek, datasets: [{ label: 'Anggaran', data: dataRab, backgroundColor: 'rgba(54, 162, 235, 0.6)' }, { label: 'Realisasi', data: dataRealisasi, backgroundColor: 'rgba(40, 167, 69, 0.6)' }] },
-            options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, scales: { x: { beginAtZero: true } } }
+$(document).ready(function() {
+    const pieData = <?= json_encode($pie_chart_data) ?>;
+    if (pieData && pieData.length > 0) {
+        const pieLabels = pieData.map(item => item.nama_kategori);
+        const pieValues = pieData.map(item => item.total_anggaran_kategori);
+        const pieCtx = document.getElementById('pieChart').getContext('2d');
+        
+        new Chart(pieCtx, {
+            type: 'pie',
+            data: {
+                labels: pieLabels,
+                datasets: [{
+                    label: 'Total Anggaran',
+                    data: pieValues,
+                    backgroundColor: [ // Tambahkan warna-warni agar menarik
+                        'rgba(54, 162, 235, 0.8)',
+                        'rgba(75, 192, 192, 0.8)',
+                        'rgba(255, 206, 86, 0.8)',
+                        'rgba(255, 99, 132, 0.8)',
+                        'rgba(153, 102, 255, 0.8)',
+                    ],
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { position: 'top' },
+                }
+            }
         });
+    } else {
+        $('#pieChart').parent().html('<p class="text-center text-muted mt-5">Belum ada data anggaran per kategori untuk ditampilkan.</p>');
     }
-
-    new Chart(document.getElementById('pembelianBulananChart').getContext('2d'), {
-        type: 'bar',
-        data: { labels: labelsBulan, datasets: [{ label: "Total Pembelian", backgroundColor: '#0077b6', data: dataPembelianBulanan }] },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
-    });
+});
 </script>
 </body>
 </html>
