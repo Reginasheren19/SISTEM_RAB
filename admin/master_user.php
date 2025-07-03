@@ -858,10 +858,8 @@ $result = mysqli_query($koneksi, "SELECT * FROM master_user");
                                 <option value="Super Admin">Super Admin</option>
                                 <option value="Admin">Admin</option>
                                 <option value="Direktur">Direktur</option>
-                                <option value="Sekretaris">Sekretaris</option>
                                 <option value="PJ Proyek">PJ Proyek</option>
                                 <option value="Divisi Teknik">Divisi Teknik</option>
-                                <option value="Bendahara">Bendahara</option>
                             </select>
                         </div>
                     </div>
