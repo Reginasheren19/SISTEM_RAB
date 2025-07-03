@@ -87,12 +87,41 @@ setlocale(LC_TIME, 'id_ID.utf8', 'id_ID');
 <style>
     body { font-family: 'Tahoma', sans-serif; background-color: #fff; color: #000; font-size: 11px; }
     .container { max-width: 800px; margin: auto; }
-    .kop-surat { text-align: center; border-bottom: 3px double #000; padding-bottom: 15px; margin-bottom: 20px; }
-    .kop-surat img { width: 90px; height: auto; position: absolute; left: 10mm; top: 10mm; }
-    .kop-surat h3, .kop-surat h2, .kop-surat p { margin: 0; }
-    .kop-surat h3 { font-size: 22px; font-weight: bold; }
-    .kop-surat h2 { font-size: 18px; font-weight: bold; }
-    .kop-surat p { font-size: 14px; }
+.kop-surat {
+    display: flex;
+    align-items: center;
+    border-bottom: 3px double #000;
+    padding-bottom: 15px;
+    margin-bottom: 20px;
+}
+
+.kop-surat img {
+    width: 100px;
+    height: auto;
+    margin-left: 40px; /* Geser logo ke kanan */
+}
+
+.kop-surat .kop-text {
+    text-align: center;
+    flex-grow: 1;
+}
+
+.kop-surat h3 {
+    font-size: 22px;
+    font-weight: bold;
+    margin: 0;
+}
+
+.kop-surat h2 {
+    font-size: 18px;
+    font-weight: bold;
+    margin: 0;
+}
+
+.kop-surat p {
+    font-size: 14px;
+    margin: 0;
+}
     .tagline { font-style: italic; }
     .report-title { text-align: center; margin-bottom: 20px; font-weight: bold; text-decoration: underline; font-size: 16px;}
     .info-section .table td { border: none !important; padding: 1px 0; font-size: 12px; }

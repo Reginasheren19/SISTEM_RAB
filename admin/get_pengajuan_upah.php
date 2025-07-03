@@ -1,4 +1,6 @@
 <?php
+session_start();
+
 // Include file koneksi
 include("../config/koneksi_mysql.php");
 

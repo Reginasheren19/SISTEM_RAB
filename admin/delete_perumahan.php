@@ -1,26 +1,62 @@
 <?php
+// Selalu mulai session di paling atas
+session_start();
 include("../config/koneksi_mysql.php");
 
-// Debugging $_GET
-echo "Parameter GET: ";
-print_r($_GET);
-echo "<br>";
+// Cek apakah parameter 'perumahan' ada dan valid
+if (isset($_GET['perumahan']) && is_numeric($_GET['perumahan'])) {
+    
+    $hapus_id_perumahan = $_GET['perumahan'];
 
-if (isset($_GET['perumahan']) && !empty($_GET['perumahan'])) { // Periksa 'user' di URL
-    // Ambil ID user dari parameter URL dan sanitasi
-    $hapus_id_perumahan = mysqli_real_escape_string($koneksi, $_GET['perumahan']);
-    echo "ID Perumahan yang akan dihapus: " . $hapus_id_perumahan . "<br>"; // Debugging
+    // Gunakan prepared statement untuk keamanan yang lebih baik
+    $sql = "DELETE FROM master_perumahan WHERE id_perumahan = ?";
+    $stmt = $koneksi->prepare($sql);
+    $stmt->bind_param("i", $hapus_id_perumahan);
 
-    // Jalankan query untuk menghapus user berdasarkan ID
-    $sql = mysqli_query($koneksi, "DELETE FROM master_perumahan WHERE id_perumahan = '$hapus_id_perumahan'");
-
-    // Cek apakah query berhasil dieksekusi
-    if ($sql && mysqli_affected_rows($koneksi) > 0) { // Pastikan ada baris yang terhapus
-        header("location: master_perumahan.php?msg=Data%20berhasil%20dihapus");         exit; // Pastikan untuk menghentikan eksekusi skrip setelah header
+    // Coba eksekusi query penghapusan
+    if ($stmt->execute()) {
+        // Jika query berhasil dieksekusi dan ada baris yang terhapus
+        if ($stmt->affected_rows > 0) {
+            $_SESSION['notification'] = [
+                'type' => 'success', // Tipe untuk warna notifikasi (hijau)
+                'message' => 'Data perumahan berhasil dihapus.'
+            ];
+        } else {
+            // Jika tidak ada baris yang terhapus (misal: ID tidak ditemukan)
+            $_SESSION['notification'] = [
+                'type' => 'warning', // Tipe untuk warna notifikasi (kuning)
+                'message' => 'Data tidak ditemukan atau sudah dihapus.'
+            ];
+        }
     } else {
-        echo "Error deleting record: " . mysqli_error($koneksi);
+        // Jika query GAGAL dieksekusi, cek kode errornya
+        // Kode 1451 adalah untuk error foreign key constraint
+        if (mysqli_errno($koneksi) == 1451) {
+            $_SESSION['notification'] = [
+                'type' => 'danger', // Tipe untuk warna notifikasi (merah)
+                'message' => 'Gagal menghapus! Perumahan ini masih digunakan oleh data Proyek.'
+            ];
+        } else {
+            // Untuk error database lainnya
+            $_SESSION['notification'] = [
+                'type' => 'danger',
+                'message' => 'Terjadi kesalahan pada database: ' . mysqli_error($koneksi)
+            ];
+        }
     }
+
+    $stmt->close();
+    $koneksi->close();
+
 } else {
-    echo "No user specified for deletion.";
+    // Jika parameter tidak valid
+    $_SESSION['notification'] = [
+        'type' => 'warning',
+        'message' => 'Permintaan penghapusan tidak valid.'
+    ];
 }
+
+// Arahkan kembali ke halaman daftar perumahan
+header("Location: master_perumahan.php");
+exit();
 ?>

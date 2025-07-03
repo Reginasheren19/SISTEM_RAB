@@ -105,115 +105,8 @@ if (isset($_SESSION['flash_message'])) {
 </head>
 <body>
     <div class="wrapper">
-        <!-- Sidebar -->
-        <div class="sidebar" data-background-color="dark">
-            <div class="sidebar-logo">
-                <div class="logo-header" data-background-color="dark">
-                    <a href="dashboard.php" class="logo">
-                        <img src="assets/img/logo/LOGO PT.jpg" alt="Logo PT" class="navbar-brand" height="30" />
-                    </a>
-                    <button class="topbar-toggler more"><i class="gg-more-vertical-alt"></i></button>
-                </div>
-            </div>
-            <div class="sidebar-wrapper scrollbar scrollbar-inner">
-                <div class="sidebar-content">
-                    <ul class="nav nav-secondary">
-              <li class="nav-item">
-                <a href="dashboard.php">
-                  <i class="fas fa-home"></i>
-                  <p>Dashboard</p>
-                </a>
-              </li>
-              <li class="nav-section">
-                <span class="sidebar-mini-icon">
-                  <i class="fa fa-ellipsis-h"></i>
-                </span>
-                <h4 class="text-section">Transaksi RAB Upah</h4>
-              </li>
-              <li class="nav-item">
-                <a href="transaksi_rab_upah.php">
-                  <i class="fas fa-calculator"></i>
-                  <p>Rancang RAB Upah</p>
-                </a>
-              </li>
-                            <li class="nav-item">
-                <a href="pengajuan_upah.php">
-                  <i class="fas fa-hand-holding-usd"></i>
-                  <p>Pengajuah Upah</p>
-                </a>
-              </li>
-              <li class="nav-section">
-                <span class="sidebar-mini-icon">
-                  <i class="fa fa-ellipsis-h"></i>
-                </span>
-                <h4 class="text-section">Laporan</h4>
-              </li>
-                            <li class="nav-item">
-                <a href="lap_pengajuan_upah.php">
-                  <i class="fas fa-file"></i>
-                  <p>Pengajuan Upah</p>
-                </a>
-              </li>
-              <li class="nav-item">
-                <a href="lap_realisasi_anggaran.php">
-                  <i class="fas fa-file"></i>
-                  <p>Realisasi Anggaran</p>
-                </a>
-              </li>
-              <li class="nav-section">
-                <span class="sidebar-mini-icon">
-                  <i class="fa fa-ellipsis-h"></i>
-                </span>
-                <h4 class="text-section">Mastering Data</h4>
-              </li>
-<li class="nav-item">
-  <a href="master_perumahan.php">
-    <i class="fas fa-database"></i>
-    <p>Master Perumahan</p>
-  </a>
-</li>
-<li class="nav-item">
-  <a href="master_proyek.php">
-    <i class="fas fa-database"></i>
-    <p>Master Proyek</p>
-  </a>
-</li>
-<li class="nav-item">
-  <a href="master_mandor.php">
-    <i class="fas fa-database"></i>
-    <p>Master Mandor</p>
-  </a>
-</li>
-<li class="nav-item">
-  <a href="master_kategori.php">
-    <i class="fas fa-database"></i>
-    <p>Master Kategori</p>
-  </a>
-</li>
-<li class="nav-item">
-  <a href="master_satuan.php">
-    <i class="fas fa-database"></i>
-    <p>Master Satuan</p>
-  </a>
-</li>
-<li class="nav-item">
-  <a href="#" class="disabled">
-    <i class="fas fa-database"></i>
-    <p>Master Pekerjaan</p>
-  </a>
-</li>
-<li class="nav-item">
-  <a href="master_user.php">
-    <i class="fas fa-database"></i>
-    <p>Master User</p>
-  </a>
-</li>
+         <?php include 'sidebar.php'; ?>
 
-            </ul>
-          </div>
-        </div>
-      </div>
-      <!-- End Sidebar -->
 
         <div class="main-panel">
             <div class="main-header">
@@ -295,16 +188,14 @@ if (isset($_SESSION['flash_message'])) {
 <div class="row">
   <div class="col-md-12">
     <div class="card">
-      <div class="card-header d-flex align-items-center">
-        <h4 class="card-title">Pengajuan Upah RAB</h4>
-        <button
-          class="btn btn-primary btn-round ms-auto"
-          data-bs-toggle="modal"
-          data-bs-target="#selectProyekModal"
-        >
-          <i class="fa fa-plus"></i> Buat Pengajuan Baru
-        </button>
-      </div>
+                                <div class="card-header d-flex align-items-center">
+                                    <h4 class="card-title">Pengajuan Upah RAB</h4>
+                                    <?php if ($user_role === 'pj proyek'): // Tombol tambah hanya untuk PJ Proyek ?>
+                                    <button class="btn btn-primary btn-round ms-auto" data-bs-toggle="modal" data-bs-target="#selectProyekModal">
+                                        <i class="fa fa-plus"></i> Buat Pengajuan Baru
+                                    </button>
+                                    <?php endif; ?>
+                                </div>
 
             <?php if (isset($_GET['msg'])): ?>
         <div class="mb-3">
@@ -398,15 +289,18 @@ $formattedpengajuan = 'PU' . $row['id_pengajuan_upah'];
 
     </select>
 </td>
-                                                <td class="text-center">
-                                                    <a href="get_pengajuan_upah.php?id_pengajuan_upah=<?= urlencode($row['id_pengajuan_upah']) ?>" class="btn btn-info btn-sm mx-1" title="Lihat Detail">Detail</a>
-                                                    <?php if (in_array($row['status_pengajuan'], ['diajukan', 'ditolak'])): ?>
-                                                        <a href="update_pengajuan_upah.php?id_pengajuan_upah=<?= urlencode($row['id_pengajuan_upah']) ?>" class="btn btn-warning btn-sm mx-1" title="Update">Update</a>
-                                                        <?php if($is_deletable): ?>
-                                                            <button class="btn btn-danger btn-sm delete-btn mx-1" data-id="<?= htmlspecialchars($row['id_pengajuan_upah']) ?>" title="Hapus">Delete</button>
+                                                    <td class="text-center">
+                                                        <!-- Tombol Detail bisa dilihat semua orang -->
+                                                        <a href="get_pengajuan_upah.php?id_pengajuan_upah=<?= urlencode($row['id_pengajuan_upah']) ?>" class="btn btn-info btn-sm mx-1" title="Lihat Detail">Detail</a>
+                                                        
+                                                        <!-- [PERBAIKAN] Tombol Update & Delete hanya untuk PJ Proyek -->
+                                                        <?php if ($user_role === 'pj proyek' && in_array($current_status, ['diajukan', 'ditolak'])): ?>
+                                                            <a href="update_pengajuan_upah.php?id_pengajuan_upah=<?= urlencode($row['id_pengajuan_upah']) ?>" class="btn btn-warning btn-sm mx-1" title="Update">Update</a>
+                                                            <?php if($is_deletable): ?>
+                                                                <button class="btn btn-danger btn-sm delete-btn mx-1" data-id="<?= htmlspecialchars($row['id_pengajuan_upah']) ?>" title="Hapus">Delete</button>
+                                                            <?php endif; ?>
                                                         <?php endif; ?>
-                                                    <?php endif; ?>
-                                                </td>
+                                                    </td>
                                             </tr>
                                             <?php endwhile; ?>
                                         <?php endif; ?>

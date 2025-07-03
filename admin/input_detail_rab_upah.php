@@ -1,4 +1,6 @@
 <?php
+session_start();
+
 include("../config/koneksi_mysql.php");
 
 if (!isset($_GET['id_rab_upah'])) {

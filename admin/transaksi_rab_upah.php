@@ -4,7 +4,9 @@ session_start();
 
 include("../config/koneksi_mysql.php");
 
-
+// [DIUBAH] Mengambil role pengguna yang sedang login
+$user_role = strtolower($_SESSION['role'] ?? 'guest');
+$can_add_edit = in_array($user_role, ['divisi teknik']); 
 // Mengatur error reporting untuk membantu debugging
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
@@ -69,115 +71,8 @@ if (!$perumahanResult) {
 </head>
 <body>
     <div class="wrapper">
-        <!-- Sidebar -->
-        <div class="sidebar" data-background-color="dark">
-            <div class="sidebar-logo">
-                <div class="logo-header" data-background-color="dark">
-                    <a href="dashboard.php" class="logo">
-                        <img src="assets/img/logo/LOGO PT.jpg" alt="Logo PT" class="navbar-brand" height="30" />
-                    </a>
-                    <button class="topbar-toggler more"><i class="gg-more-vertical-alt"></i></button>
-                </div>
-            </div>
-            <div class="sidebar-wrapper scrollbar scrollbar-inner">
-                <div class="sidebar-content">
-                    <ul class="nav nav-secondary">
-              <li class="nav-item">
-                <a href="dashboard.php">
-                  <i class="fas fa-home"></i>
-                  <p>Dashboard</p>
-                </a>
-              </li>
-              <li class="nav-section">
-                <span class="sidebar-mini-icon">
-                  <i class="fa fa-ellipsis-h"></i>
-                </span>
-                <h4 class="text-section">Transaksi RAB Upah</h4>
-              </li>
-              <li class="nav-item">
-                <a href="transaksi_rab_upah.php">
-                  <i class="fas fa-calculator"></i>
-                  <p>Rancang RAB Upah</p>
-                </a>
-              </li>
-                            <li class="nav-item">
-                <a href="pengajuan_upah.php">
-                  <i class="fas fa-hand-holding-usd"></i>
-                  <p>Pengajuah Upah</p>
-                </a>
-              </li>
-              <li class="nav-section">
-                <span class="sidebar-mini-icon">
-                  <i class="fa fa-ellipsis-h"></i>
-                </span>
-                <h4 class="text-section">Laporan</h4>
-              </li>
-                            <li class="nav-item">
-                <a href="lap_pengajuan_upah.php">
-                  <i class="fas fa-file"></i>
-                  <p>Pengajuan Upah</p>
-                </a>
-              </li>
-              <li class="nav-item">
-                <a href="lap_realisasi_anggaran.php">
-                  <i class="fas fa-file"></i>
-                  <p>Realisasi Anggaran</p>
-                </a>
-              </li>
-              <li class="nav-section">
-                <span class="sidebar-mini-icon">
-                  <i class="fa fa-ellipsis-h"></i>
-                </span>
-                <h4 class="text-section">Mastering Data</h4>
-              </li>
-<li class="nav-item">
-  <a href="master_perumahan.php">
-    <i class="fas fa-database"></i>
-    <p>Master Perumahan</p>
-  </a>
-</li>
-<li class="nav-item">
-  <a href="master_proyek.php">
-    <i class="fas fa-database"></i>
-    <p>Master Proyek</p>
-  </a>
-</li>
-<li class="nav-item">
-  <a href="master_mandor.php">
-    <i class="fas fa-database"></i>
-    <p>Master Mandor</p>
-  </a>
-</li>
-<li class="nav-item">
-  <a href="master_kategori.php">
-    <i class="fas fa-database"></i>
-    <p>Master Kategori</p>
-  </a>
-</li>
-<li class="nav-item">
-  <a href="master_satuan.php">
-    <i class="fas fa-database"></i>
-    <p>Master Satuan</p>
-  </a>
-</li>
-<li class="nav-item">
-  <a href="#" class="disabled">
-    <i class="fas fa-database"></i>
-    <p>Master Pekerjaan</p>
-  </a>
-</li>
-<li class="nav-item">
-  <a href="master_user.php">
-    <i class="fas fa-database"></i>
-    <p>Master User</p>
-  </a>
-</li>
+        <?php include 'sidebar.php'; ?>
 
-            </ul>
-          </div>
-        </div>
-      </div>
-      <!-- End Sidebar -->
 
         <div class="main-panel">
             <div class="main-header">
@@ -268,8 +163,10 @@ if (!$perumahanResult) {
                 <div class="card">
                   <div class="card-header d-flex align-items-center">
                     <h4 class="card-title">RAB Upah</h4>
+                                                        <?php if ($can_add_edit): ?>
                     <button class="btn btn-primary btn-round ms-auto" data-bs-toggle="modal" data-bs-target="#addRABUpahModal">
                       <i class="fa fa-plus"></i> Tambah Data RAB
+                                                          <?php endif; ?>
                     </button>
                   </div>
 
@@ -312,8 +209,9 @@ $totalFormatted = 'Rp ' . number_format($row['total_rab_upah'], 0, ',', '.');
                             <td><?= htmlspecialchars($totalFormatted) ?></td>
                             <td>
                               <a href="detail_rab_upah.php?id_rab_upah=<?= urlencode($row['id_rab_upah']) ?>" class="btn btn-info btn-sm">Detail</a>
-                              <button class="btn btn-danger btn-sm delete-btn" data-id_rab_upah="<?= htmlspecialchars($row['id_rab_upah']) ?>">Delete</button>
-                            </td>
+                                                        <?php if ($can_add_edit): ?>
+                                                        <button class="btn btn-danger btn-sm delete-btn" data-id_rab_upah="<?= htmlspecialchars($row['id_rab_upah']) ?>">Delete</button>
+                                                        <?php endif; ?>                            </td>
                           </tr>
                           <?php endwhile; ?>
                         </tbody>

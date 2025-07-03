@@ -1,4 +1,6 @@
 <?php
+session_start(); // INI WAJIB ADA DI PALING ATAS
+
 include("../config/koneksi_mysql.php");
 
 // Mengatur error reporting
@@ -764,14 +766,6 @@ $result = mysqli_query($koneksi, "SELECT * FROM master_perumahan");
         </button>
       </div>
 
-            <?php if (isset($_GET['msg'])): ?>
-        <div class="mb-3">
-          <div class="alert alert-success fade show" role="alert">
-            <?= htmlspecialchars($_GET['msg']) ?>
-          </div>
-        </div>
-      <?php endif; ?>
-
       <script>
       window.setTimeout(function() {
         const alert = document.querySelector('.alert');
@@ -793,6 +787,17 @@ $result = mysqli_query($koneksi, "SELECT * FROM master_perumahan");
       </script>
 
       <div class="card-body">
+
+    <?php if (isset($_SESSION['notification'])): ?>
+    <div class="alert alert-<?= $_SESSION['notification']['type']; ?> alert-dismissible fade show" role="alert">
+        <?= htmlspecialchars($_SESSION['notification']['message']); ?>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    <?php 
+        // Hapus notifikasi dari session agar tidak muncul lagi saat refresh
+        unset($_SESSION['notification']); 
+    ?>
+    <?php endif; ?>
         <div class="table-responsive">
           <table
             id="basic-datatables"

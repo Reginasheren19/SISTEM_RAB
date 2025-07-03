@@ -263,7 +263,7 @@ $detail_result = mysqli_query($koneksi, $sql_detail);
             <div class="page-header">
                 <h3 class="fw-bold mb-3">Detail RAB Upah</h3>
                 <div class="ms-auto">
-                    <a href="pengajuan_upah.php" class="btn btn-secondary btn-round">
+                    <a href="transaksi_rab_upah.php" class="btn btn-secondary btn-round">
                         <i class="fas fa-arrow-left"></i> Kembali ke Daftar
                     </a>
                 </div>
