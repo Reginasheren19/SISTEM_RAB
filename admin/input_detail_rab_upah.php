@@ -458,10 +458,42 @@ $detail_result = mysqli_query($koneksi, $sql_detail);
 </div>
 
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
-<script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
+    <!--   Core JS Files   -->
+    <script src="assets/js/core/jquery-3.7.1.min.js"></script>
+    <script src="assets/js/core/popper.min.js"></script>
+    <script src="assets/js/core/bootstrap.min.js"></script>
+
+    <!-- jQuery Scrollbar -->
+    <script src="assets/js/plugin/jquery-scrollbar/jquery.scrollbar.min.js"></script>
+
+    <!-- Chart JS -->
+    <script src="assets/js/plugin/chart.js/chart.min.js"></script>
+
+    <!-- jQuery Sparkline -->
+    <script src="assets/js/plugin/jquery.sparkline/jquery.sparkline.min.js"></script>
+
+    <!-- Chart Circle -->
+    <script src="assets/js/plugin/chart-circle/circles.min.js"></script>
+
+    <!-- Datatables -->
+    <script src="assets/js/plugin/datatables/datatables.min.js"></script>
+
+    <!-- Bootstrap Notify -->
+    <script src="assets/js/plugin/bootstrap-notify/bootstrap-notify.min.js"></script>
+
+    <!-- jQuery Vector Maps -->
+    <script src="assets/js/plugin/jsvectormap/jsvectormap.min.js"></script>
+    <script src="assets/js/plugin/jsvectormap/world.js"></script>
+
+    <!-- Sweet Alert -->
+    <script src="assets/js/plugin/sweetalert/sweetalert.min.js"></script>
+
+    <!-- Kaiadmin JS -->
+    <script src="assets/js/kaiadmin.min.js"></script>
+
+    <!-- Kaiadmin DEMO methods, don't include it in your project! -->
+    <script src="assets/js/setting-demo.js"></script>
+    <script src="assets/js/demo.js"></script>
 <script src="/SISTEM_RAB/assets/js/bootstrap.bundle.min.js"></script>
 
 

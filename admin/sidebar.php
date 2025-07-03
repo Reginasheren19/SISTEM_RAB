@@ -112,9 +112,6 @@ function is_active($pages, $current_page) {
         <li class="nav-item <?= is_active(['master_perumahan.php'], $current_page) ?>">
             <a href="master_perumahan.php"><i class="fas fa-home"></i><p>Master Perumahan</p></a>
         </li>
-        <li class="nav-item <?= is_active(['master_proyek.php'], $current_page) ?>">
-            <a href="master_proyek.php"><i class="fas fa-building"></i><p>Master Proyek</p></a>
-        </li>
         <li class="nav-item <?= is_active(['master_mandor.php'], $current_page) ?>">
             <a href="master_mandor.php"><i class="fas fa-user"></i><p>Master Mandor</p></a>
         </li>
@@ -133,6 +130,9 @@ function is_active($pages, $current_page) {
     <li class="nav-item <?= is_active(['master_satuan.php'], $current_page) ?>">
         <a href="master_satuan.php"><i class="fas fa-ruler-combined"></i><p>Master Satuan</p></a>
     </li>
+            <li class="nav-item <?= is_active(['master_proyek.php'], $current_page) ?>">
+            <a href="master_proyek.php"><i class="fas fa-building"></i><p>Master Proyek</p></a>
+        </li>
 <?php endif; ?>
 </ul>
 
