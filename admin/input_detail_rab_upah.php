@@ -122,115 +122,8 @@ $detail_result = mysqli_query($koneksi, $sql_detail);
 </head>
 <body>
     <div class="wrapper">
-        <!-- Sidebar -->
-        <div class="sidebar" data-background-color="dark">
-            <div class="sidebar-logo">
-                <div class="logo-header" data-background-color="dark">
-                    <a href="dashboard.php" class="logo">
-                        <img src="assets/img/logo/LOGO PT.jpg" alt="Logo PT" class="navbar-brand" height="30" />
-                    </a>
-                    <button class="topbar-toggler more"><i class="gg-more-vertical-alt"></i></button>
-                </div>
-            </div>
-            <div class="sidebar-wrapper scrollbar scrollbar-inner">
-                <div class="sidebar-content">
-                    <ul class="nav nav-secondary">
-              <li class="nav-item">
-                <a href="dashboard.php">
-                  <i class="fas fa-home"></i>
-                  <p>Dashboard</p>
-                </a>
-              </li>
-              <li class="nav-section">
-                <span class="sidebar-mini-icon">
-                  <i class="fa fa-ellipsis-h"></i>
-                </span>
-                <h4 class="text-section">Transaksi RAB Upah</h4>
-              </li>
-              <li class="nav-item">
-                <a href="transaksi_rab_upah.php">
-                  <i class="fas fa-calculator"></i>
-                  <p>Rancang RAB Upah</p>
-                </a>
-              </li>
-                            <li class="nav-item">
-                <a href="pengajuan_upah.php">
-                  <i class="fas fa-hand-holding-usd"></i>
-                  <p>Pengajuah Upah</p>
-                </a>
-              </li>
-              <li class="nav-section">
-                <span class="sidebar-mini-icon">
-                  <i class="fa fa-ellipsis-h"></i>
-                </span>
-                <h4 class="text-section">Laporan</h4>
-              </li>
-                            <li class="nav-item">
-                <a href="lap_pengajuan_upah.php">
-                  <i class="fas fa-file"></i>
-                  <p>Pengajuan Upah</p>
-                </a>
-              </li>
-              <li class="nav-item">
-                <a href="lap_realisasi_anggaran.php">
-                  <i class="fas fa-file"></i>
-                  <p>Realisasi Anggaran</p>
-                </a>
-              </li>
-              <li class="nav-section">
-                <span class="sidebar-mini-icon">
-                  <i class="fa fa-ellipsis-h"></i>
-                </span>
-                <h4 class="text-section">Mastering Data</h4>
-              </li>
-<li class="nav-item">
-  <a href="master_perumahan.php">
-    <i class="fas fa-database"></i>
-    <p>Master Perumahan</p>
-  </a>
-</li>
-<li class="nav-item">
-  <a href="master_proyek.php">
-    <i class="fas fa-database"></i>
-    <p>Master Proyek</p>
-  </a>
-</li>
-<li class="nav-item">
-  <a href="master_mandor.php">
-    <i class="fas fa-database"></i>
-    <p>Master Mandor</p>
-  </a>
-</li>
-<li class="nav-item">
-  <a href="master_kategori.php">
-    <i class="fas fa-database"></i>
-    <p>Master Kategori</p>
-  </a>
-</li>
-<li class="nav-item">
-  <a href="master_satuan.php">
-    <i class="fas fa-database"></i>
-    <p>Master Satuan</p>
-  </a>
-</li>
-<li class="nav-item">
-  <a href="#" class="disabled">
-    <i class="fas fa-database"></i>
-    <p>Master Pekerjaan</p>
-  </a>
-</li>
-<li class="nav-item">
-  <a href="master_user.php">
-    <i class="fas fa-database"></i>
-    <p>Master User</p>
-  </a>
-</li>
+        <?php include 'sidebar.php'; ?>
 
-            </ul>
-          </div>
-        </div>
-      </div>
-      <!-- End Sidebar -->
 
         <div class="main-panel">
             <div class="main-header">
@@ -495,7 +388,10 @@ $detail_result = mysqli_query($koneksi, $sql_detail);
     <script src="assets/js/setting-demo.js"></script>
     <script src="assets/js/demo.js"></script>
 <script src="/SISTEM_RAB/assets/js/bootstrap.bundle.min.js"></script>
-
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+<script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
 
 <script>
   let kategoriList = [];
@@ -633,29 +529,31 @@ $detail_result = mysqli_query($koneksi, $sql_detail);
       }
     }
 
-    // Update atau buat baris total keseluruhan
-    function updateTotalKeseluruhan() {
-      let totalKeseluruhan = 0;
-      $('#tblKategori tbody tr.sub-total').each(function() {
+// Fungsi untuk memperbarui total keseluruhan setelah penghapusan atau perubahan data
+function updateTotalKeseluruhan() {
+    let totalKeseluruhan = 0;
+    $('#tblKategori tbody tr.sub-total').each(function() {
         let subtotalText = $(this).find('td').eq(5).text().replace(/[^\d]/g, '');
         let subtotalVal = parseInt(subtotalText) || 0;
         totalKeseluruhan += subtotalVal;
-      });
+    });
 
-      $('#tblKategori tbody tr.total-keseluruhan').remove();
+    // Hapus total keseluruhan jika ada
+    $('#tblKategori tbody tr.total-keseluruhan').remove();
 
-if (totalKeseluruhan === 0) return;
+    if (totalKeseluruhan === 0) return;
 
-const totalRowHtml = $(`
-  <tr class="table-success total-keseluruhan">
-    <td colspan="5" class="text-end fw-bold">Total Keseluruhan</td> <!-- Merged cell for label -->
-    <td class="fw-bold text-center">Rp ${totalKeseluruhan.toLocaleString('id-ID')}</td> <!-- Total value in the 6th column -->
-    <td></td> <!-- Empty cell for alignment -->
-  </tr>
-`);
+    // Tambahkan baris total keseluruhan yang baru
+    const totalRowHtml = $(`
+        <tr class="table-success total-keseluruhan">
+            <td colspan="5" class="text-end fw-bold">Total Keseluruhan</td> <!-- Merged cell for label -->
+            <td class="fw-bold text-center">Rp ${totalKeseluruhan.toLocaleString('id-ID')}</td> <!-- Total value in the 6th column -->
+            <td></td> <!-- Empty cell for alignment -->
+        </tr>
+    `);
 
-      $('#tblKategori tbody').append(totalRowHtml);
-    }
+    $('#tblKategori tbody').append(totalRowHtml);
+}
 
     // Tambah baris kategori baru
     function tambahBarisKategori() {
@@ -718,17 +616,36 @@ const totalRowHtml = $(`
       updateRowNumber();
     });
 
-    // Event batal input kategori
-    $('#tblKategori').on('click', '.btn-batal', function() {
-      const row = $(this).closest('tr');
-      row.remove();
-
-      if ($('#tblKategori tbody tr').length === 0) {
-        $('#tblKategori tbody').append('<tr class="no-data"><td colspan="7" class="text-center">Tidak ada detail pekerjaan</td></tr>');
-      }
-
-      updateRowNumber();
+// Event batal input kategori
+$('#tblKategori').on('click', '.btn-batal', function() {
+    const row = $(this).closest('tr');
+    const kategoriId = row.data('kategori-id'); // Ambil kategori ID
+    
+    // Hapus pekerjaan terkait kategori ini
+    $('#tblKategori tbody tr.pekerjaan, #tblKategori tbody tr.input-pekerjaan').each(function() {
+        if ($(this).data('parent-kategori-id') === kategoriId) {
+            $(this).remove(); // Hapus pekerjaan yang terkait dengan kategori ini
+        }
     });
+
+    // Hapus subtotal kategori jika ada
+    row.nextUntil('tr.kategori').filter('.sub-total').remove();
+
+    // Hapus kategori itu sendiri
+    row.remove();
+
+    // Jika tidak ada kategori lain, tampilkan pesan "Tidak ada detail pekerjaan"
+    if ($('#tblKategori tbody tr').length === 0) {
+        $('#tblKategori tbody').append('<tr class="no-data"><td colspan="7" class="text-center">Tidak ada detail pekerjaan</td></tr>');
+    }
+
+    // Update nomor kategori setelah menghapus
+    updateRowNumber();
+
+    // Perbarui total keseluruhan setelah penghapusan
+    updateTotalKeseluruhan();
+});
+
 
     // Event tambah pekerjaan pada kategori
     $('#tblKategori').on('click', '.btn-tambah-pekerjaan', function() {
