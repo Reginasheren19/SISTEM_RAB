@@ -69,7 +69,7 @@ function is_active($pages, $current_page) {
                 <!-- Sub-menu Pencatatan Pembelian (Untuk  Admin, & Direktur) -->
                 <?php if (in_array($user_role, [ 'admin', 'direktur', 'super admin'])): ?>
                 <li class="nav-item <?= is_active(['pencatatan_pembelian.php', 'detail_pembelian.php', 'input_detail_pembelian.php'], $current_page) ?>">
-                    <a href="pengajuan_upah.php">
+                    <a href="pencatatan_pembelian.php">
                         <i class="fas fa-hand-holding-usd"></i>
                         <p>Pencatatan Pembelian Material</p>
                     </a>
@@ -105,20 +105,20 @@ function is_active($pages, $current_page) {
                         <span class="sidebar-mini-icon"><i class="fa fa-ellipsis-h"></i></span>
                         <h4 class="text-section">Laporan</h4>
                     </li>
-                    <li class="nav-item <?= is_active(['../laporan_pembelian.php'], $current_page) ?>">
-                        <a href="../laporan_pembelian.php">
+                    <li class="nav-item <?= is_active(['laporan_pembelian.php'], $current_page) ?>">
+                        <a href="laporan_pembelian.php">
                             <i class="fas fa-book"></i>
                             <p>Detail Pembelian</p>
                         </a>
                     </li>
-                    <li class="nav-item <?= is_active(['../laporan_distribusi.php'], $current_page) ?>">
-                        <a href="../laporan_distribusi.php">
+                    <li class="nav-item <?= is_active(['laporan_distribusi.php'], $current_page) ?>">
+                        <a href="laporan_distribusi.php">
                             <i class="fas fa-book"></i>
                             <p>Detail Distribusi</p>
                         </a>
                     </li>
-                    <li class="nav-item <?= is_active(['../lap_realisasi_anggaran.php'], $current_page) ?>">
-                        <a href="../lap_realisasi_anggaran.php">
+                    <li class="nav-item <?= is_active(['lap_realisasi_anggaran_m.php'], $current_page) ?>">
+                        <a href="lap_realisasi_anggaran_m.php">
                             <i class="fas fa-chart-line"></i>
                             <p>RAB VS Realisasi</p>
                         </a>

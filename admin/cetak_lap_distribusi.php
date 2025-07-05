@@ -1,6 +1,6 @@
 <?php
 session_start();
-include("../../config/koneksi_mysql.php");
+include("../config/koneksi_mysql.php");
 
 // --- Bagian PHP untuk mengambil data (TIDAK ADA PERUBAHAN) ---
 $tanggal_mulai = $_GET['start'] ?? date('Y-m-01');
@@ -36,7 +36,7 @@ $result = mysqli_stmt_get_result($stmt);
 setlocale(LC_TIME, 'id_ID.utf8', 'id_ID');
 
 // --- Logika untuk memproses logo (TIDAK ADA PERUBAHAN) ---
-$path_logo = '../assets/img/logo/LOGO PT.jpg';
+$path_logo = 'assets/img/logo/LOGO PT.jpg';
 $tipe_logo = pathinfo($path_logo, PATHINFO_EXTENSION);
 $data_logo = file_get_contents($path_logo);
 $logo_base64 = 'data:image/' . $tipe_logo . ';base64,' . base64_encode($data_logo);
