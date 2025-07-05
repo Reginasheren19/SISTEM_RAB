@@ -48,50 +48,31 @@ $logo_base64 = 'data:image/' . $tipe_logo . ';base64,' . base64_encode($data_log
     <meta charset="UTF-8">
     <title>Laporan Pembelian - <?= date('d M Y') ?></title>
     <style>
-        body { font-family: 'Times New Roman', Times, serif; font-size: 11pt; }
-        .container { width: 100%; }
-        .kop-surat table { width: 100%; border-bottom: 3px double #000; padding-bottom: 10px; margin-bottom: 20px; }
-        .kop-surat td { border: 0; vertical-align: middle; }
-        .kop-surat .logo { width: 80px; }
-        .kop-surat .text-kop { text-align: center; }
-        .kop-surat h4 { font-size: 16pt; font-weight: bold; margin: 0; }
-        .kop-surat p { font-size: 10pt; margin: 2px 0 0 0; }
-        .report-title { text-align: center; font-size: 14pt; font-weight: bold; text-decoration: underline; margin: 20px 0 5px 0; }
-        .report-period { text-align: center; font-size: 11pt; margin-bottom: 20px; }
-        .report-table { width: 100%; border-collapse: collapse; }
-        .report-table th, .report-table td { border: 1px solid black; padding: 5px; }
-        .report-table th { background-color: #e9ecef; text-align: center; }
-        .text-center { text-align: center; }
-        .text-end { text-align: right; }
-        .fw-bold { font-weight: bold; }
-        .signature-section { margin-top: 40px; page-break-inside: avoid; width: 30%; float: right; text-align: center; }
-        .clearfix::after { content: ""; clear: both; display: table; }
-        @page { size: A4 portrait; margin: 20mm 15mm 20mm 15mm; }
+        body{font-family:'Tahoma',sans-serif;font-size:12px;color:#000;margin:0;padding:0}.container{max-width:800px;margin:auto}.kop-surat{display:flex;align-items:center;border-bottom:3px double #000;padding-bottom:15px;margin-bottom:20px}.kop-surat img{width:100px;height:auto;margin-left:40px}.kop-surat .kop-text{text-align:center;flex-grow:1}.kop-surat h3{font-size:22px;font-weight:bold;margin:0}.kop-surat h2{font-size:18px;font-weight:bold;margin:0}.kop-surat p{font-size:14px;margin:0}.report-title{text-align:center;margin-bottom:5px;font-weight:bold;text-decoration:underline;font-size:16px}.report-period{text-align:center;font-size:11pt;margin-bottom:20px}table{width:100%;border-collapse:collapse;margin-top:10px}th,td{border:1px solid black;padding:6px;text-align:left;vertical-align:middle}th{background-color:#e9ecef!important;text-align:center}.signature-section{margin-top:40px;width:30%;float:right;text-align:center}
+        
+        /* [DIUBAH] Jarak spasi/enter di bagian tanda tangan diperbaiki di sini */
+        .signature-section p{margin-bottom: 2px;}
+
+        .signature-section .name{font-weight:bold;text-decoration:underline}.clearfix::after{content:"";clear:both;display:table}.tagline{font-style:italic}.text-end{text-align:right!important}.text-center{text-align:center!important}.fw-bold{font-weight:bold!important}.text-success{color:green!important}.text-danger{color:red!important}@media print{body{-webkit-print-color-adjust:exact}.no-print{display:none}@page{size:A4 portrait;margin:10mm}}
     </style>
 </head>
 <body>
-    <div class="container">
-        <header class="kop-surat">
-            <table>
-                <tr>
-                    <td style="width: 20%;"><img src="<?= $logo_base64 ?>" alt="Logo" class="logo"></td>
-                    <td style="width: 80%;" class="text-kop">
-                        <h4>PT. HASTA BANGUN NUSANTARA</h4>
-                        <h2 class ="tagline">General Contractor & Developer</h2>
-                                <p>Jalan Cakraninggrat, Kauman, Kabupaten Ponorogo, Jawa Timur 63414</p>
-                                <p>Telp: (0352) 123-456 | Email: kontak@hastabangun.co.id</p>
-                    </td>
-                </tr>
-            </table>
-        </header>
-
-        <main>
+<div class="container my-4">
+    <div class="kop-surat">
+        <img src="<?= $logo_base64 ?>" alt="Logo Perusahaan" onerror="this.style.display='none'">
+        <div class="kop-text">
+            <h3>PT. HASTA BANGUN NUSANTARA</h3>
+            <h2 class="tagline">General Contractor & Developer</h2>
+            <p>Jalan Cakraninggrat, Kauman, Kabupaten Ponorogo, Jawa Timur 63414</p>
+            <p>Telp: (0352) 123-456 | Email: kontak@hastabangun.co.id</p>
+        </div>
+    </div>
             <p class="report-title">LAPORAN RINCIAN PEMBELIAN</p>
             <p class="report-period">
                 Periode: <?= date('d F Y', strtotime($tanggal_mulai)) ?> s/d <?= date('d F Y', strtotime($tanggal_selesai)) ?>
             </p>
 
-            <table class="report-table">
+            <table>
                 <thead>
                     <tr>
                         <th style="width: 5%;">No</th>
@@ -141,21 +122,20 @@ $logo_base64 = 'data:image/' . $tipe_logo . ';base64,' . base64_encode($data_log
                 </tfoot>
             </table>
 
-            <div class="signature-section">
-                <p>Ponorogo, <?= strftime('%d %B %Y') ?></p>
-                <p>Mengetahui,</p>
-                <br><br><br><br>
-                <p class="fw-bold" style="text-decoration: underline;">( Ir.Purwo Hermanto )</p>
-                <p>Direktur</p>
-            </div>
-            <div class="clearfix"></div>
-        </main>
+    <div class="signature-section">
+        <p>Ponorogo, <?= strftime('%d %B %Y') ?></p>
+        <p>Mengetahui,</p>
+        <br><br><br> <p class="name">( Ir.Purwo Hermanto )</p>
+        <span>Direktur</span>
     </div>
+    <div class="clearfix"></div>
 
-    <script>
-        window.onload = function() {
-            window.print();
-        }
-    </script>
+</div>
+
+<script>
+    window.onload = function() {
+        window.print();
+    }
+</script>
 </body>
 </html>
