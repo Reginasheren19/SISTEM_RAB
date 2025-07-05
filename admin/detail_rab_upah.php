@@ -56,7 +56,7 @@ $sql_detail = "SELECT
                LEFT JOIN master_kategori k ON d.id_kategori = k.id_kategori
                LEFT JOIN master_satuan ms ON mp.id_satuan = ms.id_satuan
                WHERE d.id_rab_upah = '$id_rab_upah'
-               ORDER BY k.id_kategori, mp.uraian_pekerjaan";
+               ORDER BY d.nomor_urut_kategori ASC, d.id_detail_rab_upah ASC";
 
 $detail_result = mysqli_query($koneksi, $sql_detail);
 ?>
