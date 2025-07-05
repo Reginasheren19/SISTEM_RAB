@@ -1,6 +1,6 @@
 <?php
 session_start();
-include("../../config/koneksi_mysql.php");
+include("../config/koneksi_mysql.php");
 
 // BAGIAN 1: Mengambil Filter dari URL
 $id_perumahan_filter = $_GET['perumahan'] ?? null;
@@ -71,7 +71,7 @@ if ($stmt_proyek_rab) {
 }
 
 // Logika untuk logo
-$path_logo = '../assets/img/logo/LOGO PT.jpg';
+$path_logo = 'assets/img/logo/LOGO PT.jpg';
 $logo_base64 = '';
 if (file_exists($path_logo)) {
     $tipe_logo = pathinfo($path_logo, PATHINFO_EXTENSION);

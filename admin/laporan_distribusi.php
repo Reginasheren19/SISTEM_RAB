@@ -1,6 +1,6 @@
 <?php
 session_start();
-include("../../config/koneksi_mysql.php");
+include("../config/koneksi_mysql.php");
 
 // =============================================================================
 // BAGIAN 1: LOGIKA FILTER (DISEDERHANAKAN)
@@ -83,12 +83,12 @@ $result = mysqli_stmt_get_result($stmt);
     />
     <link
       rel="icon"
-      href="../assets/img/logo/LOGO PT.jpg"
+      href="assets/img/logo/LOGO PT.jpg"
       type="image/x-icon"
     />
 
     <!-- Fonts and icons -->
-    <script src="../assets/js/plugin/webfont/webfont.min.js"></script>
+    <script src="assets/js/plugin/webfont/webfont.min.js"></script>
     <script>
       WebFont.load({
         google: { families: ["Public Sans:300,400,500,600,700"] },
@@ -99,7 +99,7 @@ $result = mysqli_stmt_get_result($stmt);
             "Font Awesome 5 Brands",
             "simple-line-icons",
           ],
-          urls: ["../assets/css/fonts.min.css"],
+          urls: ["assets/css/fonts.min.css"],
         },
         active: function () {
           sessionStorage.fonts = true;
@@ -108,12 +108,12 @@ $result = mysqli_stmt_get_result($stmt);
     </script>
 
     <!-- CSS Files -->
-    <link rel="stylesheet" href="../assets/css/bootstrap.min.css" />
-    <link rel="stylesheet" href="../assets/css/plugins.min.css" />
-    <link rel="stylesheet" href="../assets/css/kaiadmin.min.css" />
+    <link rel="stylesheet" href="assets/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="assets/css/plugins.min.css" />
+    <link rel="stylesheet" href="assets/css/kaiadmin.min.css" />
 
     <!-- CSS Just for demo purpose, don't include it in your project -->
-    <link rel="stylesheet" href="../assets/css/demo.css" />
+    <link rel="stylesheet" href="assets/css/demo.css" />
   </head>
 <body>
     <div class="wrapper">
@@ -126,7 +126,7 @@ $result = mysqli_stmt_get_result($stmt);
                 <div class="main-header-logo">
                     <div class="logo-header" data-background-color="dark">
                         <a href="dashboard.php" class="logo">
-                            <img src="../assets/img/logo/LOGO PT.jpg" alt="Logo PT" class="navbar-brand" height="30" />
+                            <img src="assets/img/logo/LOGO PT.jpg" alt="Logo PT" class="navbar-brand" height="30" />
                         </a>
                         <div class="nav-toggle">
                             <button class="btn btn-toggle toggle-sidebar"><i class="gg-menu-right"></i></button>
@@ -143,10 +143,10 @@ $result = mysqli_stmt_get_result($stmt);
                             <li class="nav-item topbar-user dropdown hidden-caret">
                                 <a class="dropdown-toggle profile-pic" data-bs-toggle="dropdown" href="#" aria-expanded="false">
                                     <div class="avatar-sm">
-                                        <img src="../../uploads/user_photos/<?= !empty($_SESSION['profile_pic']) ? htmlspecialchars($_SESSION['profile_pic']) : 'default.jpg' ?>" alt="Foto Profil" class="avatar-img rounded-circle" onerror="this.onerror=null; this.src='../assets/img/profile.jpg';">
+                                        <img src="../uploads/user_photos/<?= !empty($_SESSION['profile_pic']) ? htmlspecialchars($_SESSION['profile_pic']) : 'default.jpg' ?>" alt="Foto Profil" class="avatar-img rounded-circle" onerror="this.onerror=null; this.src='assets/img/profile.jpg';">
                                     </div>
                                     <span class="profile-username">
-                                        <span class="op-7">Hi,</span>
+                                        <span class="op-7">Selamat Datang,</span>
                                         <span class="fw-bold"><?= htmlspecialchars($_SESSION['nama_lengkap'] ?? 'Guest') ?></span>
                                     </span>
                                 </a>
@@ -155,7 +155,7 @@ $result = mysqli_stmt_get_result($stmt);
                                         <li>
                                             <div class="user-box">
                                                 <div class="avatar-lg">
-                                                    <img src="../../uploads/user_photos/<?= !empty($_SESSION['profile_pic']) ? htmlspecialchars($_SESSION['profile_pic']) : 'default.jpg' ?>" alt="Foto Profil" class="avatar-img rounded" onerror="this.onerror=null; this.src='../assets/img/profile.jpg';">
+                                                    <img src="../uploads/user_photos/<?= !empty($_SESSION['profile_pic']) ? htmlspecialchars($_SESSION['profile_pic']) : 'default.jpg' ?>" alt="Foto Profil" class="avatar-img rounded" onerror="this.onerror=null; this.src='assets/img/profile.jpg';">
                                                 </div>
                                                 <div class="u-text">
                                                     <h4><?= htmlspecialchars($_SESSION['nama_lengkap'] ?? 'Guest') ?></h4>

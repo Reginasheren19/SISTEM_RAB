@@ -55,7 +55,7 @@ $result = mysqli_query($koneksi, "SELECT * FROM master_user");
 <body>
     <div class="wrapper">
         <?php include 'sidebar_m.php'; ?>
-        <!-- <?php include 'sidebar.php'; ?> -->
+        <?php //include 'sidebar.php'; ?>
 
         <div class="main-panel">
             <div class="main-header">
@@ -63,7 +63,7 @@ $result = mysqli_query($koneksi, "SELECT * FROM master_user");
                 <div class="main-header-logo">
                     <div class="logo-header" data-background-color="dark">
                         <a href="dashboard.php" class="logo">
-                            <img src="../assets/img/logo/LOGO PT.jpg" alt="Logo PT" class="navbar-brand" height="30" />
+                            <img src="assets/img/logo/LOGO PT.jpg" alt="Logo PT" class="navbar-brand" height="30" />
                         </a>
                         <div class="nav-toggle">
                             <button class="btn btn-toggle toggle-sidebar"><i class="gg-menu-right"></i></button>
@@ -80,10 +80,10 @@ $result = mysqli_query($koneksi, "SELECT * FROM master_user");
                             <li class="nav-item topbar-user dropdown hidden-caret">
                                 <a class="dropdown-toggle profile-pic" data-bs-toggle="dropdown" href="#" aria-expanded="false">
                                     <div class="avatar-sm">
-                                        <img src="../../uploads/user_photos/<?= !empty($_SESSION['profile_pic']) ? htmlspecialchars($_SESSION['profile_pic']) : 'default.jpg' ?>" alt="Foto Profil" class="avatar-img rounded-circle" onerror="this.onerror=null; this.src='../assets/img/profile.jpg';">
+                                        <img src="../uploads/user_photos/<?= !empty($_SESSION['profile_pic']) ? htmlspecialchars($_SESSION['profile_pic']) : 'default.jpg' ?>" alt="Foto Profil" class="avatar-img rounded-circle" onerror="this.onerror=null; this.src='assets/img/profile.jpg';">
                                     </div>
                                     <span class="profile-username">
-                                        <span class="op-7">Hi,</span>
+                                        <span class="op-7">Selamat Datang,</span>
                                         <span class="fw-bold"><?= htmlspecialchars($_SESSION['nama_lengkap'] ?? 'Guest') ?></span>
                                     </span>
                                 </a>
@@ -92,7 +92,7 @@ $result = mysqli_query($koneksi, "SELECT * FROM master_user");
                                         <li>
                                             <div class="user-box">
                                                 <div class="avatar-lg">
-                                                    <img src="../../uploads/user_photos/<?= !empty($_SESSION['profile_pic']) ? htmlspecialchars($_SESSION['profile_pic']) : 'default.jpg' ?>" alt="Foto Profil" class="avatar-img rounded" onerror="this.onerror=null; this.src='../assets/img/profile.jpg';">
+                                                    <img src="../uploads/user_photos/<?= !empty($_SESSION['profile_pic']) ? htmlspecialchars($_SESSION['profile_pic']) : 'default.jpg' ?>" alt="Foto Profil" class="avatar-img rounded" onerror="this.onerror=null; this.src='assets/img/profile.jpg';">
                                                 </div>
                                                 <div class="u-text">
                                                     <h4><?= htmlspecialchars($_SESSION['nama_lengkap'] ?? 'Guest') ?></h4>
