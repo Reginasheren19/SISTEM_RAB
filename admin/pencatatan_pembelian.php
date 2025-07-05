@@ -2,36 +2,35 @@
 session_start();
 include("../config/koneksi_mysql.php");
 
-// --- [DIUBAH TOTAL] --- Query diperbaiki dengan Subquery agar 100% akurat dan anti-salah hitung
+// Query utama sekarang mengambil semua data yang dibutuhkan untuk status
 $sql = "
     SELECT 
-        p.id_pembelian,
-        p.tanggal_pembelian,
-        p.keterangan_pembelian,
-        p.bukti_pembayaran,
-        p.total_biaya,
+        p.id_pembelian, p.tanggal_pembelian, p.keterangan_pembelian, p.bukti_pembayaran, p.total_biaya,
         COALESCE(pesanan.total_dipesan, 0) AS total_dipesan,
-        COALESCE(diproses.total_diproses, 0) AS total_diproses
-    FROM 
-        pencatatan_pembelian p
-    -- Subquery (1): Menghitung total kuantitas yang dipesan (asli + pengganti)
+        COALESCE(diproses.total_diproses, 0) AS total_diproses,
+        COALESCE(info_rusak.total_rusak, 0) AS total_rusak,
+        COALESCE(pengganti.total_pengganti, 0) AS total_sudah_diretur
+    FROM pencatatan_pembelian p
     LEFT JOIN (
         SELECT id_pembelian, SUM(quantity) as total_dipesan
-        FROM detail_pencatatan_pembelian
-        GROUP BY id_pembelian
+        FROM detail_pencatatan_pembelian GROUP BY id_pembelian
     ) AS pesanan ON p.id_pembelian = pesanan.id_pembelian
-    -- Subquery (2): Menghitung total item yang sudah diproses (diterima baik + rusak)
     LEFT JOIN (
         SELECT id_pembelian, SUM(jumlah_diterima + jumlah_rusak) as total_diproses
-        FROM log_penerimaan_material
-        GROUP BY id_pembelian
+        FROM log_penerimaan_material GROUP BY id_pembelian
     ) AS diproses ON p.id_pembelian = diproses.id_pembelian
-    ORDER BY 
-        p.tanggal_pembelian DESC, p.id_pembelian DESC
+    LEFT JOIN (
+        SELECT id_pembelian, SUM(jumlah_rusak) as total_rusak
+        FROM log_penerimaan_material GROUP BY id_pembelian
+    ) AS info_rusak ON p.id_pembelian = info_rusak.id_pembelian
+    LEFT JOIN (
+        SELECT id_pembelian, SUM(quantity) as total_pengganti
+        FROM detail_pencatatan_pembelian WHERE harga_satuan_pp = 0 GROUP BY id_pembelian
+    ) AS pengganti ON p.id_pembelian = pengganti.id_pembelian
+    ORDER BY p.id_pembelian DESC
 ";
 
 $result = mysqli_query($koneksi, $sql);
-
 if (!$result) {
     die("Query Error: " . mysqli_error($koneksi));
 }
@@ -197,28 +196,24 @@ if (!$result) {
                                     $tahun_pembelian = date('Y', strtotime($row['tanggal_pembelian']));
                                     $formatted_id = 'PB' . $row['id_pembelian'] . $tahun_pembelian;
                                     
-                                    // --- [DISEMPURNAKAN] --- Logika Status Final yang Sesuai Permintaan
-                                    $total_dipesan = $row['total_dipesan'];
-                                    $total_diproses = $row['total_diproses'];
-                                    
-                                    $status_text = 'Baru';
-                                    $badge_class = 'bg-secondary';
+                                    // --- [DIUBAH] --- Logika Status Baru yang Lengkap
+                                        $total_dipesan_all = $row['total_dipesan'];
+                                        $total_diproses = $row['total_diproses'];
+                                        $ada_retur_terbuka = $row['total_rusak'] > $row['total_sudah_diretur'];
 
-                                    if ($total_dipesan == 0) {
-                                        $status_text = 'Kosong';
-                                        $badge_class = 'bg-dark';
-                                    } elseif ($total_diproses >= $total_dipesan) {
-                                        // Jika semua sudah diproses (baik+rusak) >= total pesanan (asli+pengganti)
-                                        // Maka statusnya final: Selesai. Tidak ada lagi "(Ada Retur)".
-                                        $status_text = 'Selesai';
-                                        $badge_class = 'bg-success';
-                                    } elseif ($total_diproses > 0 && $total_diproses < $total_dipesan) {
-                                        $status_text = 'Diterima Sebagian';
-                                        $badge_class = 'bg-info text-dark';
-                                    } else { // ($total_diproses <= 0 && $total_dipesan > 0)
-                                        $status_text = 'Menunggu Penerimaan';
-                                        $badge_class = 'bg-warning text-dark';
-                                    }
+                                        if ($total_dipesan_all <= 0) {
+                                            $status_text = 'Kosong';
+                                            $badge_class = 'bg-dark';
+                                        } elseif ($total_diproses >= $total_dipesan_all && !$ada_retur_terbuka) {
+                                            $status_text = 'Selesai';
+                                            $badge_class = 'bg-success';
+                                        } elseif ($ada_retur_terbuka) {
+                                            $status_text = 'Perlu Tindakan Retur';
+                                            $badge_class = 'bg-warning text-dark';
+                                        } else {
+                                            $status_text = 'Menunggu Pengganti';
+                                            $badge_class = 'bg-primary';
+                                        }
                             ?>
                                     <tr>
                                         <td><?= $nomor++ ?></td>

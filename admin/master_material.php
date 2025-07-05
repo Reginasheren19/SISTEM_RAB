@@ -2,6 +2,13 @@
 session_start();
 include("../config/koneksi_mysql.php");
 
+// [DIUBAH] Mengambil role pengguna yang sedang login
+$user_role = strtolower($_SESSION['role'] ?? 'guest');
+$can_add_edit = in_array($user_role, ['admin','direktur']); 
+// Mengatur error reporting untuk membantu debugging
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
 // 1. Cukup 1x query untuk mengambil semua data satuan untuk modal Tambah dan Update
 $satuan_result = mysqli_query($koneksi, "SELECT id_satuan, nama_satuan FROM master_satuan ORDER BY nama_satuan ASC");
 $satuans = [];
@@ -172,9 +179,11 @@ if (!$result) {
                         <div class="card">
                             <div class="card-header d-flex align-items-center">
                                 <h4 class="card-title">Daftar Material</h4>
+                                <?php if ($can_add_edit): ?>
                                 <button class="btn btn-primary btn-round ms-auto" data-bs-toggle="modal" data-bs-target="#addMaterialModal">
                                     <i class="fa fa-plus"></i> Tambah Data
                                 </button>
+                                <?php endif; ?>
                             </div>
                             <?php
                             // Cek apakah ada pesan sukses di dalam session
@@ -201,7 +210,7 @@ if (!$result) {
                                                 <th>Nama Material</th>
                                                 <th>Satuan</th>
                                                 <th>Stok Tersedia</th> <th>Keterangan</th>
-                                                <th>Action</th>
+                                                <?php if ($can_add_edit): ?> <th>Action</th><?php endif; ?>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -223,6 +232,7 @@ if (!$result) {
                                                     </td>
                                                     <td><?= htmlspecialchars($row['keterangan_material']) ?></td>
                                                     <td>
+                                                        <?php if ($can_add_edit): ?>
                                                         <button class="btn btn-primary btn-sm btn-update" 
                                                                 data-id_material="<?= $row['id_material'] ?>" 
                                                                 data-nama_material="<?= htmlspecialchars($row['nama_material']) ?>" 
@@ -232,12 +242,15 @@ if (!$result) {
                                                                 data-bs-target="#updateMaterialModal">
                                                             Update
                                                         </button>
+                                                        <?php endif; ?>
+                                                        <?php if ($can_add_edit): ?>
                                                         <button class="btn btn-danger btn-sm btn-delete" 
                                                                 data-id_material="<?= $row['id_material'] ?>"
                                                                 data-bs-toggle="modal"
                                                                 data-bs-target="#confirmDeleteModal">
                                                             Delete
                                                         </button>
+                                                        <?php endif; ?>
                                                     </td>
                                                 </tr>
                                             <?php endwhile; ?>

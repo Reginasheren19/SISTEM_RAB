@@ -1,10 +1,13 @@
 <?php
 include("../config/koneksi_mysql.php");
 
-
+// [DIUBAH] Mengambil role pengguna yang sedang login
+$user_role = strtolower($_SESSION['role'] ?? 'guest');
+$can_add_edit = in_array($user_role, ['divisi teknik']); 
 // Mengatur error reporting untuk membantu debugging
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
+
 
 // Query ini mengambil SEMUA data untuk ditampilkan di tabel utama.
 $sql = "SELECT 
@@ -93,7 +96,7 @@ if (!$perumahanResult) {
                 <div class="main-header-logo">
                     <div class="logo-header" data-background-color="dark">
                         <a href="dashboard.php" class="logo">
-                            <img src="../assets/img/logo/LOGO PT.jpg" alt="Logo PT" class="navbar-brand" height="30" />
+                            <img src="assets/img/logo/LOGO PT.jpg" alt="Logo PT" class="navbar-brand" height="30" />
                         </a>
                         <div class="nav-toggle">
                             <button class="btn btn-toggle toggle-sidebar"><i class="gg-menu-right"></i></button>
@@ -110,10 +113,10 @@ if (!$perumahanResult) {
                             <li class="nav-item topbar-user dropdown hidden-caret">
                                 <a class="dropdown-toggle profile-pic" data-bs-toggle="dropdown" href="#" aria-expanded="false">
                                     <div class="avatar-sm">
-                                        <img src="../../uploads/user_photos/<?= !empty($_SESSION['profile_pic']) ? htmlspecialchars($_SESSION['profile_pic']) : 'default.jpg' ?>" alt="Foto Profil" class="avatar-img rounded-circle" onerror="this.onerror=null; this.src='../assets/img/profile.jpg';">
+                                        <img src="../uploads/user_photos/<?= !empty($_SESSION['profile_pic']) ? htmlspecialchars($_SESSION['profile_pic']) : 'default.jpg' ?>" alt="Foto Profil" class="avatar-img rounded-circle" onerror="this.onerror=null; this.src='assets/img/profile.jpg';">
                                     </div>
                                     <span class="profile-username">
-                                        <span class="op-7">Hi,</span>
+                                        <span class="op-7">Selamat Datang,</span>
                                         <span class="fw-bold"><?= htmlspecialchars($_SESSION['nama_lengkap'] ?? 'Guest') ?></span>
                                     </span>
                                 </a>
@@ -122,7 +125,7 @@ if (!$perumahanResult) {
                                         <li>
                                             <div class="user-box">
                                                 <div class="avatar-lg">
-                                                    <img src="../../uploads/user_photos/<?= !empty($_SESSION['profile_pic']) ? htmlspecialchars($_SESSION['profile_pic']) : 'default.jpg' ?>" alt="Foto Profil" class="avatar-img rounded" onerror="this.onerror=null; this.src='../assets/img/profile.jpg';">
+                                                    <img src="../uploads/user_photos/<?= !empty($_SESSION['profile_pic']) ? htmlspecialchars($_SESSION['profile_pic']) : 'default.jpg' ?>" alt="Foto Profil" class="avatar-img rounded" onerror="this.onerror=null; this.src='assets/img/profile.jpg';">
                                                 </div>
                                                 <div class="u-text">
                                                     <h4><?= htmlspecialchars($_SESSION['nama_lengkap'] ?? 'Guest') ?></h4>
@@ -176,6 +179,7 @@ if (!$perumahanResult) {
     <div class="card">
       <div class="card-header d-flex align-items-center">
         <h4 class="card-title">RAB Material</h4>
+        <?php if ($can_add_edit): ?>
         <button
           class="btn btn-primary btn-round ms-auto"
           data-bs-toggle="modal"
@@ -183,6 +187,7 @@ if (!$perumahanResult) {
         >
           <i class="fa fa-plus"></i> Tambah Data
         </button>
+        <?php endif; ?>
       </div>
 
             <?php if (isset($_GET['msg'])): ?>
@@ -251,7 +256,7 @@ if (!$perumahanResult) {
                             <td><?= htmlspecialchars($totalFormatted) ?></td>
                             <td>
                               <a href="detail_rab_material.php?id_rab_material=<?= urlencode($row['id_rab_material']) ?>" class="btn btn-info btn-sm">Detail</a>
-                              <button class="btn btn-danger btn-sm delete-btn" data-id_rab_material="<?= htmlspecialchars($row['id_rab_material']) ?>">Delete</button>
+                              <?php if ($can_add_edit): ?><button class="btn btn-danger btn-sm delete-btn" data-id_rab_material="<?= htmlspecialchars($row['id_rab_material']) ?>">Delete</button><?php endif; ?>
                             </td>
                           </tr>
                           <?php endwhile; ?>

@@ -3,7 +3,7 @@
 session_start();
 include("../config/koneksi_mysql.php");
 
-// 1. VALIDASI (Tetap Sama)
+// 1. VALIDASI
 if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
     $_SESSION['error_message'] = "ID Pembelian tidak valid atau tidak ditemukan.";
     header("Location: pencatatan_pembelian.php");
@@ -11,7 +11,7 @@ if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
 }
 $pembelian_id = (int)$_GET['id'];
 
-// 2. AMBIL DATA INDUK & DETAIL (Query tetap sama, kita olah datanya setelah ini)
+// 2. AMBIL DATA INDUK
 $stmt_master = $koneksi->prepare("SELECT * FROM pencatatan_pembelian WHERE id_pembelian = ?");
 $stmt_master->bind_param("i", $pembelian_id);
 $stmt_master->execute();
@@ -20,33 +20,49 @@ $pembelian = $result_master->fetch_assoc();
 
 if (!$pembelian) { /* ... handling error ... */ }
 
-$sql_detail = "
-    SELECT dp.id_detail_pembelian, dp.id_material, dp.quantity, dp.harga_satuan_pp, dp.sub_total_pp,
-           m.nama_material, s.nama_satuan
-    FROM detail_pencatatan_pembelian dp
-    JOIN master_material m ON dp.id_material = m.id_material
-    LEFT JOIN master_satuan s ON m.id_satuan = s.id_satuan
-    WHERE dp.id_pembelian = ? ORDER BY dp.harga_satuan_pp DESC
-";
+// 3. AMBIL DATA DETAIL & LOG
+$sql_detail = "SELECT dp.id_detail_pembelian, dp.id_material, dp.quantity, dp.harga_satuan_pp, dp.sub_total_pp, m.nama_material, s.nama_satuan FROM detail_pencatatan_pembelian dp JOIN master_material m ON dp.id_material = m.id_material LEFT JOIN master_satuan s ON m.id_satuan = s.id_satuan WHERE dp.id_pembelian = ? ORDER BY dp.id_detail_pembelian ASC";
 $stmt_detail = $koneksi->prepare($sql_detail);
 $stmt_detail->bind_param("i", $pembelian_id);
 $stmt_detail->execute();
 $detail_items = $stmt_detail->get_result()->fetch_all(MYSQLI_ASSOC);
 
-// 3. AMBIL SEMUA DATA LOG & PENERIMAAN (Query tetap sama)
-$sql_log = "
-    SELECT log.jumlah_diterima, log.jumlah_rusak, log.catatan, log.tanggal_penerimaan,
-           log.jenis_penerimaan, m.nama_material, s.nama_satuan
-    FROM log_penerimaan_material log
-    JOIN master_material m ON log.id_material = m.id_material
-    LEFT JOIN master_satuan s ON m.id_satuan = s.id_satuan
-    WHERE log.id_pembelian = ? ORDER BY log.tanggal_penerimaan DESC
-";
+$sql_log = "SELECT log.jumlah_diterima, log.jumlah_rusak, log.catatan, log.tanggal_penerimaan, log.jenis_penerimaan, m.nama_material, s.nama_satuan FROM log_penerimaan_material log JOIN master_material m ON log.id_material = m.id_material LEFT JOIN master_satuan s ON m.id_satuan = s.id_satuan WHERE log.id_pembelian = ? ORDER BY log.tanggal_penerimaan DESC";
 $stmt_log = $koneksi->prepare($sql_log);
 $stmt_log->bind_param("i", $pembelian_id);
 $stmt_log->execute();
 $result_log = $stmt_log->get_result();
 
+// --- [DIUBAH TOTAL] --- BAGIAN PERSIAPAN DATA UNTUK STATUS DAN TABEL ---
+
+// Hitung semua data yang dibutuhkan untuk logika status
+$stmt_total_pesanan_all = $koneksi->prepare("SELECT SUM(quantity) as total FROM detail_pencatatan_pembelian WHERE id_pembelian = ?");
+$stmt_total_pesanan_all->bind_param("i", $pembelian_id);
+$stmt_total_pesanan_all->execute();
+$total_dipesan_all = $stmt_total_pesanan_all->get_result()->fetch_assoc()['total'] ?? 0;
+$stmt_total_pesanan_all->close();
+
+$stmt_total_diproses = $koneksi->prepare("SELECT SUM(jumlah_diterima + jumlah_rusak) as total FROM log_penerimaan_material WHERE id_pembelian = ?");
+$stmt_total_diproses->bind_param("i", $pembelian_id);
+$stmt_total_diproses->execute();
+$total_diproses = $stmt_total_diproses->get_result()->fetch_assoc()['total'] ?? 0;
+$stmt_total_diproses->close();
+
+$stmt_total_rusak = $koneksi->prepare("SELECT SUM(jumlah_rusak) as total FROM log_penerimaan_material WHERE id_pembelian = ?");
+$stmt_total_rusak->bind_param("i", $pembelian_id);
+$stmt_total_rusak->execute();
+$total_rusak_historis = $stmt_total_rusak->get_result()->fetch_assoc()['total'] ?? 0;
+$stmt_total_rusak->close();
+
+$stmt_total_retur = $koneksi->prepare("SELECT SUM(quantity) as total FROM detail_pencatatan_pembelian WHERE id_pembelian = ? AND harga_satuan_pp = 0");
+$stmt_total_retur->bind_param("i", $pembelian_id);
+$stmt_total_retur->execute();
+$total_sudah_diretur = $stmt_total_retur->get_result()->fetch_assoc()['total'] ?? 0;
+$stmt_total_retur->close();
+
+$perlu_proses_retur = $total_rusak_historis > $total_sudah_diretur;
+
+// Data untuk tabel rincian (grouped)
 $penerimaan_per_item = [];
 $stmt_sum_item = $koneksi->prepare("SELECT id_detail_pembelian, SUM(jumlah_diterima) as diterima FROM log_penerimaan_material WHERE id_pembelian = ? GROUP BY id_detail_pembelian");
 $stmt_sum_item->bind_param("i", $pembelian_id);
@@ -55,17 +71,11 @@ $result_sum_item = $stmt_sum_item->get_result();
 while ($row = $result_sum_item->fetch_assoc()) {
     $penerimaan_per_item[$row['id_detail_pembelian']] = $row['diterima'];
 }
-
-// BAGIAN PERSIAPAN DATA UNTUK TABEL RINCIAN
 $grouped_items = [];
 foreach ($detail_items as $item) {
     $material_name = $item['nama_material'];
     if (!isset($grouped_items[$material_name])) {
-        $grouped_items[$material_name] = [
-            'nama_material' => $material_name, 'nama_satuan' => $item['nama_satuan'],
-            'total_dipesan_asli' => 0, 'total_sub_total_asli' => 0,
-            'total_diterima' => 0, 'detail_ids' => []
-        ];
+        $grouped_items[$material_name] = ['nama_material' => $item['nama_material'], 'nama_satuan' => $item['nama_satuan'], 'total_dipesan_asli' => 0, 'total_sub_total_asli' => 0, 'total_diterima' => 0, 'detail_ids' => []];
     }
     $grouped_items[$material_name]['detail_ids'][] = $item['id_detail_pembelian'];
     if ((float)$item['harga_satuan_pp'] > 0) {
@@ -73,7 +83,7 @@ foreach ($detail_items as $item) {
         $grouped_items[$material_name]['total_sub_total_asli'] += $item['sub_total_pp'];
     }
 }
-foreach ($grouped_items as $material_name => &$group_data) {
+foreach ($grouped_items as &$group_data) {
     $total_diterima_grup = 0;
     foreach ($group_data['detail_ids'] as $detail_id) {
         $total_diterima_grup += $penerimaan_per_item[$detail_id] ?? 0;
@@ -81,33 +91,8 @@ foreach ($grouped_items as $material_name => &$group_data) {
     $group_data['total_diterima'] = $total_diterima_grup;
 }
 unset($group_data);
-
-// --- [BARU] --- HITUNG ULANG GRAND TOTAL UNTUK STATUS HEADER ---
-$total_dipesan = 0;
-$total_diterima = 0;
-// Kita hitung total pesanan dari SEMUA item (asli + pengganti)
-$stmt_total_pesanan_all = $koneksi->prepare("SELECT SUM(quantity) as total FROM detail_pencatatan_pembelian WHERE id_pembelian = ?");
-$stmt_total_pesanan_all->bind_param("i", $pembelian_id);
-$stmt_total_pesanan_all->execute();
-$total_dipesan = $stmt_total_pesanan_all->get_result()->fetch_assoc()['total'] ?? 0;
-// Kita hitung total diterima dari SEMUA log
-foreach ($grouped_items as $group) {
-    $total_diterima += $group['total_diterima'];
-}
-
-
-// Logika untuk tombol retur (tetap sama)
-$stmt_total_rusak = $koneksi->prepare("SELECT SUM(jumlah_rusak) as total FROM log_penerimaan_material WHERE id_pembelian = ?");
-$stmt_total_rusak->bind_param("i", $pembelian_id);
-$stmt_total_rusak->execute();
-$total_rusak_dilaporkan = $stmt_total_rusak->get_result()->fetch_assoc()['total'] ?? 0;
-$stmt_total_retur = $koneksi->prepare("SELECT SUM(quantity) as total FROM detail_pencatatan_pembelian WHERE id_pembelian = ? AND harga_satuan_pp = 0");
-$stmt_total_retur->bind_param("i", $pembelian_id);
-$stmt_total_retur->execute();
-$total_sudah_diretur = $stmt_total_retur->get_result()->fetch_assoc()['total'] ?? 0;
-$perlu_proses_retur = $total_rusak_dilaporkan > $total_sudah_diretur;
-
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -162,7 +147,7 @@ $perlu_proses_retur = $total_rusak_dilaporkan > $total_sudah_diretur;
                 <div class="main-header-logo">
                     <div class="logo-header" data-background-color="dark">
                         <a href="dashboard.php" class="logo">
-                            <img src="../assets/img/logo/LOGO PT.jpg" alt="Logo PT" class="navbar-brand" height="30" />
+                            <img src="assets/img/logo/LOGO PT.jpg" alt="Logo PT" class="navbar-brand" height="30" />
                         </a>
                         <div class="nav-toggle">
                             <button class="btn btn-toggle toggle-sidebar"><i class="gg-menu-right"></i></button>
@@ -179,10 +164,10 @@ $perlu_proses_retur = $total_rusak_dilaporkan > $total_sudah_diretur;
                             <li class="nav-item topbar-user dropdown hidden-caret">
                                 <a class="dropdown-toggle profile-pic" data-bs-toggle="dropdown" href="#" aria-expanded="false">
                                     <div class="avatar-sm">
-                                        <img src="../../uploads/user_photos/<?= !empty($_SESSION['profile_pic']) ? htmlspecialchars($_SESSION['profile_pic']) : 'default.jpg' ?>" alt="Foto Profil" class="avatar-img rounded-circle" onerror="this.onerror=null; this.src='../assets/img/profile.jpg';">
+                                        <img src="../uploads/user_photos/<?= !empty($_SESSION['profile_pic']) ? htmlspecialchars($_SESSION['profile_pic']) : 'default.jpg' ?>" alt="Foto Profil" class="avatar-img rounded-circle" onerror="this.onerror=null; this.src='assets/img/profile.jpg';">
                                     </div>
                                     <span class="profile-username">
-                                        <span class="op-7">Hi,</span>
+                                        <span class="op-7">Selamat Datang,</span>
                                         <span class="fw-bold"><?= htmlspecialchars($_SESSION['nama_lengkap'] ?? 'Guest') ?></span>
                                     </span>
                                 </a>
@@ -191,7 +176,7 @@ $perlu_proses_retur = $total_rusak_dilaporkan > $total_sudah_diretur;
                                         <li>
                                             <div class="user-box">
                                                 <div class="avatar-lg">
-                                                    <img src="../../uploads/user_photos/<?= !empty($_SESSION['profile_pic']) ? htmlspecialchars($_SESSION['profile_pic']) : 'default.jpg' ?>" alt="Foto Profil" class="avatar-img rounded" onerror="this.onerror=null; this.src='../assets/img/profile.jpg';">
+                                                    <img src="../uploads/user_photos/<?= !empty($_SESSION['profile_pic']) ? htmlspecialchars($_SESSION['profile_pic']) : 'default.jpg' ?>" alt="Foto Profil" class="avatar-img rounded" onerror="this.onerror=null; this.src='assets/img/profile.jpg';">
                                                 </div>
                                                 <div class="u-text">
                                                     <h4><?= htmlspecialchars($_SESSION['nama_lengkap'] ?? 'Guest') ?></h4>
@@ -222,7 +207,7 @@ $perlu_proses_retur = $total_rusak_dilaporkan > $total_sudah_diretur;
             <ul class="breadcrumbs mb-3">
                 <li class="nav-home"><a href="dashboard.php"><i class="icon-home"></i></a></li>
                 <li class="separator"><i class="icon-arrow-right"></i></li>
-                <li class="nav-item"><a href="#">Detail Pembelian</a></li>
+                <li class="nav-item"><a href="pencatatan_pembelian.php">Daftar Pembelian</a></li>
                 <li class="separator"><i class="icon-arrow-right"></i></li>
                 <li class="nav-item"><a href="">Pencatatan Pembelian Material</a></li>
             </ul>
@@ -242,20 +227,17 @@ $perlu_proses_retur = $total_rusak_dilaporkan > $total_sudah_diretur;
             <div class="col-md-6">
                 <p><strong>Status:</strong> 
                     <?php
-                        // Sekarang variabel $total_dipesan dan $total_diterima sudah ada lagi
-                        $status_text = 'Baru';
-                        $badge_class = 'bg-info';
-                        if ($total_diterima <= 0 && $total_dipesan > 0) {
-                            $status_text = 'Menunggu Penerimaan';
-                            $badge_class = 'bg-warning';
-                        } elseif ($total_diterima < $total_dipesan) {
-                            $status_text = 'Diterima Sebagian';
-                            $badge_class = 'bg-primary';
-                        } elseif ($total_diterima >= $total_dipesan) {
-                            $status_text = 'Selesai';
-                            $badge_class = 'bg-success';
-                        }
-                    ?>
+                                        // --- [DIUBAH] --- Logika Status yang Sudah Sinkron ---
+                                        if ($total_dipesan_all <= 0) {
+                                            $status_text = 'Kosong'; $badge_class = 'bg-dark';
+                                        } elseif ($total_diproses >= $total_dipesan_all && !$perlu_proses_retur) {
+                                            $status_text = 'Selesai'; $badge_class = 'bg-success';
+                                        } elseif ($perlu_proses_retur) {
+                                            $status_text = 'Perlu Tindakan Retur'; $badge_class = 'bg-warning text-dark';
+                                        } else {
+                                            $status_text = 'Menunggu Pengganti'; $badge_class = 'bg-primary';
+                                        }
+                                        ?>
                     <span class="badge <?= $badge_class ?>"><?= $status_text ?></span>
                 </p>
                 <p><strong>Bukti Pembayaran:</strong> 
