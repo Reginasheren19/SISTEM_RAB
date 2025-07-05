@@ -83,8 +83,7 @@ $sql_detail = "
     LEFT JOIN master_kategori k ON d.id_kategori = k.id_kategori 
     LEFT JOIN master_satuan ms ON mp.id_satuan = ms.id_satuan
     WHERE d.id_rab_upah = $id_rab_upah
-    ORDER BY k.id_kategori, mp.uraian_pekerjaan
-";
+               ORDER BY d.nomor_urut_kategori ASC, d.id_detail_rab_upah ASC";
 $detail_result = mysqli_query($koneksi, $sql_detail);
 if (!$detail_result) die("Gagal mengambil detail pekerjaan: " . mysqli_error($koneksi));
 
@@ -176,19 +175,47 @@ function toRoman($num) {
         .info-table td:nth-child(2) { width: 15px; text-align: center; }
 
         .data-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        .data-table th, .data-table td { border: 1px solid black; padding: 4px; vertical-align: middle; }
-        .data-table th { background-color: #E8E8E8; text-align: center; font-weight: bold; }
+.data-table th, .data-table td {
+    border: 1.2px solid #000;   /* garis tabel tegas */
+    padding: 6px 5px;
+    vertical-align: middle;
+    font-size: 12px;
+}
+
+.data-table th {
+    background: #f8f8f8;
+    text-align: center;
+}
+
         .data-table .text-end { text-align: right; } 
         .data-table .text-center { text-align: center; }
         .data-table .text-start { text-align: left; }
         .data-table .fw-bold { font-weight: bold; }
 
-        /* [PERUBAHAN] Memberi warna pada baris kategori */
-        .category-row td {
-            background-color:rgb(247, 255, 22); /* Warna kuning muda */
-            font-weight: bold;
-        }
-        .total-row { background-color: #E8E8E8; font-weight: bold; }
+.category-row td {
+    background: #fff700 !important;   /* kuning stabilo */
+    font-weight: bold;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-top: 2px solid #000;
+}
+
+.fw-bold {
+    font-weight: bold;
+}
+
+.subtotal-row td {
+    background: #f5f5f5;
+    font-weight: bold;
+    border-top: 1.5px solid #000;
+}
+.total-row td {
+    font-weight: bold;
+    background: #f1f1f1;
+    font-size: 13px;
+    border-top: 2px solid #000;
+}
 
         .terbilang-box { margin-top: 15px; font-style: italic; }
         .signature-section { margin-top: 30px; width: 100%; }
@@ -206,7 +233,7 @@ function toRoman($num) {
             .page { border: none; margin: 0; box-shadow: none; }
             .page-break { page-break-after: always; }
             .no-print { display: none; } 
-            @page { size: A4 portrait; margin: 0; } 
+            @page { size: A4 portrait; margin: 3; } 
         }
     </style>
 </head>
@@ -303,15 +330,6 @@ function toRoman($num) {
     <div class="page-break"></div>
 
     <div class="page">
-<div class="kop-surat">
-    <img src="assets/img/logo/LOGO PT.jpg" alt="Logo Perusahaan" onerror="this.style.display='none'">
-    <div class="kop-text">
-        <h3>PT. HASTA BANGUN NUSANTARA</h3>
-        <h2 class ="tagline">General Contractor & Developer</h2>
-                <p>Jalan Cakraninggrat, Kauman, Kabupaten Ponorogo, Jawa Timur 63414</p>
-                <p>Telp: (0352) 123-456 | Email: kontak@hastabangun.co.id</p>
-    </div>
-</div>
 
         <h4 class="report-title">RINCIAN RENCANA ANGGARAN BIAYA UPAH</h4>
         
@@ -363,72 +381,43 @@ function toRoman($num) {
                 </tr>
             </thead>
 <tbody>
-    <?php
-    // Memulai pengecekan utama: apakah ada data detail?
-    if (count($detail_data) > 0):
-        
-        // Inisialisasi variabel untuk looping
-        $prevKategori = null;
-        $noKategori = 0;
-
-        // Mulai looping untuk setiap baris data
-        foreach ($detail_data as $row):
-
-            // Logika untuk menampilkan header kategori jika berbeda dari sebelumnya
-            if ($prevKategori !== $row['id_kategori']):
-                if ($prevKategori !== null):
-                    // Cetak sub total untuk kategori sebelumnya
-                    echo "<tr class='fw-bold'><td colspan='5' class='text-end'>Sub Total</td><td class='text-end'>Rp " . number_format($rekap_data[$prevKategori]['total'], 2, ',', '.') . "</td></tr>";
-                endif;
-                
-                // Siapkan untuk kategori baru
-                $noKategori++;
-                $noPekerjaan = 1;
-                echo "<tr class='category-row fw-bold'><td class='text-center'>" . toRoman($noKategori) . "</td><td colspan='5'>" . htmlspecialchars($row['nama_kategori']) . "</td></tr>";
-                $prevKategori = $row['id_kategori'];
-            endif;
-    ?>
-            <tr>
-                <td class="text-center"><?= $noPekerjaan++ ?></td>
-                <td class="text-start"><?= htmlspecialchars($row['uraian_pekerjaan']) ?></td>
-                <td class="text-center"><?= htmlspecialchars($row['nama_satuan']) ?></td>
-                <td class="text-end"><?= number_format($row['volume'], 2, ',', '.') ?></td>
-                <td class="text-end">Rp <?= number_format($row['harga_satuan'], 2, ',', '.') ?></td>
-                <td class="text-end">Rp <?= number_format($row['sub_total'], 2, ',', '.') ?></td>
-            </tr>
-    <?php
-        // Akhir dari looping foreach
-        endforeach;
-
-        // Setelah looping selesai, cetak sub total untuk kategori yang paling terakhir
+<?php
+$prevKategori = null;
+$noKategori = 0;
+foreach ($detail_data as $row):
+    if ($prevKategori !== $row['id_kategori']):
         if ($prevKategori !== null):
-            echo "<tr class='fw-bold'><td colspan='5' class='text-end'>Sub Total</td><td class='text-end'>Rp " . number_format($rekap_data[$prevKategori]['total'], 2, ',', '.') . "</td></tr>";
+            echo "<tr class='subtotal-row'><td colspan='5' class='text-end'>Sub Total</td>
+                    <td class='text-end'>Rp " . number_format($rekap_data[$prevKategori]['total'], 2, ',', '.') . "</td></tr>";
         endif;
-
-    // Bagian ELSE: ini hanya akan dieksekusi jika 'if (count($detail_data) > 0)' bernilai salah
-    else:
-        echo "<tr><td colspan='6' class='text-center'>Belum ada detail pekerjaan.</td></tr>";
-    
-    // Akhir dari struktur if-else utama
+        $noKategori++;
+        $noPekerjaan = 1;
+        echo "<tr class='category-row'><td class='text-center'>" . toRoman($noKategori) . "</td>
+                <td colspan='5'>" . htmlspecialchars($row['nama_kategori']) . "</td></tr>";
+        $prevKategori = $row['id_kategori'];
     endif;
-    ?>
+?>
+    <tr>
+        <td class="text-center"><?= $noPekerjaan++ ?></td>
+        <td class="text-start"><?= htmlspecialchars($row['uraian_pekerjaan']) ?></td>
+        <td class="text-center"><?= htmlspecialchars($row['nama_satuan']) ?></td>
+        <td class="text-end"><?= number_format($row['volume'], 2, ',', '.') ?></td>
+        <td class="text-end">Rp <?= number_format($row['harga_satuan'], 2, ',', '.') ?></td>
+        <td class="text-end">Rp <?= number_format($row['sub_total'], 2, ',', '.') ?></td>
+    </tr>
+<?php endforeach;
+if ($prevKategori !== null):
+    echo "<tr class='subtotal-row'><td colspan='5' class='text-end'>Sub Total</td>
+            <td class='text-end'>Rp " . number_format($rekap_data[$prevKategori]['total'], 2, ',', '.') . "</td></tr>";
+endif;
+?>
+    <tr class="total-row">
+        <td colspan="5" class="text-end">TOTAL KESELURUHAN</td>
+        <td class="text-end">Rp <?= number_format($grand_total, 2, ',', '.') ?></td>
+    </tr>
 </tbody>
-            <tfoot>
-                 <tr class="total-row">
-                    <td colspan="5" class="text-end">TOTAL KESELURUHAN</td>
-                    <td class="text-end">Rp <?= number_format($grand_total, 2, ',', '.') ?></td>
-                </tr>
-            </tfoot>
-        </table>
 
-         <div class="signature-section">
-            <div class="signature-box" style="float:right; text-align:center; width: 33%;">
-                 <p>Ponorogo, <?= date('d F Y') ?></p>
-                <p class="jabatan">Disetujui Oleh,</p>
-                <p class="nama"> <?=(htmlspecialchars($nama_direktur)) ?></p>
-            </div>
-            <div class="clearfix"></div>
-        </div>
+        </table>
     </div>
 
     <script>
