@@ -57,45 +57,40 @@ function is_active($pages, $current_page) {
                 </li>
                 
                 <!-- Sub-menu Rancang RAB (Hanya untuk Divisi Teknik & Admin) -->
-                <?php if (in_array($user_role, ['divisi teknik', 'admin', 'direktur', 'super admin'])): ?>
+                <?php if (in_array($user_role, ['divisi teknik', 'admin', 'super admin', 'direktur'])): ?>
                 <li class="nav-item <?= is_active(['transaksi_rab_material.php', 'detail_rab_material.php', 'input_detail_rab_material.php'], $current_page) ?>">
                     <a href="transaksi_rab_material.php">
-                        <i class="fas fa-calculator"></i>
-                        <p>Rancang RAB Material</p>
+                        <i class="fas fa-clipboard-list"></i>
+                        <p>Rancang Anggaran </p>
                     </a>
                 </li>
                 <?php endif; ?>
 
-                <!-- Sub-menu Pencatatan Pembelian (Untuk  Admin, & Direktur) -->
                 <?php if (in_array($user_role, [ 'admin', 'direktur', 'super admin'])): ?>
                 <li class="nav-item <?= is_active(['pencatatan_pembelian.php', 'detail_pembelian.php', 'input_detail_pembelian.php'], $current_page) ?>">
                     <a href="pencatatan_pembelian.php">
-                        <i class="fas fa-hand-holding-usd"></i>
-                        <p>Pencatatan Pembelian Material</p>
+                        <i class="fas fa-file-invoice-dollar"></i>
+                        <p>Pencatatan Pembelian</p>
                     </a>
                 </li>
-                <?php endif; ?>
-                                
-                <!-- Sub-menu Konfirmasi Material (Untuk PJ Proyek) -->
+                <?php endif; ?>                                
                 <?php if (in_array($user_role, [ 'pj proyek', 'super admin'])): ?>
                 <li class="nav-item <?= is_active(['penerimaan_material.php'], $current_page) ?>">
                     <a href="penerimaan_material.php">
-                        <i class="fas fa-hand-holding-usd"></i>
-                        <p>Konfirmasi Material Masuk</p>
+                        <i class="fas fa-box-open"></i>
+                        <p>Penerimaan Gudang</p>
                     </a>
                 </li>
                 <?php endif; ?>
                 
-                <!-- Sub-menu Distribusi (Untuk PJ Proyek, Admin, & Direktur) -->
                 <?php if (in_array($user_role, [ 'pj proyek', 'super admin'])): ?>
                 <li class="nav-item <?= is_active(['distribusi_material.php','detail_distribusi.php', 'input_detail_distribusi.php' ], $current_page) ?>">
                     <a href="distribusi_material.php">
-                        <i class="fas fa-hand-holding-usd"></i>
-                        <p>Distribusi Material</p>
+                        <i class="fas fa-truck"></i>
+                        <p>Distribusi ke Proyek</p>
                     </a>
                 </li>
                 <?php endif; ?>
-
 
                 <!-- ======================================================= -->
                 <!-- 3. GRUP MENU LAPORAN (Hanya Direktur & Admin)           -->
@@ -108,13 +103,13 @@ function is_active($pages, $current_page) {
                     <li class="nav-item <?= is_active(['laporan_pembelian.php'], $current_page) ?>">
                         <a href="laporan_pembelian.php">
                             <i class="fas fa-book"></i>
-                            <p>Detail Pembelian</p>
+                            <p>Laporan Pembelian</p>
                         </a>
                     </li>
                     <li class="nav-item <?= is_active(['laporan_distribusi.php'], $current_page) ?>">
                         <a href="laporan_distribusi.php">
                             <i class="fas fa-book"></i>
-                            <p>Detail Distribusi</p>
+                            <p>Laporan Distribusi</p>
                         </a>
                     </li>
                     <li class="nav-item <?= is_active(['lap_realisasi_anggaran_m.php'], $current_page) ?>">
@@ -127,7 +122,6 @@ function is_active($pages, $current_page) {
 
 
 <!-- 4. GRUP MENU MASTER DATA -->
-<?php if (in_array($user_role, ['admin', 'divisi teknik', 'direktur', 'super admin'])): ?>
     <li class="nav-section">
         <span class="sidebar-mini-icon"><i class="fa fa-ellipsis-h"></i></span>
         <h4 class="text-section">Master Data</h4>
@@ -136,7 +130,7 @@ function is_active($pages, $current_page) {
     <!-- Master Data Umum (Hanya Admin & Direktur) -->
     <?php if (in_array($user_role, ['admin', 'direktur'])): ?>
         <li class="nav-item <?= is_active(['master_perumahan.php'], $current_page) ?>">
-            <a href="master_perumahan.php"><i class="fas fa-home"></i><p>Master Perumahan</p></a>
+            <a href="master_perumahan.php"><i class="fas fa-map-marked-alt"></i><p>Master Perumahan</p></a>
         </li>
         <li class="nav-item <?= is_active(['master_mandor.php'], $current_page) ?>">
             <a href="master_mandor.php"><i class="fas fa-user"></i><p>Master Mandor</p></a>
@@ -144,12 +138,19 @@ function is_active($pages, $current_page) {
         <li class="nav-item <?= is_active(['master_user.php'], $current_page) ?>">
             <a href="master_user.php"><i class="fas fa-users-cog"></i><p>Master User</p></a>
         </li>
+        
+    <?php endif; ?>
+
+    <!-- Master Material (Hanya Admin & Direktur, Pj) -->
+    <?php if (in_array($user_role, ['admin', 'direktur','pj proyek'])): ?>
         <li class="nav-item <?= is_active(['master_material.php'], $current_page) ?>">
-            <a href="master_material.php"><i class="fas fa-users-cog"></i><p>Master Material</p></a>
+            <a href="master_material.php"><i class="fas fa-boxes"></i><p>Master Material</p></a>
         </li>
     <?php endif; ?>
+
     
     <!-- Master Data Teknis (Bisa diakses oleh Admin, Divisi Teknik, dan Direktur) -->
+    <?php if (in_array($user_role, ['admin', 'direktur', 'divisi teknik'])): ?>
     <li class="nav-item <?= is_active(['master_kategori.php'], $current_page) ?>">
         <a href="master_kategori.php"><i class="fas fa-tags"></i><p>Master Kategori</p></a>
     </li>
