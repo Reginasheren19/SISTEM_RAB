@@ -46,12 +46,12 @@ if ($result->num_rows === 1) {
         // Arahkan berdasarkan role
         switch (strtolower($data['role'])) {
             case 'admin':
-                // header("Location: admin/dashboard_admin.php");
-                header("Location: admin/dashboard_admin_m.php");                
+                header("Location: admin/dashboard_admin.php");
+                // header("Location: admin/dashboard_admin_m.php");                
                 break;
             case 'direktur':
-                // header("Location: admin/dashboard_direktur.php");
-                header("Location: admin/dashboard_direk_m.php");        
+                header("Location: admin/dashboard_direktur.php");
+                // header("Location: admin/dashboard_direk_m.php");        
                 break;
             case 'pj proyek':
                 // header("Location: admin/dashboard_pjproyek.php");
