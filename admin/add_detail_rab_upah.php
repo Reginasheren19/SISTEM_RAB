@@ -28,26 +28,27 @@ try {
     $stmtDelete->execute();
     $stmtDelete->close();
 
-    // Insert detail baru
-    $sqlInsert = "INSERT INTO detail_rab_upah (id_rab_upah, id_kategori, id_pekerjaan, volume, harga_satuan) VALUES (?, ?, ?, ?, ?)";
-    $stmtInsert = $koneksi->prepare($sqlInsert);
+// Insert detail baru
+$sqlInsert = "INSERT INTO detail_rab_upah (id_rab_upah, id_kategori, nomor_urut_kategori, id_pekerjaan, volume, harga_satuan) VALUES (?, ?, ?, ?, ?, ?)";
+$stmtInsert = $koneksi->prepare($sqlInsert);
 
-    $total_rab_upah = 0;
+$total_rab_upah = 0;
 
-    foreach ($details as $item) {
-        $id_kategori = intval($item['id_kategori']);
-        $id_pekerjaan = intval($item['id_pekerjaan']);
-        $volume = intval($item['volume']);
-        $harga_satuan = intval($item['harga_satuan']);
-        $sub_total = $volume * $harga_satuan;
+foreach ($details as $item) {
+    $id_kategori = intval($item['id_kategori']);
+    $id_pekerjaan = intval($item['id_pekerjaan']);
+    $volume = intval($item['volume']);
+    $harga_satuan = intval($item['harga_satuan']);
+    $nomor_urut_kategori = isset($item['nomor_urut_kategori']) ? intval($item['nomor_urut_kategori']) : null;
+    $sub_total = $volume * $harga_satuan;
 
-        $stmtInsert->bind_param("iiiii", $id_rab_upah, $id_kategori, $id_pekerjaan, $volume, $harga_satuan);
-        $stmtInsert->execute();
+    $stmtInsert->bind_param("iiiiii", $id_rab_upah, $id_kategori, $nomor_urut_kategori, $id_pekerjaan, $volume, $harga_satuan);
+    $stmtInsert->execute();
 
-        $total_rab_upah += $sub_total;
-    }
+    $total_rab_upah += $sub_total;
+}
+$stmtInsert->close();
 
-    $stmtInsert->close();
 
     // Update total_rab_upah di tabel rab_upah
     $sqlUpdate = "UPDATE rab_upah SET total_rab_upah = ? WHERE id_rab_upah = ?";

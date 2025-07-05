@@ -42,6 +42,7 @@ $data = mysqli_fetch_assoc($result);
 $sql_detail = "SELECT 
                  d.id_detail_rab_upah, 
                  d.id_kategori,
+                 d.nomor_urut_kategori,
                  d.id_pekerjaan, 
                  mp.uraian_pekerjaan, 
                  k.nama_kategori,
@@ -53,7 +54,9 @@ $sql_detail = "SELECT
                LEFT JOIN master_pekerjaan mp ON d.id_pekerjaan = mp.id_pekerjaan
                LEFT JOIN master_kategori k ON d.id_kategori = k.id_kategori
                LEFT JOIN master_satuan ms ON mp.id_satuan = ms.id_satuan
-               WHERE d.id_rab_upah = '$id_rab_upah'";;
+               WHERE d.id_rab_upah = '$id_rab_upah'
+               ORDER BY k.id_kategori ASC, d.id_detail_rab_upah ASC";
+
 
 $detail_result = mysqli_query($koneksi, $sql_detail);
 
@@ -118,7 +121,22 @@ $detail_result = mysqli_query($koneksi, $sql_detail);
     color: #1466cc;
     border-radius: 4px;
 }
+
+  /* CSS Table Ramping */
+  .table td, .table th {
+      padding: 3px 8px !important;
+      font-size: 13px !important;
+      line-height: 1.1 !important;
+      height: 28px !important;
+      vertical-align: middle !important;
+  }
+  .table .form-control {
+      padding: 2px 6px !important;
+      font-size: 13px !important;
+      height: 24px !important;
+  }
 </style>
+
 </head>
 <body>
     <div class="wrapper">
@@ -288,7 +306,7 @@ $detail_result = mysqli_query($koneksi, $sql_detail);
 
 
 <div class="card">
-  <div class="card-header">
+  <div class="card-header fw-bold">
     Detail RAB
   </div>
       <div class="card-body"> 
@@ -762,9 +780,9 @@ const pekerjaanRow = $(`
     // Simpan semua data ke server via AJAX
     $('#btnSimpanSemua').on('click', function() {
       const id_rab_upah = <?= json_encode($id_rab_upah) ?>;
-
       let dataToSend = [];
 
+        let kategoriUrutan = 1;
       $('#tblKategori tbody tr.kategori').each(function() {
         const kategoriId = $(this).data('kategori-id');
         const kategoriNama = $(this).find('td').eq(1).text().trim();
@@ -796,9 +814,11 @@ const pekerjaanRow = $(`
             id_pekerjaan,
             volume,
             harga_satuan,
-            sub_total
+            sub_total,
+            nomor_urut_kategori: kategoriUrutan  // <= INI YANG PENTING
           });
         });
+            kategoriUrutan++; // NAIIK SETIAP GANTI KATEGORI
       });
 
       console.log('Data yang dikirim:', dataToSend);
