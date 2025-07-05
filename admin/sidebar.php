@@ -41,7 +41,7 @@ function is_active($pages, $current_page) {
                 <!-- ======================================================= -->
                 <!-- 1. Menu Dashboard (Bisa dilihat semua role)             -->
                 <!-- ======================================================= -->
-                <li class="nav-item <?= is_active(['dashboard.php', 'dashboard_direktur.php', 'dashboard_admin.php', 'dashboard_teknik.php', 'dashboard_pjproyek.php'], $current_page) ?>">
+                <li class="nav-item <?= is_active(['dashboard.php', 'profile.php', 'dashboard_direktur.php', 'dashboard_admin.php', 'dashboard_teknik.php', 'dashboard_pjproyek.php'], $current_page) ?>">
                     <a href="dashboard.php">
                         <i class="fas fa-home"></i>
                         <p>Dashboard</p>

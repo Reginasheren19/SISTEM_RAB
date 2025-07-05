@@ -4,7 +4,8 @@ include("../config/koneksi_mysql.php");
 
 // Proteksi & Validasi
 if (!isset($_SESSION['id_user'])) {
-    die("Akses ditolak.");
+    header("Location: ../login.php");
+    exit;
 }
 $proyek_id = isset($_GET['proyek_id']) ? (int)$_GET['proyek_id'] : 0;
 if ($proyek_id === 0) {
@@ -12,8 +13,11 @@ if ($proyek_id === 0) {
 }
 
 // 1. Ambil Info Utama Proyek
-$info_sql = "SELECT CONCAT(mpe.nama_perumahan, ' - ', mpr.kavling) AS nama_proyek, mm.nama_mandor, u.nama_lengkap as pj_proyek FROM master_proyek mpr LEFT JOIN master_perumahan mpe ON mpr.id_perumahan = mpe.id_perumahan LEFT JOIN master_mandor mm ON mpr.id_mandor = mm.id_mandor LEFT JOIN master_user u ON mpr.id_user_pj = u.id_user WHERE mpr.id_proyek = $proyek_id";
-$proyek_info_result = mysqli_query($koneksi, $info_sql);
+$info_sql = "SELECT CONCAT(mpe.nama_perumahan, ' - ', mpr.kavling) AS nama_proyek, mm.nama_mandor, u.nama_lengkap as pj_proyek FROM master_proyek mpr LEFT JOIN master_perumahan mpe ON mpr.id_perumahan = mpe.id_perumahan LEFT JOIN master_mandor mm ON mpr.id_mandor = mm.id_mandor LEFT JOIN master_user u ON mpr.id_user_pj = u.id_user WHERE mpr.id_proyek = ?";
+$stmt_info = mysqli_prepare($koneksi, $info_sql);
+mysqli_stmt_bind_param($stmt_info, 'i', $proyek_id);
+mysqli_stmt_execute($stmt_info);
+$proyek_info_result = mysqli_stmt_get_result($stmt_info);
 $proyek_info = mysqli_fetch_assoc($proyek_info_result);
 if (!$proyek_info) {
     die("Proyek tidak ditemukan.");
@@ -43,7 +47,7 @@ if ($id_rab_upah > 0) {
 <html lang="en">
 <head>
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <title>Dashboard - Kaiadmin</title>
+    <title>Detail Proyek - Kaiadmin</title>
     <meta content="width=device-width, initial-scale=1.0, shrink-to-fit=no" name="viewport" />
     <link rel="icon" href="assets/img/logo/LOGO PT.jpg" type="image/x-icon" />
 
@@ -66,186 +70,22 @@ if ($id_rab_upah > 0) {
 </head>
 <body>
     <div class="wrapper">
-        <!-- Sidebar -->
-        <div class="sidebar" data-background-color="dark">
-            <div class="sidebar-logo">
-                <div class="logo-header" data-background-color="dark">
-                    <a href="dashboard.php" class="logo">
-                        <img src="assets/img/logo/LOGO PT.jpg" alt="Logo PT" class="navbar-brand" height="30" />
-                    </a>
-                    <button class="topbar-toggler more"><i class="gg-more-vertical-alt"></i></button>
-                </div>
-            </div>
-            <div class="sidebar-wrapper scrollbar scrollbar-inner">
-                <div class="sidebar-content">
-                    <ul class="nav nav-secondary">
-              <li class="nav-item">
-                <a href="dashboard.php">
-                  <i class="fas fa-home"></i>
-                  <p>Dashboard</p>
-                </a>
-              </li>
-              <li class="nav-section">
-                <span class="sidebar-mini-icon">
-                  <i class="fa fa-ellipsis-h"></i>
-                </span>
-                <h4 class="text-section">Transaksi RAB Upah</h4>
-              </li>
-              <li class="nav-item">
-                <a href="transaksi_rab_upah.php">
-                  <i class="fas fa-calculator"></i>
-                  <p>Rancang RAB Upah</p>
-                </a>
-              </li>
-                            <li class="nav-item">
-                <a href="pengajuan_upah.php">
-                  <i class="fas fa-hand-holding-usd"></i>
-                  <p>Pengajuah Upah</p>
-                </a>
-              </li>
-              <li class="nav-section">
-                <span class="sidebar-mini-icon">
-                  <i class="fa fa-ellipsis-h"></i>
-                </span>
-                <h4 class="text-section">Laporan</h4>
-              </li>
-                            <li class="nav-item">
-                <a href="lap_pengajuan_upah.php">
-                  <i class="fas fa-file"></i>
-                  <p>Pengajuan Upah</p>
-                </a>
-              </li>
-              <li class="nav-item">
-                <a href="lap_realisasi_anggaran.php">
-                  <i class="fas fa-file"></i>
-                  <p>Realisasi Anggaran</p>
-                </a>
-              </li>
-              <li class="nav-section">
-                <span class="sidebar-mini-icon">
-                  <i class="fa fa-ellipsis-h"></i>
-                </span>
-                <h4 class="text-section">Mastering Data</h4>
-              </li>
-<li class="nav-item">
-  <a href="master_perumahan.php">
-    <i class="fas fa-database"></i>
-    <p>Master Perumahan</p>
-  </a>
-</li>
-<li class="nav-item">
-  <a href="master_proyek.php">
-    <i class="fas fa-database"></i>
-    <p>Master Proyek</p>
-  </a>
-</li>
-<li class="nav-item">
-  <a href="master_mandor.php">
-    <i class="fas fa-database"></i>
-    <p>Master Mandor</p>
-  </a>
-</li>
-<li class="nav-item">
-  <a href="master_kategori.php">
-    <i class="fas fa-database"></i>
-    <p>Master Kategori</p>
-  </a>
-</li>
-<li class="nav-item">
-  <a href="master_satuan.php">
-    <i class="fas fa-database"></i>
-    <p>Master Satuan</p>
-  </a>
-</li>
-<li class="nav-item">
-  <a href="#" class="disabled">
-    <i class="fas fa-database"></i>
-    <p>Master Pekerjaan</p>
-  </a>
-</li>
-<li class="nav-item">
-  <a href="master_user.php">
-    <i class="fas fa-database"></i>
-    <p>Master User</p>
-  </a>
-</li>
-
-            </ul>
-          </div>
-        </div>
-      </div>
-      <!-- End Sidebar -->
+        <?php include 'sidebar.php'; ?>
 
         <div class="main-panel">
             <div class="main-header">
-                <!-- Logo Header -->
-                <div class="main-header-logo">
-                    <div class="logo-header" data-background-color="dark">
-                        <a href="dashboard.php" class="logo">
-                            <img src="assets/img/logo/LOGO PT.jpg" alt="Logo PT" class="navbar-brand" height="30" />
-                        </a>
-                        <div class="nav-toggle">
-                            <button class="btn btn-toggle toggle-sidebar"><i class="gg-menu-right"></i></button>
-                            <button class="btn btn-toggle sidenav-toggler"><i class="gg-menu-left"></i></button>
-                        </div>
-                        <button class="topbar-toggler more"><i class="gg-more-vertical-alt"></i></button>
-                    </div>
-                </div>
-                <!-- End Logo Header -->
-                <!-- Navbar Header -->
-                <nav class="navbar navbar-header navbar-header-transparent navbar-expand-lg border-bottom">
-                    <div class="container-fluid">
-                        <ul class="navbar-nav topbar-nav ms-md-auto align-items-center">
-                            <li class="nav-item topbar-user dropdown hidden-caret">
-                                <a class="dropdown-toggle profile-pic" data-bs-toggle="dropdown" href="#" aria-expanded="false">
-                                    <div class="avatar-sm">
-                                        <img src="../uploads/user_photos/<?= !empty($_SESSION['profile_pic']) ? htmlspecialchars($_SESSION['profile_pic']) : 'default.jpg' ?>" alt="Foto Profil" class="avatar-img rounded-circle" onerror="this.onerror=null; this.src='assets/img/profile.jpg';">
-                                    </div>
-                                    <span class="profile-username">
-                                        <span class="op-7">Selamat Datang,</span>
-                                        <span class="fw-bold"><?= htmlspecialchars($_SESSION['nama_lengkap'] ?? 'Guest') ?></span>
-                                    </span>
-                                </a>
-                                <ul class="dropdown-menu dropdown-user animated fadeIn">
-                                    <div class="dropdown-user-scroll scrollbar-outer">
-                                        <li>
-                                            <div class="user-box">
-                                                <div class="avatar-lg">
-                                                    <img src="../uploads/user_photos/<?= !empty($_SESSION['profile_pic']) ? htmlspecialchars($_SESSION['profile_pic']) : 'default.jpg' ?>" alt="Foto Profil" class="avatar-img rounded" onerror="this.onerror=null; this.src='assets/img/profile.jpg';">
-                                                </div>
-                                                <div class="u-text">
-                                                    <h4><?= htmlspecialchars($_SESSION['nama_lengkap'] ?? 'Guest') ?></h4>
-                                                    <p class="text-muted"><?= htmlspecialchars($_SESSION['username'] ?? 'guest') ?></p>
-                                                    <a href="profile.php" class="btn btn-xs btn-secondary btn-sm">Lihat Profil</a>
-                                                </div>
-                                            </div>
-                                        </li>
-                                        <li>
-                                            <div class="dropdown-divider"></div>
-                                            <a class="dropdown-item" href="profile.php">Pengaturan Akun</a>
-                                            <div class="dropdown-divider"></div>
-                                            <a class="dropdown-item" href="../logout.php">Logout</a>
-                                        </li>
-                                    </div>
-                                </ul>
-                            </li>
-                        </ul>
-                    </div>
-                </nav>
-                <!-- End Navbar -->
+                <!-- Kode Navbar Header di sini -->
             </div>
-            <div class="container">
-                <div class="page-inner">
-                    <div class="page-header">
-                        <h3 class="fw-bold mb-3">Dashboard Proyek</h3>
-                        <ul class="breadcrumbs mb-3">
-                            <li class="nav-home"><a href="dashboard.php"><i class="icon-home"></i></a></li>
-                            <li class="separator"><i class="icon-arrow-right"></i></li>
-                            <li class="nav-item"><a href="lap_realisasi_anggaran.php">Monitoring Anggaran</a></li>
-                            <li class="separator"><i class="icon-arrow-right"></i></li>
-                            <li class="nav-item"><a>Detail Proyek</a></li>
-                        </ul>
-                    </div>
+        <div class="container">
+          <div class="page-inner">
+            <div class="page-header">
+                <h3 class="fw-bold mb-3">Dashboard Rekapitulasi Proyek</h3>
+                <div class="ms-auto">
+                    <a href="lap_realisasi_anggaran.php" class="btn btn-secondary btn-round">
+                        <i class="fas fa-arrow-left"></i> Kembali ke Daftar
+                    </a>
+                </div>
+            </div>
                     <div class="row">
                         <div class="col-md-12">
                             <div class="card">
@@ -258,23 +98,12 @@ if ($id_rab_upah > 0) {
                                             </div>
                                         </div>
                                         <div class="col-md-4">
-<h5>Informasi Proyek</h5>
-<div class="row">
-    <div class="col-md-6">
-        <dl>
-            <dt>PJ Proyek</dt>
-            <dd><?= htmlspecialchars($proyek_info['pj_proyek']) ?></dd>
-        </dl>
-    </div>
-    <div class="col-md-6">
-        <dl>
-            <dt>Mandor</dt>
-            <dd><?= htmlspecialchars($proyek_info['nama_mandor']) ?></dd>
-        </dl>
-    </div>
-</div>
-
-                                            <h5>Ringkasan Keuangan</h5>
+                                            <h5>Informasi Proyek</h5>
+                                            <dl class="row">
+                                                <dt class="col-5">PJ Proyek</dt><dd class="col-7">: <?= htmlspecialchars($proyek_info['pj_proyek']) ?></dd>
+                                                <dt class="col-5">Mandor</dt><dd class="col-7">: <?= htmlspecialchars($proyek_info['nama_mandor']) ?></dd>
+                                            </dl>
+                                            <h5 class="mt-3">Ringkasan Keuangan</h5>
                                             <ul class="list-group list-group-flush">
                                                 <li class="list-group-item d-flex justify-content-between"><span>Total Anggaran (RAB)</span> <strong class="text-primary">Rp <?= number_format($total_rab,0,',','.') ?></strong></li>
                                                 <li class="list-group-item d-flex justify-content-between"><span>Total Realisasi</span> <strong class="text-success">Rp <?= number_format($total_realisasi,0,',','.') ?></strong></li>
@@ -299,7 +128,7 @@ if ($id_rab_upah > 0) {
                                                 <tr><td colspan="4" class="text-center text-muted">Belum ada riwayat pengajuan.</td></tr>
                                             <?php else: foreach($pengajuan_history as $hist): ?>
                                                 <tr>
-                                                    <td class="text-center">PU<?= $hist['id_pengajuan_upah'] ?></td>
+                                                    <td class="text-center"><a href="get_pengajuan_upah.php?id_pengajuan_upah=<?= $hist['id_pengajuan_upah'] ?>">PU<?= $hist['id_pengajuan_upah'] ?></a></td>
                                                     <td class="text-center"><?= date('d M Y', strtotime($hist['tanggal_pengajuan'])) ?></td>
                                                     <td class="text-end">Rp <?= number_format($hist['total_pengajuan'],0,',','.') ?></td>
                                                     <td class="text-center"><span class="badge bg-info"><?= ucwords($hist['status_pengajuan']) ?></span></td>
@@ -317,59 +146,65 @@ if ($id_rab_upah > 0) {
         </div>
     </div>
     <!-- Core JS Files -->
-    <!--   Core JS Files   -->
     <script src="assets/js/core/jquery-3.7.1.min.js"></script>
     <script src="assets/js/core/popper.min.js"></script>
     <script src="assets/js/core/bootstrap.min.js"></script>
-
-    <!-- jQuery Scrollbar -->
     <script src="assets/js/plugin/jquery-scrollbar/jquery.scrollbar.min.js"></script>
-
-    <!-- Chart JS -->
+    
+    <!-- [WAJIB] Pastikan path ke Chart.js ini sudah benar -->
     <script src="assets/js/plugin/chart.js/chart.min.js"></script>
-
-    <!-- jQuery Sparkline -->
-    <script src="assets/js/plugin/jquery.sparkline/jquery.sparkline.min.js"></script>
-
-    <!-- Chart Circle -->
-    <script src="assets/js/plugin/chart-circle/circles.min.js"></script>
-
-    <!-- Datatables -->
-    <script src="assets/js/plugin/datatables/datatables.min.js"></script>
-
-    <!-- Bootstrap Notify -->
-    <script src="assets/js/plugin/bootstrap-notify/bootstrap-notify.min.js"></script>
-
-    <!-- jQuery Vector Maps -->
-    <script src="assets/js/plugin/jsvectormap/jsvectormap.min.js"></script>
-    <script src="assets/js/plugin/jsvectormap/world.js"></script>
-
-    <!-- Sweet Alert -->
-    <script src="assets/js/plugin/sweetalert/sweetalert.min.js"></script>
-
-    <!-- Kaiadmin JS -->
+    
     <script src="assets/js/kaiadmin.min.js"></script>
-
-    <!-- Kaiadmin DEMO methods, don't include it in your project! -->
-    <script src="assets/js/setting-demo.js"></script>
-    <script src="assets/js/demo.js"></script>
+    
+    <!-- [PERBAIKAN] Kode untuk membuat chart dibungkus agar aman -->
     <script>
-        const ctx = document.getElementById('proyekChart').getContext('2d');
-        new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: ['Anggaran', 'Realisasi', 'Sisa'],
-                datasets: [{
-                    label: 'Status Keuangan Proyek (Rp)',
-                    data: [<?= $total_rab ?>, <?= $total_realisasi ?>, <?= $sisa_anggaran ?>],
-                    backgroundColor: ['#1d7af3', '#28a745', '#dc3545'],
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: { y: { beginAtZero: true, ticks: { callback: function(value) { return 'Rp ' + new Intl.NumberFormat('id-ID').format(value); } } } }
+        document.addEventListener("DOMContentLoaded", function() {
+            // Pastikan elemen canvas ada sebelum menjalankan script
+            const canvasElement = document.getElementById('proyekChart');
+            if (canvasElement) {
+                const ctx = canvasElement.getContext('2d');
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Anggaran', 'Realisasi', 'Sisa'],
+                        datasets: [{
+                            label: 'Status Keuangan Proyek (Rp)',
+                            data: [<?= $total_rab ?>, <?= $total_realisasi ?>, <?= $sisa_anggaran ?>],
+                            backgroundColor: ['#1d7af3', '#28a745', '#dc3545'],
+                            borderColor: ['#1d7af3', '#28a745', '#dc3545'],
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { 
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.dataset.label || '';
+                                        if (label) {
+                                            label += ': ';
+                                        }
+                                        if (context.parsed.y !== null) {
+                                            label += new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(context.parsed.y);
+                                        }
+                                        return label;
+                                    }
+                                }
+                            }
+                        },
+                        scales: { 
+                            y: { 
+                                beginAtZero: true, 
+                                ticks: { 
+                                    callback: function(value) { return 'Rp ' + new Intl.NumberFormat('id-ID').format(value); } 
+                                } 
+                            } 
+                        }
+                    }
+                });
             }
         });
     </script>

@@ -48,8 +48,14 @@ if ($id_rab_upah) {
 $report_data = [];
 $detail_sql = "
     SELECT 
-        dr.id_detail_rab_upah, k.nama_kategori, mp.uraian_pekerjaan, dr.sub_total AS nilai_anggaran,
-        dpu.id_pengajuan_upah, dpu.progress_pekerjaan, pu.status_pengajuan
+        dr.id_detail_rab_upah, 
+        k.nama_kategori, 
+        mp.uraian_pekerjaan, 
+        dr.sub_total AS nilai_anggaran,
+        dpu.id_pengajuan_upah, 
+        dpu.progress_pekerjaan, 
+        pu.status_pengajuan,
+        dr.nomor_urut_kategori  -- [PENTING] Ambil kolom nomor urut
     FROM detail_rab_upah dr
     INNER JOIN rab_upah ru ON dr.id_rab_upah = ru.id_rab_upah
     LEFT JOIN master_pekerjaan mp ON dr.id_pekerjaan = mp.id_pekerjaan
@@ -57,7 +63,10 @@ $detail_sql = "
     LEFT JOIN detail_pengajuan_upah dpu ON dr.id_detail_rab_upah = dpu.id_detail_rab_upah
     LEFT JOIN pengajuan_upah pu ON dpu.id_pengajuan_upah = pu.id_pengajuan_upah
     WHERE ru.id_proyek = $proyek_id
-    ORDER BY k.id_kategori, dr.id_detail_rab_upah, pu.tanggal_pengajuan
+    ORDER BY 
+        dr.nomor_urut_kategori ASC, -- [DIUBAH] Mengurutkan berdasarkan urutan input
+        dr.id_detail_rab_upah ASC, 
+        pu.tanggal_pengajuan ASC
 ";
 $result_detail = mysqli_query($koneksi, $detail_sql);
 if (!$result_detail) { die("Gagal mengambil data detail progres: " . mysqli_error($koneksi)); }
