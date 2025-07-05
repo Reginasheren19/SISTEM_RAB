@@ -101,140 +101,10 @@ $detail_result = mysqli_query($koneksi, $sql_detail);
     <!-- CSS Just for demo purpose, don't include it in your project -->
     <link rel="stylesheet" href="assets/css/demo.css" />
   </head>
-  <body>
+<body>
     <div class="wrapper">
-        <!-- Sidebar -->
-        <div class="sidebar" data-background-color="dark">
-            <div class="sidebar-logo">
-                <div class="logo-header" data-background-color="dark">
-                    <a href="dashboard.php" class="logo">
-                        <img src="assets/img/logo/LOGO PT.jpg" alt="Logo PT" class="navbar-brand" height="30" />
-                    </a>
-                    <button class="topbar-toggler more"><i class="gg-more-vertical-alt"></i></button>
-                </div>
-            </div>
-            <div class="sidebar-wrapper scrollbar scrollbar-inner">
-                <div class="sidebar-content">
-                    <ul class="nav nav-secondary">
-              <li class="nav-item">
-                <a href="dashboard.php">
-                  <i class="fas fa-home"></i>
-                  <p>Dashboard</p>
-                </a>
-              </li>
-              <li class="nav-section">
-                <span class="sidebar-mini-icon">
-                  <i class="fa fa-ellipsis-h"></i>
-                </span>
-                <h4 class="text-section">Transaksi RAB Upah</h4>
-              </li>
-              <li class="nav-item">
-                <a href="transaksi_rab_upah.php">
-                  <i class="fas fa-pen-square"></i>
-                  <p>Rancang RAB Upah</p>
-                </a>
-              </li>
-                            <li class="nav-item">
-                <a href="pengajuan_upah.php">
-                  <i class="fas fa-pen-square"></i>
-                  <p>Pengajuah Upah</p>
-                </a>
-              </li>
-              <li class="nav-section">
-                <span class="sidebar-mini-icon">
-                  <i class="fa fa-ellipsis-h"></i>
-                </span>
-                <h4 class="text-section">Transaksi RAB Material</h4>
-              </li>
-              <li class="nav-item">
-                <a href="transaksi_rab_material.php">
-                  <i class="fas fa-pen-square"></i>
-                  <p>Rancang RAB Material</p>
-                </a>
-              </li>
-              <li class="nav-item">
-                <a href="pencatatan_pembelian.php">
-                  <i class="fas fa-pen-square"></i>
-                  <p>Pencatatan Pembelian</p>
-                </a>
-              </li>
-              <li class="nav-item">
-                <a href="distribusi_material.php">
-                  <i class="fas fa-truck"></i>
-                  <p>Distribusi Material</p>
-                </a>
-              </li>
-              <li class="nav-section">
-                <span class="sidebar-mini-icon">
-                  <i class="fa fa-ellipsis-h"></i>
-                </span>
-                <h4 class="text-section">Laporan</h4>
-              </li>
-              <li class="nav-item">
-                <a href="#">
-                  <i class="fas fa-file"></i>
-                  <p>Laporan RAB Upah</p>
-                </a>
-              </li>
-              <li class="nav-section">
-                <span class="sidebar-mini-icon">
-                  <i class="fa fa-ellipsis-h"></i>
-                </span>
-                <h4 class="text-section">Mastering Data</h4>
-              </li>
-              <li class="nav-item">
-                <a href="master_perumahan.php">
-                  <i class="fas fa-database"></i>
-                  <p>Master Perumahan</p>
-                </a>
-              </li>
-              <li class="nav-item">
-                <a href="master_proyek.php">
-                  <i class="fas fa-database"></i>
-                  <p>Master Proyek</p>
-                </a>
-              </li>
-              <li class="nav-item">
-                <a href="master_mandor.php">
-                  <i class="fas fa-database"></i>
-                  <p>Master Mandor</p>
-                </a>
-              </li>
-              <li class="nav-item">
-                <a href="master_kategori.php">
-                  <i class="fas fa-database"></i>
-                  <p>Master Kategori</p>
-                </a>
-              </li>
-              <li class="nav-item">
-                <a href="master_satuan.php">
-                  <i class="fas fa-database"></i>
-                  <p>Master Satuan</p>
-                </a>
-              </li>
-              <li class="nav-item">
-                <a href="master_pekerjaan.php">
-                  <i class="fas fa-database"></i>
-                  <p>Master Pekerjaan</p>
-                </a>
-              </li>
-              <li class="nav-item">
-                <a href="master_material.php">
-                  <i class="fas fa-database"></i>
-                  <p>Master Material</p>
-                </a>
-              </li>
-              <li class="nav-item">
-                <a href="master_user.php">
-                  <i class="fas fa-database"></i>
-                  <p>Master User</p>
-                </a>
-              </li>
-            </ul>
-          </div>
-        </div>
-      </div>
-      <!-- End Sidebar -->
+        <?php include 'sidebar_m.php'; ?>
+
 
         <div class="main-panel">
             <div class="main-header">
@@ -242,7 +112,7 @@ $detail_result = mysqli_query($koneksi, $sql_detail);
                 <div class="main-header-logo">
                     <div class="logo-header" data-background-color="dark">
                         <a href="dashboard.php" class="logo">
-                            <img src="assets/img/logo/LOGO PT.jpg" alt="Logo PT" class="navbar-brand" height="30" />
+                            <img src="../assets/img/logo/LOGO PT.jpg" alt="Logo PT" class="navbar-brand" height="30" />
                         </a>
                         <div class="nav-toggle">
                             <button class="btn btn-toggle toggle-sidebar"><i class="gg-menu-right"></i></button>
@@ -259,7 +129,7 @@ $detail_result = mysqli_query($koneksi, $sql_detail);
                             <li class="nav-item topbar-user dropdown hidden-caret">
                                 <a class="dropdown-toggle profile-pic" data-bs-toggle="dropdown" href="#" aria-expanded="false">
                                     <div class="avatar-sm">
-                                        <img src="../uploads/user_photos/<?= !empty($_SESSION['profile_pic']) ? htmlspecialchars($_SESSION['profile_pic']) : 'default.jpg' ?>" alt="Foto Profil" class="avatar-img rounded-circle" onerror="this.onerror=null; this.src='assets/img/profile.jpg';">
+                                        <img src="../../uploads/user_photos/<?= !empty($_SESSION['profile_pic']) ? htmlspecialchars($_SESSION['profile_pic']) : 'default.jpg' ?>" alt="Foto Profil" class="avatar-img rounded-circle" onerror="this.onerror=null; this.src='../assets/img/profile.jpg';">
                                     </div>
                                     <span class="profile-username">
                                         <span class="op-7">Hi,</span>
@@ -271,7 +141,7 @@ $detail_result = mysqli_query($koneksi, $sql_detail);
                                         <li>
                                             <div class="user-box">
                                                 <div class="avatar-lg">
-                                                    <img src="../uploads/user_photos/<?= !empty($_SESSION['profile_pic']) ? htmlspecialchars($_SESSION['profile_pic']) : 'default.jpg' ?>" alt="Foto Profil" class="avatar-img rounded" onerror="this.onerror=null; this.src='assets/img/profile.jpg';">
+                                                    <img src="../../uploads/user_photos/<?= !empty($_SESSION['profile_pic']) ? htmlspecialchars($_SESSION['profile_pic']) : 'default.jpg' ?>" alt="Foto Profil" class="avatar-img rounded" onerror="this.onerror=null; this.src='../assets/img/profile.jpg';">
                                                 </div>
                                                 <div class="u-text">
                                                     <h4><?= htmlspecialchars($_SESSION['nama_lengkap'] ?? 'Guest') ?></h4>
