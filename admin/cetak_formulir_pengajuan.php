@@ -51,18 +51,27 @@ $detail_sql = "
         (SELECT COALESCE(SUM(prev_dpu.nilai_upah_diajukan), 0) 
          FROM detail_pengajuan_upah prev_dpu
          JOIN pengajuan_upah prev_pu ON prev_dpu.id_pengajuan_upah = prev_pu.id_pengajuan_upah
-         WHERE prev_dpu.id_detail_rab_upah = dr.id_detail_rab_upah AND prev_pu.id_pengajuan_upah < $id_pengajuan_upah AND prev_pu.status_pengajuan = 'dibayar'
+         WHERE prev_dpu.id_detail_rab_upah = dr.id_detail_rab_upah AND prev_pu.id_pengajuan_upah < ? AND prev_pu.status_pengajuan = 'dibayar'
         ) AS pencairan_lalu
     FROM detail_pengajuan_upah dpu
     JOIN detail_rab_upah dr ON dpu.id_detail_rab_upah = dr.id_detail_rab_upah
     LEFT JOIN master_pekerjaan mp ON dr.id_pekerjaan = mp.id_pekerjaan
     LEFT JOIN master_kategori k ON dr.id_kategori = k.id_kategori
-    WHERE dpu.id_pengajuan_upah = $id_pengajuan_upah
-    ORDER BY k.id_kategori, mp.id_pekerjaan
+    WHERE dpu.id_pengajuan_upah = ?
+    ORDER BY 
+        dr.nomor_urut_kategori ASC, -- [DIUBAH] Mengurutkan berdasarkan urutan input
+        dr.id_detail_rab_upah ASC   -- Mengurutkan item pekerjaan di dalam kategori
 ";
-$detail_result = mysqli_query($koneksi, $detail_sql);
-if (!$detail_result) { die("Gagal mengambil detail pekerjaan: " . mysqli_error($koneksi)); }
+// [PENTING] Eksekusi query menggunakan Prepared Statement
+$stmt_detail = mysqli_prepare($koneksi, $detail_sql);
+// Bind parameter dua kali karena ada dua '?'
+mysqli_stmt_bind_param($stmt_detail, 'ii', $id_pengajuan_upah, $id_pengajuan_upah);
+mysqli_stmt_execute($stmt_detail);
+$detail_result = mysqli_stmt_get_result($stmt_detail);
 
+if (!$detail_result) { 
+    die("Gagal mengambil detail pekerjaan: " . mysqli_error($koneksi)); 
+}
 // [BARU & AMAN] 4. Ambil Bukti Progress Pekerjaan
 $bukti_progress = [];
 $sql_bukti = "SELECT nama_file, path_file FROM bukti_pengajuan_upah WHERE id_pengajuan_upah = ?";
@@ -122,6 +131,18 @@ setlocale(LC_TIME, 'id_ID.utf8', 'id_ID');
     font-size: 14px;
     margin: 0;
 }
+        .fw-bold { font-weight: bold; }
+        
+        /* [PERBAIKAN] CSS untuk membuat baris kategori tebal dan berwarna */
+        .category-row { 
+            background-color: #DDEBF7; /* Warna biru muda */
+            font-weight: bold; 
+        }
+                /* [PERBAIKAN] Tambahkan ini agar warna latar ikut tercetak */
+        .table-light, .category-row {
+            -webkit-print-color-adjust: exact !important;
+            color-adjust: exact !important;
+        }
     .tagline { font-style: italic; }
     .report-title { text-align: center; margin-bottom: 20px; font-weight: bold; text-decoration: underline; font-size: 16px;}
     .info-section .table td { border: none !important; padding: 1px 0; font-size: 12px; }
@@ -286,7 +307,7 @@ setlocale(LC_TIME, 'id_ID.utf8', 'id_ID');
     <?php if (!empty($info['bukti_bayar'])): ?>
     <h7 class="mt-4">B. Bukti Pembayaran</h6>
     <div class="row">
-        <div class="col-12">
+        <div class="col-12 text-start">
             <img src="../<?= htmlspecialchars($info['bukti_bayar']) ?>" class="lampiran-img" alt="Bukti Pembayaran">
         </div>
     </div>
