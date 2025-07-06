@@ -20,8 +20,8 @@ switch ($user_role) {
         break;
     
     case 'direktur':
-        //header("Location: dashboard_direktur.php");
-        header("Location: dashboard_direk_m.php");
+        header("Location: dashboard_direktur.php");
+        // header("Location: dashboard_direk_m.php");
         break;
         
     case 'pj proyek':
