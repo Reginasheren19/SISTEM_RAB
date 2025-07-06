@@ -2,9 +2,7 @@
 session_start();
 include("../config/koneksi_mysql.php");
 
-// =============================================================================
-// BAGIAN 1: LOGIKA FILTER (DISEDERHANAKAN)
-// =============================================================================
+// BAGIAN 1: LOGIKA FILTER
 if (isset($_POST['filter'])) {
     $_SESSION['ld_tanggal_mulai'] = $_POST['tanggal_mulai'];
     $_SESSION['ld_tanggal_selesai'] = $_POST['tanggal_selesai'];
@@ -13,53 +11,55 @@ if (isset($_POST['filter'])) {
     header("Location: " . $_SERVER['PHP_SELF']);
     exit();
 }
-
 if (isset($_POST['reset'])) {
     unset($_SESSION['ld_tanggal_mulai'], $_SESSION['ld_tanggal_selesai'], $_SESSION['ld_id_proyek'], $_SESSION['ld_id_material']);
     header("Location: " . $_SERVER['PHP_SELF']);
     exit();
 }
-
-// Ambil nilai filter dari session
 $tanggal_mulai = $_SESSION['ld_tanggal_mulai'] ?? date('Y-m-01');
 $tanggal_selesai = $_SESSION['ld_tanggal_selesai'] ?? date('Y-m-t');
 $id_proyek_filter = $_SESSION['ld_id_proyek'] ?? '';
 $id_material_filter = $_SESSION['ld_id_material'] ?? '';
 
-// =============================================================================
-// BAGIAN 2: LOGIKA SUB-JUDUL (TETAP SAMA)
-// =============================================================================
+// BAGIAN 2: LOGIKA SUB-JUDUL
 $sub_judul_parts = ["Periode: " . date('d M Y', strtotime($tanggal_mulai)) . " s/d " . date('d M Y', strtotime($tanggal_selesai))];
-// Anda bisa menambahkan logika untuk menampilkan nama filter proyek/material di sini jika mau
 $sub_judul = implode(" | ", $sub_judul_parts);
 
-// =============================================================================
-// BAGIAN 3: QUERY PENGAMBILAN DATA (DIUBAH)
-// =============================================================================
-
-// Query untuk mengisi dropdown filter (Perumahan dihapus, Proyek ditambahkan)
+// BAGIAN 3: QUERY PENGAMBILAN DATA
 $proyek_result = mysqli_query($koneksi, "SELECT p.id_proyek, CONCAT(pr.nama_perumahan, ' - Kavling ', p.kavling) AS nama_proyek_lengkap FROM master_proyek p JOIN master_perumahan pr ON p.id_perumahan = pr.id_perumahan ORDER BY nama_proyek_lengkap ASC");
 $material_result = mysqli_query($koneksi, "SELECT id_material, nama_material FROM master_material ORDER BY nama_material ASC");
 
-// Query utama laporan yang dinamis
 $sql_parts = [
-    "select" => "SELECT DISTINCT d.id_distribusi, d.tanggal_distribusi, d.keterangan_umum, u.nama_lengkap AS nama_pj, CONCAT(pr.nama_perumahan, ' - Kavling ', p.kavling) AS nama_proyek_lengkap",
-    "from"   => "FROM distribusi_material d",
-    "join"   => "LEFT JOIN master_user u ON d.id_user_pj = u.id_user LEFT JOIN master_proyek p ON d.id_proyek = p.id_proyek LEFT JOIN master_perumahan pr ON p.id_perumahan = pr.id_perumahan",
+    "select" => "
+        SELECT 
+            d.id_distribusi, d.tanggal_distribusi, d.keterangan_umum, 
+            u.nama_lengkap AS nama_pj,
+            CONCAT(pr.nama_perumahan, ' - Kavling ', p.kavling) AS nama_proyek_lengkap,
+            m.nama_material,
+            s.nama_satuan,
+            dd.jumlah_distribusi
+    ",
+    "from"   => "FROM detail_distribusi dd",
+    "join"   => "
+        JOIN distribusi_material d ON dd.id_distribusi = d.id_distribusi
+        JOIN master_material m ON dd.id_material = m.id_material
+        LEFT JOIN master_satuan s ON m.id_satuan = s.id_satuan
+        LEFT JOIN master_user u ON d.id_user_pj = u.id_user 
+        LEFT JOIN master_proyek p ON d.id_proyek = p.id_proyek 
+        LEFT JOIN master_perumahan pr ON p.id_perumahan = pr.id_perumahan
+    ",
     "where"  => "WHERE d.tanggal_distribusi BETWEEN ? AND ?",
-    "order"  => "ORDER BY d.tanggal_distribusi DESC"
+    "order"  => "ORDER BY d.id_distribusi DESC, d.tanggal_distribusi DESC"
 ];
 $params = [$tanggal_mulai, $tanggal_selesai];
 $param_types = "ss";
 
-// Menambahkan kondisi filter secara dinamis
 if (!empty($id_proyek_filter)) {
     $sql_parts['where'] .= " AND d.id_proyek = ?";
     $params[] = $id_proyek_filter;
     $param_types .= "i";
 }
 if (!empty($id_material_filter)) {
-    $sql_parts['join'] .= " JOIN detail_distribusi dd ON d.id_distribusi = dd.id_distribusi";
     $sql_parts['where'] .= " AND dd.id_material = ?";
     $params[] = $id_material_filter;
     $param_types .= "i";
@@ -67,10 +67,23 @@ if (!empty($id_material_filter)) {
 
 $sql = implode(" ", $sql_parts);
 $stmt = mysqli_prepare($koneksi, $sql);
+if($stmt === false) { die("Query Gagal Disiapkan: " . mysqli_error($koneksi)); }
 mysqli_stmt_bind_param($stmt, $param_types, ...$params);
 mysqli_stmt_execute($stmt);
 $result = mysqli_stmt_get_result($stmt);
 
+// [BARU] Siapkan data dan hitung rowspan
+$data_laporan = [];
+$rowspan_counts = [];
+if ($result) {
+    while ($row = mysqli_fetch_assoc($result)) {
+        $data_laporan[] = $row;
+        if (!isset($rowspan_counts[$row['id_distribusi']])) {
+            $rowspan_counts[$row['id_distribusi']] = 0;
+        }
+        $rowspan_counts[$row['id_distribusi']]++;
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -251,50 +264,62 @@ $result = mysqli_stmt_get_result($stmt);
                             </div>
                         </div>
                         <div class="card-body">
-                            <div class="table-responsive">
-                                <table class="table table-striped table-hover">
-                                    <thead>
-                                        <tr>
-                                            <th>No.</th>
-                                            <th>ID Distribusi</th>
-                                            <th>Tanggal</th>
-                                            <th>Proyek Tujuan</th>
-                                            <th>Didistribusikan Oleh</th>
-                                            <th>Keterangan</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php 
-                                        if ($result && mysqli_num_rows($result) > 0):
-                                            $nomor = 1;
-                                            while ($row = mysqli_fetch_assoc($result)):
-                                                $tahun_distribusi = date('Y', strtotime($row['tanggal_distribusi']));
-                                                $formatted_id = 'DIST' . $row['id_distribusi'] . $tahun_distribusi;
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>No.</th>
+                                        <th>ID Distribusi</th>
+                                        <th>Tanggal</th>
+                                        <th>Proyek Tujuan</th>
+                                        <th>Material</th>
+                                        <th class="text-end">Jumlah</th>
+                                        <th>Oleh</th>
+                                        <th>Keterangan</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php 
+                                    if (!empty($data_laporan)):
+                                        $nomor = 1;
+                                        $last_id = null;
+                                        foreach ($data_laporan as $row):
+                                            $tahun_distribusi = date('Y', strtotime($row['tanggal_distribusi']));
+                                            $formatted_id = 'DIST' . $row['id_distribusi'] . $tahun_distribusi;
+                                    ?>
+                                    <tr>
+                                        <?php if ($row['id_distribusi'] != $last_id): 
+                                            $rowspan = $rowspan_counts[$row['id_distribusi']];
                                         ?>
-                                            <tr>
-                                                <td><?= $nomor++ ?></td>
-                                                <td><?= htmlspecialchars($formatted_id) ?></td>
-                                                <td><?= date("d F Y", strtotime($row['tanggal_distribusi'])) ?></td>
-                                                <td><?= htmlspecialchars($row['nama_proyek_lengkap']) ?></td>
-                                                <td><?= htmlspecialchars($row['nama_pj']) ?></td>
-                                                <td><?= htmlspecialchars($row['keterangan_umum']) ?></td>
-                                            </tr>
-                                        <?php 
-                                            endwhile; 
-                                        else:
-                                        ?>
-                                            <tr>
-                                                <td colspan="6" class="text-center">Tidak ada data distribusi pada periode ini.</td>
-                                            </tr>
+                                            <td rowspan="<?= $rowspan ?>" style="vertical-align: top;"><?= $nomor++ ?></td>
+                                            <td rowspan="<?= $rowspan ?>" style="vertical-align: top;"><?= htmlspecialchars($formatted_id) ?></td>
+                                            <td rowspan="<?= $rowspan ?>" style="vertical-align: top;"><?= date("d M Y", strtotime($row['tanggal_distribusi'])) ?></td>
+                                            <td rowspan="<?= $rowspan ?>" style="vertical-align: top;"><?= htmlspecialchars($row['nama_proyek_lengkap']) ?></td>
                                         <?php endif; ?>
-                                    </tbody>
-                                </table>
-                            </div>
+                                        
+                                        <td><?= htmlspecialchars($row['nama_material']) ?></td>
+                                        <td class="text-end"><?= number_format($row['jumlah_distribusi'], 2, ',', '.') ?> <?= htmlspecialchars($row['nama_satuan']) ?></td>
+                                        
+                                        <?php if ($row['id_distribusi'] != $last_id): ?>
+                                            <td rowspan="<?= $rowspan ?>" style="vertical-align: top;"><?= htmlspecialchars($row['nama_pj']) ?></td>
+                                            <td rowspan="<?= $rowspan ?>" style="vertical-align: top;"><?= htmlspecialchars($row['keterangan_umum']) ?></td>
+                                        <?php endif; ?>
+                                    </tr>
+                                    <?php 
+                                            $last_id = $row['id_distribusi'];
+                                        endforeach; 
+                                    else:
+                                    ?>
+                                    <tr><td colspan="8" class="text-center">Tidak ada data distribusi pada periode ini.</td></tr>
+                                    <?php endif; ?>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-    </body>
+</div>
+</body>
 </html>

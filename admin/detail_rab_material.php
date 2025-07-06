@@ -179,13 +179,7 @@ $detail_result = mysqli_query($koneksi, $sql_detail);
                   <i class="icon-arrow-right"></i>
                 </li>
                 <li class="nav-item">
-                  <a href="#">Rancang RAB</a>
-                </li>
-                <li class="separator">
-                  <i class="icon-arrow-right"></i>
-                </li>
-                <li class="nav-item">
-                  <a href="transaksi_rab_material.php">RAB Material</a>
+                  <a href="transaksi_rab_material.php"> Daftar RAB Material</a>
                 </li>
               </ul>
             </div>

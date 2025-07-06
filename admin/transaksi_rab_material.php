@@ -1,9 +1,12 @@
 <?php
+session_start();
 include("../config/koneksi_mysql.php");
 
-// [DIUBAH] Mengambil role pengguna yang sedang login
+// [DIUBAH] Mengambil role pengguna dan langsung mengubahnya ke huruf kecil
 $user_role = strtolower($_SESSION['role'] ?? 'guest');
-$can_add_edit = in_array($user_role, ['divisi teknik']); 
+
+// Logika hak akses: Divisi Teknik & Super Admin bisa Tambah/Edit/Delete
+$can_add_edit = in_array($user_role, ['divisi teknik', 'super admin']); 
 // Mengatur error reporting untuk membantu debugging
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
@@ -163,13 +166,7 @@ if (!$perumahanResult) {
                   <i class="icon-arrow-right"></i>
                 </li>
                 <li class="nav-item">
-                  <a href="#">Rancang RAB</a>
-                </li>
-                <li class="separator">
-                  <i class="icon-arrow-right"></i>
-                </li>
-                <li class="nav-item">
-                  <a href="">RAB Material</a>
+                  <a href="">Daftar RAB Material</a>
                 </li>
               </ul>
             </div>
