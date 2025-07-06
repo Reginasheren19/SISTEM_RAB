@@ -8,13 +8,13 @@ include("../config/koneksi_mysql.php");
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-// [AMAN] Fungsi getProgressLalu menggunakan Prepared Statements
+// Fungsi untuk mengambil progres termin sebelumnya
 function getProgressLalu($koneksi, $id_detail_rab_upah, $id_pengajuan_to_exclude) {
     $query = "SELECT SUM(dpu.progress_pekerjaan) AS total_progress 
               FROM detail_pengajuan_upah dpu 
               JOIN pengajuan_upah pu ON dpu.id_pengajuan_upah = pu.id_pengajuan_upah 
               WHERE dpu.id_detail_rab_upah = ? AND pu.id_pengajuan_upah != ? 
-              AND pu.status_pengajuan IN ('diajukan', 'disetujui', 'ditolak', 'dibayar')";
+              AND pu.status_pengajuan != 'ditolak'";
     $stmt = mysqli_prepare($koneksi, $query);
     mysqli_stmt_bind_param($stmt, "ii", $id_detail_rab_upah, $id_pengajuan_to_exclude);
     mysqli_stmt_execute($stmt);
@@ -32,7 +32,7 @@ if (!isset($_GET['id_pengajuan_upah']) || !is_numeric($_GET['id_pengajuan_upah']
 }
 $id_pengajuan_upah = (int)$_GET['id_pengajuan_upah'];
 
-// [AMAN] Mengambil data pengajuan utama
+// Mengambil data pengajuan utama
 $sql_pengajuan = "SELECT pu.*, CONCAT(mpe.nama_perumahan, ' - ', mpr.kavling) AS pekerjaan, mpr.type_proyek, mpe.lokasi, mm.nama_mandor, u.nama_lengkap AS pj_proyek FROM pengajuan_upah pu LEFT JOIN rab_upah ru ON pu.id_rab_upah = ru.id_rab_upah LEFT JOIN master_proyek mpr ON ru.id_proyek = mpr.id_proyek LEFT JOIN master_perumahan mpe ON mpr.id_perumahan = mpe.id_perumahan LEFT JOIN master_mandor mm ON mpr.id_mandor = mm.id_mandor LEFT JOIN master_user u ON mpr.id_user_pj = u.id_user WHERE pu.id_pengajuan_upah = ?";
 $stmt_pengajuan = mysqli_prepare($koneksi, $sql_pengajuan);
 mysqli_stmt_bind_param($stmt_pengajuan, 'i', $id_pengajuan_upah);
@@ -47,7 +47,7 @@ if (!in_array($pengajuan_info['status_pengajuan'], ['diajukan', 'ditolak'])) {
     die("Pengajuan dengan status '" . htmlspecialchars($pengajuan_info['status_pengajuan']) . "' tidak dapat diupdate lagi.");
 }
 
-// [AMAN] Fetch data pendukung (termin, RAB items, progress, bukti)
+// Fetch data pendukung (termin, RAB items, progress, bukti)
 $sql_termin = "SELECT COUNT(id_pengajuan_upah) AS urutan FROM pengajuan_upah WHERE id_rab_upah = ? AND id_pengajuan_upah <= ?";
 $stmt_termin = mysqli_prepare($koneksi, $sql_termin);
 mysqli_stmt_bind_param($stmt_termin, 'ii', $id_rab_upah, $id_pengajuan_upah);
@@ -56,7 +56,8 @@ $termin_data = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt_termin));
 $termin_ke = $termin_data['urutan'] ?? 0;
 mysqli_stmt_close($stmt_termin);
 
-$sql_rab_items = "SELECT d.id_detail_rab_upah, k.nama_kategori, mp.uraian_pekerjaan, d.sub_total FROM detail_rab_upah d LEFT JOIN master_pekerjaan mp ON d.id_pekerjaan = mp.id_pekerjaan LEFT JOIN master_kategori k ON d.id_kategori = k.id_kategori WHERE d.id_rab_upah = ? ORDER BY k.id_kategori, d.id_detail_rab_upah";
+// [PERBAIKAN] Query untuk rincian pekerjaan, sekarang menggunakan urutan yang benar
+$sql_rab_items = "SELECT d.id_detail_rab_upah, k.nama_kategori, mp.uraian_pekerjaan, d.volume AS volume_rab, ms.nama_satuan, d.sub_total, d.harga_satuan FROM detail_rab_upah d LEFT JOIN master_pekerjaan mp ON d.id_pekerjaan = mp.id_pekerjaan LEFT JOIN master_kategori k ON d.id_kategori = k.id_kategori LEFT JOIN master_satuan ms ON mp.id_satuan = ms.id_satuan WHERE d.id_rab_upah = ? ORDER BY d.nomor_urut_kategori ASC, d.id_detail_rab_upah ASC";
 $stmt_rab_items = mysqli_prepare($koneksi, $sql_rab_items);
 mysqli_stmt_bind_param($stmt_rab_items, 'i', $id_rab_upah);
 mysqli_stmt_execute($stmt_rab_items);
@@ -155,291 +156,8 @@ mysqli_stmt_close($stmt_bukti);
   </head>
   <body>
     <div class="wrapper">
-      <!-- Sidebar -->
-      <div class="sidebar" data-background-color="dark">
-        <div class="sidebar-logo">
-          <!-- Logo Header -->
-          <div class="logo-header" data-background-color="dark">
-            <a href="index.html" class="logo">
-              <img
-                src="assets/img/kaiadmin/logo_light.svg"
-                alt="navbar brand"
-                class="navbar-brand"
-                height="20"
-              />
-            </a>
-            <div class="nav-toggle">
-              <button class="btn btn-toggle toggle-sidebar">
-                <i class="gg-menu-right"></i>
-              </button>
-              <button class="btn btn-toggle sidenav-toggler">
-                <i class="gg-menu-left"></i>
-              </button>
-            </div>
-            <button class="topbar-toggler more">
-              <i class="gg-more-vertical-alt"></i>
-            </button>
-          </div>
-          <!-- End Logo Header -->
-        </div>
-        <div class="sidebar-wrapper scrollbar scrollbar-inner">
-          <div class="sidebar-content">
-            <ul class="nav nav-secondary">
-              <li class="nav-item active">
-                <a
-                  data-bs-toggle="collapse"
-                  href="#dashboard"
-                  class="collapsed"
-                  aria-expanded="false"
-                >
-                  <i class="fas fa-home"></i>
-                  <p>Dashboard</p>
-                  <span class="caret"></span>
-                </a>
-                <div class="collapse" id="dashboard">
-                  <ul class="nav nav-collapse">
-                    <li>
-                      <a href="../demo1/index.html">
-                        <span class="sub-item">Dashboard 1</span>
-                      </a>
-                    </li>
-                  </ul>
-                </div>
-              </li>
-              <li class="nav-section">
-                <span class="sidebar-mini-icon">
-                  <i class="fa fa-ellipsis-h"></i>
-                </span>
-                <h4 class="text-section">Components</h4>
-              </li>
-              <li class="nav-item">
-                <a data-bs-toggle="collapse" href="#base">
-                  <i class="fas fa-layer-group"></i>
-                  <p>Base</p>
-                  <span class="caret"></span>
-                </a>
-                <div class="collapse" id="base">
-                  <ul class="nav nav-collapse">
-                    <li>
-                      <a href="components/avatars.html">
-                        <span class="sub-item">Avatars</span>
-                      </a>
-                    </li>
-                    <li>
-                      <a href="components/buttons.html">
-                        <span class="sub-item">Buttons</span>
-                      </a>
-                    </li>
-                    <li>
-                      <a href="components/gridsystem.html">
-                        <span class="sub-item">Grid System</span>
-                      </a>
-                    </li>
-                    <li>
-                      <a href="components/panels.html">
-                        <span class="sub-item">Panels</span>
-                      </a>
-                    </li>
-                    <li>
-                      <a href="components/notifications.html">
-                        <span class="sub-item">Notifications</span>
-                      </a>
-                    </li>
-                    <li>
-                      <a href="components/sweetalert.html">
-                        <span class="sub-item">Sweet Alert</span>
-                      </a>
-                    </li>
-                    <li>
-                      <a href="components/font-awesome-icons.html">
-                        <span class="sub-item">Font Awesome Icons</span>
-                      </a>
-                    </li>
-                    <li>
-                      <a href="components/simple-line-icons.html">
-                        <span class="sub-item">Simple Line Icons</span>
-                      </a>
-                    </li>
-                    <li>
-                      <a href="components/typography.html">
-                        <span class="sub-item">Typography</span>
-                      </a>
-                    </li>
-                  </ul>
-                </div>
-              </li>
-              <li class="nav-item">
-                <a data-bs-toggle="collapse" href="#sidebarLayouts">
-                  <i class="fas fa-th-list"></i>
-                  <p>Rancang RAB</p>
-                  <span class="caret"></span>
-                </a>
-                <div class="collapse" id="sidebarLayouts">
-                  <ul class="nav nav-collapse">
-                    <li>
-                      <a href="sidebar-style-2.html">
-                        <span class="sub-item">RAB Upah</span>
-                      </a>
-                    </li>
-                    <li>
-                      <a href="icon-menu.html">
-                        <span class="sub-item">RAB Material</span>
-                      </a>
-                    </li>
-                  </ul>
-                </div>
-              </li>
-              <li class="nav-item">
-                <a data-bs-toggle="collapse" href="#forms">
-                  <i class="fas fa-pen-square"></i>
-                  <p>Forms</p>
-                  <span class="caret"></span>
-                </a>
-                <div class="collapse" id="forms">
-                  <ul class="nav nav-collapse">
-                    <li>
-                      <a href="forms/forms.html">
-                        <span class="sub-item">Basic Form</span>
-                      </a>
-                    </li>
-                  </ul>
-                </div>
-              </li>
-              <li class="nav-item">
-                <a data-bs-toggle="collapse" href="#tables">
-                  <i class="fas fa-table"></i>
-                  <p>Tables</p>
-                  <span class="caret"></span>
-                </a>
-                <div class="collapse" id="tables">
-                  <ul class="nav nav-collapse">
-                    <li>
-                      <a href="tables/tables.html">
-                        <span class="sub-item">Basic Table</span>
-                      </a>
-                    </li>
-                    <li>
-                      <a href="tables/datatables.html">
-                        <span class="sub-item">Datatables</span>
-                      </a>
-                    </li>
-                  </ul>
-                </div>
-              </li>
-              <li class="nav-item">
-                <a data-bs-toggle="collapse" href="#maps">
-                  <i class="fas fa-map-marker-alt"></i>
-                  <p>Maps</p>
-                  <span class="caret"></span>
-                </a>
-                <div class="collapse" id="maps">
-                  <ul class="nav nav-collapse">
-                    <li>
-                      <a href="maps/googlemaps.html">
-                        <span class="sub-item">Google Maps</span>
-                      </a>
-                    </li>
-                    <li>
-                      <a href="maps/jsvectormap.html">
-                        <span class="sub-item">Jsvectormap</span>
-                      </a>
-                    </li>
-                  </ul>
-                </div>
-              </li>
-              <li class="nav-item">
-                <a data-bs-toggle="collapse" href="#charts">
-                  <i class="far fa-chart-bar"></i>
-                  <p>Charts</p>
-                  <span class="caret"></span>
-                </a>
-                <div class="collapse" id="charts">
-                  <ul class="nav nav-collapse">
-                    <li>
-                      <a href="charts/charts.html">
-                        <span class="sub-item">Chart Js</span>
-                      </a>
-                    </li>
-                    <li>
-                      <a href="charts/sparkline.html">
-                        <span class="sub-item">Sparkline</span>
-                      </a>
-                    </li>
-                  </ul>
-                </div>
-              </li>
-              <li class="nav-item">
-                <a href="widgets.html">
-                  <i class="fas fa-desktop"></i>
-                  <p>Widgets</p>
-                  <span class="badge badge-success">4</span>
-                </a>
-              </li>
-              <li class="nav-item">
-                <a href="../../documentation/index.html">
-                  <i class="fas fa-file"></i>
-                  <p>Documentation</p>
-                  <span class="badge badge-secondary">1</span>
-                </a>
-              </li>
+         <?php include 'sidebar.php'; ?>
 
-              <li class="nav-item">
-                <a data-bs-toggle="collapse" href="#submenu">
-                  <i class="fas fa-bars"></i>
-                  <p>Mastering</p>
-                  <span class="caret"></span>
-                </a>
-                <div class="collapse" id="submenu">
-                  <ul class="nav nav-collapse">
-                    <li>
-                      <a href="master_perumahan.php">
-                        <span class="sub-item">Master Perumahan</span>
-                      </a>
-                    </li>
-                    <li>
-                      <a href="master_proyek.php">
-                        <span class="sub-item">Master Proyek</span>
-                      </a>
-                    </li>
-                    <li>
-                      <a href="master_mandor.php">
-                        <span class="sub-item">Master Mandor</span>
-                      </a>
-                    </li>
-                    <li>
-                      <a href="master_kategori.php">
-                        <span class="sub-item">Master Kategori</span>
-                      </a>
-                    </li>
-                    <li>
-                      <a href="master_satuan.php">
-                        <span class="sub-item">Master Satuan</span>
-                      </a>
-                    </li>
-                    <li>
-                      <a href="master_pekerjaan.php">
-                        <span class="sub-item">Master Pekerjaan</span>
-                      </a>
-                    </li>
-                    <li>
-                      <a href="master_material.php">
-                        <span class="sub-item">Master Material</span>
-                      </a>
-                    </li>
-                    <li>
-                      <a href="master_user.php">
-                        <span class="sub-item">Master User</span>
-                      </a>
-                    </li>
-                  </ul>
-                </div>
-              </li>
-
-            </ul>
-          </div>
-        </div>
-      </div>
-      <!-- End Sidebar -->
 
       <div class="main-panel">
         <div class="main-header">
@@ -878,27 +596,27 @@ mysqli_stmt_close($stmt_bukti);
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <?php
-                                    $grandTotalRAB = 0;
-                                    if ($rab_items_result && mysqli_num_rows($rab_items_result) > 0) {
-                                        mysqli_data_seek($rab_items_result, 0);
-                                        $prevKategori = null; $noKategori = 0; $noPekerjaan = 1;
-                                        while ($row_rab = mysqli_fetch_assoc($rab_items_result)) {
-                                            if ($prevKategori !== $row_rab['nama_kategori']) {
-                                                $noKategori++;
-                                                echo "<tr class='table-primary fw-bold'><td class='text-center'>" . toRoman($noKategori) . "</td><td colspan='5'>" . htmlspecialchars($row_rab['nama_kategori']) . "</td></tr>";
-                                                $prevKategori = $row_rab['nama_kategori']; $noPekerjaan = 1;
-                                            }
-                                            $idDetailRab = $row_rab['id_detail_rab_upah'];
-                                            $progressLalu = getProgressLalu($koneksi, $idDetailRab, $id_pengajuan_upah);
-                                            $sisaProgress = 100 - $progressLalu;
-                                            $progressSaatIni = (float)($existing_progress[$idDetailRab] ?? 0);
-                                            $isLunas = $sisaProgress <= 0.001;
-                                            echo "<tr><td class='text-center'>{$noPekerjaan}</td><td><span class='ms-3'>".htmlspecialchars($row_rab['uraian_pekerjaan'])."</span></td><td class='text-end'>".number_format($row_rab['sub_total'],0,',','.')."</td><td class='text-center'>".number_format($progressLalu,2,',','.')."%</td><td class='text-center'><input type='number' class='form-control form-control-sm progress-input text-center' data-subtotal='{$row_rab['sub_total']}' data-id='{$idDetailRab}' name='progress[{$idDetailRab}]' min='0' max='".number_format($sisaProgress, 2, '.', '')."' step='0.01' value='".number_format($progressSaatIni,2,'.','')."' ".($isLunas && $progressSaatIni==0 ? 'disabled placeholder="Lunas"':'')."></td><td class='text-end fw-bold nilai-pengajuan' data-id='{$idDetailRab}'>Rp 0</td></tr>";
-                                            $noPekerjaan++; $grandTotalRAB += $row_rab['sub_total'];
-                                        }
-                                    }
-                                    ?>
+                                  <?php
+                                  $grandTotalRAB = 0;
+                                  if ($rab_items_result && mysqli_num_rows($rab_items_result) > 0) {
+                                      mysqli_data_seek($rab_items_result, 0);
+                                      $prevKategori = null; $noKategori = 0; $noPekerjaan = 1;
+                                      while ($row_rab = mysqli_fetch_assoc($rab_items_result)) {
+                                          if ($prevKategori !== $row_rab['nama_kategori']) {
+                                              $noKategori++;
+                                              echo "<tr class='table-primary fw-bold'><td class='text-center'>" . toRoman($noKategori) . "</td><td colspan='5'>" . htmlspecialchars($row_rab['nama_kategori']) . "</td></tr>";
+                                              $prevKategori = $row_rab['nama_kategori']; $noPekerjaan = 1;
+                                          }
+                                          $idDetailRab = $row_rab['id_detail_rab_upah'];
+                                          $progressLalu = getProgressLalu($koneksi, $idDetailRab, $id_pengajuan_upah);
+                                          $sisaProgress = 100 - $progressLalu;
+                                          $progressSaatIni = (float)($existing_progress[$idDetailRab] ?? 0);
+                                          $isLunas = $sisaProgress <= 0.001;
+                                          echo "<tr><td class='text-center'>{$noPekerjaan}</td><td><span class='ms-3'>".htmlspecialchars($row_rab['uraian_pekerjaan'])."</span></td><td class='text-end'>".number_format($row_rab['sub_total'],0,',','.')."</td><td class='text-center'>".number_format($progressLalu,2,',','.')."%</td><td class='p-1'><input type='number' class='form-control form-control-sm progress-input text-center' data-subtotal='{$row_rab['sub_total']}' data-id='{$idDetailRab}' name='progress[{$idDetailRab}]' min='0' max='".number_format($sisaProgress, 2, '.', '')."' step='0.01' value='".number_format($progressSaatIni,2,'.','')."' ".($isLunas && $progressSaatIni==0 ? 'disabled placeholder="Lunas"':'')."></td><td class='text-end fw-bold nilai-pengajuan' data-id='{$idDetailRab}'>Rp 0</td></tr>";
+                                          $noPekerjaan++; $grandTotalRAB += $row_rab['sub_total'];
+                                      }
+                                  }
+                                  ?>
                                 </tbody>
                                 <!-- [DIPERBAIKI] Footer Tabel Ditambahkan Kembali -->
                                 <tfoot>

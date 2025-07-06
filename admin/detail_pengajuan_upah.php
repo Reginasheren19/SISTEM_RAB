@@ -231,80 +231,84 @@ function toRoman($num) {
                     </div>
                 </div>
 
-                    <!-- Detail Input Progress -->
-                    <div class="card shadow-sm mb-4">
-                        <div class="card-header bg-light"><h4 class="card-title mb-0">Detail Input Progress Pekerjaan</h4></div>
-                        <div class="card-body p-0">
-                            <div class="table-responsive">
-                                <table class="table table-bordered table-vcenter mb-0" id="tblDetailRAB">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th style="width:5%;" class="text-center">No</th>
-                                            <th>Uraian Pekerjaan</th>
-                                            <th style="width:12%;" class="text-center">Satuan</th> <!-- Kolom Satuan -->
-                                            <th style="width:10%;" class="text-center">Volume</th> <!-- Kolom Volume -->
-                                            <th style="width:12%;" class="text-center">Jumlah (Rp)</th>
-                                            <th style="width:12%;" class="text-center">Progress Lalu (%)</th>
-                                            <th style="width:15%;" class="text-center">Progress Saat Ini (%)</th>
-                                            <th style="width:15%;" class="text-center">Nilai Pengajuan (Rp)</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php
-                                        $grandTotalRAB = 0;
-                                        if ($detail_result && mysqli_num_rows($detail_result) > 0) {
-                                            mysqli_data_seek($detail_result, 0);
-                                            $prevKategori = null; $noKategori = 0; $noPekerjaan = 1;
-                                            while ($row = mysqli_fetch_assoc($detail_result)) {
-                                                if ($prevKategori !== $row['nama_kategori']) {
-                                                    $noKategori++;
-                                                    echo "<tr class='table-primary fw-bold'><td class='text-center'>" . toRoman($noKategori) . "</td><td colspan='7'>" . htmlspecialchars($row['nama_kategori']) . "</td></tr>";
-                                                    $prevKategori = $row['nama_kategori']; $noPekerjaan = 1;
-                                                }
-                                                $idDetail = $row['id_detail_rab_upah'];
-                                                $progressLalu = getProgressLaluPersen($koneksi, $idDetail);
-                                                $sisaProgress = 100 - $progressLalu;
-                                                $isLunas = $sisaProgress <= 0.001;
-                                        ?>
-                                            <tr>
-                                                <td class='text-center'><?= $noPekerjaan ?></td>
-<td><?= htmlspecialchars($row['uraian_pekerjaan']) ?></td>
-<td class="text-center"><?= number_format($row['volume_rab'], 2, ',', '.') ?></td>
+<!-- Detail Input Progress -->
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-light"><h4 class="card-title mb-0">Detail Input Progress Pekerjaan</h4></div>
+    <div class="card-body p-0">
+        <!-- Table wrapper with horizontal scrolling -->
+        <div class="table-responsive">
+            <table class="table table-bordered table-vcenter mb-0" id="tblDetailRAB">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width:5%;" class="text-center">No</th>
+                        <th>Uraian Pekerjaan</th>
+                        <th style="width:12%;" class="text-center">Satuan</th> <!-- Kolom Satuan -->
+                        <th style="width:10%;" class="text-center">Volume</th> <!-- Kolom Volume -->
+                        <th style="width:12%;" class="text-center">Jumlah (Rp)</th>
+                        <th style="width:12%;" class="text-center">Progress Lalu (%)</th>
+                        <th style="width:15%;" class="text-center">Progress Saat Ini (%)</th>
+                        <th style="width:15%;" class="text-center">Nilai Pengajuan (Rp)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php
+                    $grandTotalRAB = 0;
+                    if ($detail_result && mysqli_num_rows($detail_result) > 0) {
+                        mysqli_data_seek($detail_result, 0);
+                        $prevKategori = null; 
+                        $noKategori = 0; 
+                        $noPekerjaan = 1;
+                        while ($row = mysqli_fetch_assoc($detail_result)) {
+                            if ($prevKategori !== $row['nama_kategori']) {
+                                $noKategori++;
+                                echo "<tr class='table-primary fw-bold'><td class='text-center'>" . toRoman($noKategori) . "</td><td colspan='7'>" . htmlspecialchars($row['nama_kategori']) . "</td></tr>";
+                                $prevKategori = $row['nama_kategori']; 
+                                $noPekerjaan = 1;
+                            }
+                            $idDetail = $row['id_detail_rab_upah'];
+                            $progressLalu = getProgressLaluPersen($koneksi, $idDetail);
+                            $sisaProgress = 100 - $progressLalu;
+                            $isLunas = $sisaProgress <= 0.001;
+                    ?>
+                        <tr>
+                            <td class='text-center'><?= $noPekerjaan ?></td>
+                            <td><?= htmlspecialchars($row['uraian_pekerjaan']) ?></td>
+                            <td class="text-center"><?= number_format($row['volume_rab'], 2, ',', '.') ?></td>
+                            <td class='text-center'><?= htmlspecialchars($row['nama_satuan']) ?></td> <!-- Kolom Satuan -->
+                            <td class='text-end'><?= number_format($row['sub_total'], 0, ',', '.') ?></td>
+                            <td class='text-center'><?= number_format($progressLalu, 2, ',', '.') ?>%</td>
+                            <td class="p-1 align-middle">
+                                <div class="input-group">
+                                    <input type="number" class="form-control form-control-sm progress-input text-center" data-subtotal="<?= $row['sub_total'] ?>" data-id="<?= $idDetail ?>" name="progress[<?= $idDetail ?>]" min="0" max="<?= number_format($sisaProgress, 2, '.', '') ?>" step="0.01" <?= $isLunas ? 'disabled placeholder="Lunas"' : 'placeholder="0.00"' ?>>
+                                    <div class="input-group-text">
+                                        <input class="form-check-input mt-0 lunas-checkbox" type="checkbox" title="Tandai Lunas (100% Progress)" <?= $isLunas ? 'disabled' : '' ?>>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class='text-end fw-bold nilai-pengajuan' data-id='<?= $idDetail ?>'>Rp 0</td>
+                        </tr>
+                    <?php
+                        $noPekerjaan++; 
+                        $grandTotalRAB += $row['sub_total'];
+                        }
+                    }
+                    ?>
+                </tbody>
+                <tfoot>
+                    <tr class='table-light fw-bolder'>
+                        <td colspan="7" class='text-end'>TOTAL NILAI RAB</td>
+                        <td class='text-end'>Rp <?= number_format($grandTotalRAB, 0, ',', '.') ?></td>
+                    </tr>
+                    <tr class='table-success fw-bolder'>
+                        <td colspan="7" class='text-end'>TOTAL PENGAJUAN SAAT INI</td>
+                        <td id="total-pengajuan-saat-ini" class='text-end'>Rp 0</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+</div>
 
-                                                <td class='text-center'><?= htmlspecialchars($row['nama_satuan']) ?></td> <!-- Kolom Satuan -->
-                                                </td> <!-- Kolom Volume -->
-                                                <td class='text-end'><?= number_format($row['sub_total'], 0, ',', '.') ?></td>
-                                                <td class='text-center'><?= number_format($progressLalu, 2, ',', '.') ?>%</td>
-                                                <td class="p-1 align-middle">
-                                                    <div class="input-group">
-                                                        <input type="number" class="form-control form-control-sm progress-input text-center" data-subtotal="<?= $row['sub_total'] ?>" data-id="<?= $idDetail ?>" name="progress[<?= $idDetail ?>]" min="0" max="<?= number_format($sisaProgress, 2, '.', '') ?>" step="0.01" <?= $isLunas ? 'disabled placeholder="Lunas"' : 'placeholder="0.00"' ?>>
-                                                        <div class="input-group-text">
-                                                            <input class="form-check-input mt-0 lunas-checkbox" type="checkbox" title="Tandai Lunas (100% Progress)" <?= $isLunas ? 'disabled' : '' ?>>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td class='text-end fw-bold nilai-pengajuan' data-id='<?= $idDetail ?>'>Rp 0</td>
-                                            </tr>
-                                        <?php
-                                            $noPekerjaan++; $grandTotalRAB += $row['sub_total'];
-                                            }
-                                        }
-                                        ?>
-                                    </tbody>
-                                    <tfoot>
-                                        <tr class='table-light fw-bolder'>
-                                            <td colspan="7" class='text-end'>TOTAL NILAI RAB</td>
-                                            <td class='text-end'>Rp <?= number_format($grandTotalRAB, 0, ',', '.') ?></td>
-                                        </tr>
-                                        <tr class='table-success fw-bolder'>
-                                            <td colspan="7" class='text-end'>TOTAL PENGAJUAN SAAT INI</td>
-                                            <td id="total-pengajuan-saat-ini" class='text-end'>Rp 0</td>
-                                        </tr>
-                                    </tfoot>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
 
 <!-- Upload File Section - Tampilan Input Pengajuan Baru -->
 <div class="card shadow-sm">

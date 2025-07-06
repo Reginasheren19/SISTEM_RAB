@@ -26,8 +26,8 @@ switch ($user_role) {
         
     case 'pj proyek':
         // Pastikan nama file ini sesuai dengan yang Anda gunakan
-        // header("Location: dashboard_pjproyek.php"); 
-        header("Location: dashboard_pj_m.php"); 
+        header("Location: dashboard_pjproyek.php"); 
+        // header("Location: dashboard_pj_m.php"); 
         break;
         
     case 'divisi teknik':

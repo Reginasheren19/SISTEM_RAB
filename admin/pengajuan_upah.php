@@ -46,12 +46,16 @@ $sql .= " GROUP BY pu.id_pengajuan_upah ORDER BY pu.id_pengajuan_upah DESC";
 $pengajuanresult = mysqli_query($koneksi, $sql);
 if (!$pengajuanresult) { die("Query Error (Main): " . mysqli_error($koneksi)); }
 
-// [DIUBAH] Query untuk modal, sekarang ikut mengambil status pengajuan terakhir
+// [PERBAIKAN TOTAL] Query untuk modal, sekarang ikut mengambil status dan total pembayaran
 $rabUpahUntukModalSql = "
     SELECT 
-        ru.id_rab_upah, ru.id_proyek,
-        mpe.nama_perumahan, mpr.kavling, mm.nama_mandor, ru.total_rab_upah,
-        pu_last.status_pengajuan AS status_terakhir
+        ru.id_rab_upah, ru.id_proyek, ru.total_rab_upah,
+        mpe.nama_perumahan, mpr.kavling, mm.nama_mandor,
+        pu_last.status_pengajuan AS status_terakhir,
+        (SELECT SUM(pu_paid.total_pengajuan) 
+         FROM pengajuan_upah pu_paid 
+         WHERE pu_paid.id_rab_upah = ru.id_rab_upah AND pu_paid.status_pengajuan = 'dibayar'
+        ) AS total_dibayar
     FROM rab_upah ru
     LEFT JOIN master_proyek mpr ON ru.id_proyek = mpr.id_proyek
     LEFT JOIN master_perumahan mpe ON mpr.id_perumahan = mpe.id_perumahan
@@ -318,7 +322,7 @@ $formattedpengajuan = 'PU' . $row['id_pengajuan_upah'];
 
     <!-- Modal: Pilih Proyek -->
     <div class="modal fade" id="selectProyekModal" tabindex="-1" aria-labelledby="selectProyekModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
             <div class="modal-content">
                 <div class="modal-header"><h5 class="modal-title" id="selectProyekModalLabel">Pilih Proyek RAB</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
                 <div class="modal-body">
@@ -327,9 +331,13 @@ $formattedpengajuan = 'PU' . $row['id_pengajuan_upah'];
                         <tbody>
                         <?php if (mysqli_num_rows($rabUpahUntukModalResult) > 0): mysqli_data_seek($rabUpahUntukModalResult, 0); ?>
                             <?php while ($rab = mysqli_fetch_assoc($rabUpahUntukModalResult)):
-                                // [PERBAIKAN] Logika penguncian sekarang juga mengecek status 'ditolak'
+                                // [PERBAIKAN TOTAL] Logika untuk menonaktifkan tombol
                                 $status_terakhir = strtolower($rab['status_terakhir'] ?? '');
                                 $is_blocked = in_array($status_terakhir, ['diajukan', 'ditolak']);
+                                
+                                $total_rab = (float)($rab['total_rab_upah'] ?? 0);
+                                $total_dibayar = (float)($rab['total_dibayar'] ?? 0);
+                                $is_lunas = ($total_rab > 0) && ($total_dibayar >= $total_rab);
                             ?>
                                 <tr>
                                     <td><?= 'RABP' . $rab['id_rab_upah'] ?></td>
@@ -337,7 +345,9 @@ $formattedpengajuan = 'PU' . $row['id_pengajuan_upah'];
                                     <td><?= htmlspecialchars($rab['nama_mandor']) ?></td>
                                     <td class="text-end"><?= 'Rp ' . number_format($rab['total_rab_upah'], 0, ',', '.') ?></td>
                                     <td class="text-center">
-                                        <?php if ($is_blocked): ?>
+                                        <?php if ($is_lunas): ?>
+                                            <span class="badge bg-primary">Lunas</span>
+                                        <?php elseif ($is_blocked): ?>
                                             <button type="button" class="btn btn-secondary btn-sm disabled-pilih-btn" data-bs-toggle="modal" data-bs-target="#pengajuanBlockedModal" data-status-terakhir="<?= htmlspecialchars($status_terakhir) ?>">Pilih</button>
                                         <?php else: ?>
                                             <a href="detail_pengajuan_upah.php?id_rab_upah=<?= $rab['id_rab_upah'] ?>" class="btn btn-success btn-sm">Pilih</a>
@@ -402,6 +412,17 @@ $formattedpengajuan = 'PU' . $row['id_pengajuan_upah'];
         </div>
     </div>
 </div>
+
+    <!-- Modal Notifikasi Pengajuan Diblokir -->
+    <div class="modal fade" id="pengajuanBlockedModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header"><h5 class="modal-title text-warning"><i class="fas fa-exclamation-triangle"></i> Pengajuan Terkunci</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+          <div class="modal-body"><p>Anda tidak dapat membuat pengajuan baru untuk proyek ini.</p><p class="mb-0"><strong>Alasan:</strong> <span id="blockReasonText"></span></p></div>
+          <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Mengerti</button></div>
+        </div>
+      </div>
+    </div>
 
 <!-- [FIXED] Modal Upload Bukti Bayar (untuk 'Dibayar') -->
 <div class="modal fade" id="uploadBuktiBayarModal" tabindex="-1" aria-hidden="true">
@@ -600,7 +621,7 @@ $(document).ready(function() {
         });
     });
 
-            // [BARU] Script untuk menampilkan pesan yang dinamis di modal notifikasi
+        // Script untuk menampilkan pesan yang dinamis di modal notifikasi
         $('#tabel-proyek-modal').on('click', '.disabled-pilih-btn', function() {
             const status = $(this).data('status-terakhir');
             let reasonText = 'Masih ada pengajuan termin sebelumnya yang belum selesai.';
