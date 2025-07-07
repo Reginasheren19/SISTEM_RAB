@@ -14,8 +14,8 @@ $user_role = strtolower($_SESSION['role']);
 // Gunakan switch case untuk mengarahkan ke dashboard yang sesuai
 switch ($user_role) {
     case 'admin':
-        //header("Location: dashboard_admin.php");
-        header("Location: dashboard_admin_m.php");
+        header("Location: dashboard_admin.php");
+        // header("Location: dashboard_admin_m.php");
 
         break;
     
@@ -31,8 +31,8 @@ switch ($user_role) {
         break;
         
     case 'divisi teknik':
-        // header("Location: dashboard_teknik.php");
-        header("Location: dashboard_divtek_m.php");
+        header("Location: dashboard_teknik.php");
+        // header("Location: dashboard_divtek_m.php");
         break;
         
         

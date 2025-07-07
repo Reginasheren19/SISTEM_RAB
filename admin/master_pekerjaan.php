@@ -65,8 +65,8 @@ if (isset($row)) {
   </head>
   <body>
     <div class="wrapper">
-        <?php include 'sidebar_m.php'; ?>
-        <!-- <?php include 'sidebar.php'; ?> -->
+        <?php //include 'sidebar_m.php'; ?>
+        <?php include 'sidebar.php'; ?> 
 
         <div class="main-panel">
             <div class="main-header">

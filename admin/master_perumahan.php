@@ -57,8 +57,8 @@ $result = mysqli_query($koneksi, "SELECT * FROM master_perumahan");
   </head>
 <body>
     <div class="wrapper">
-        <?php include 'sidebar_m.php'; ?>
-        <?php //include 'sidebar.php'; ?>
+        <?php //include 'sidebar_m.php'; ?>
+        <?php include 'sidebar.php'; ?>
 
         <div class="main-panel">
             <div class="main-header">
