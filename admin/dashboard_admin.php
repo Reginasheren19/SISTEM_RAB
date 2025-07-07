@@ -138,8 +138,7 @@ if ($q_alur_dana) {
                 <div class="page-inner">
                     <div class="d-flex align-items-left align-items-md-center flex-column flex-md-row pt-2 pb-4">
                         <div>
-                            <h3 class="fw-bold mb-3">Dashboard Administrator</h3>
-                            <h6 class="op-7 mb-2">Pusat Kontrol Keuangan dan Manajemen Sistem</h6>
+                            <h3 class="fw-bold mb-3">Dashboard Admin</h3>
                         </div>
                     </div>
 
@@ -207,7 +206,6 @@ if ($q_alur_dana) {
                         </div>
                         </div>
                     </div>
-                </div>
             </div>
         <footer class="footer">
           <div class="container-fluid d-flex justify-content-between">

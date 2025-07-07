@@ -46,14 +46,15 @@ $sql .= " GROUP BY pu.id_pengajuan_upah ORDER BY pu.id_pengajuan_upah DESC";
 $pengajuanresult = mysqli_query($koneksi, $sql);
 if (!$pengajuanresult) { die("Query Error (Main): " . mysqli_error($koneksi)); }
 
-// [PERBAIKAN TOTAL] Query untuk modal, sekarang ikut mengambil status dan total pembayaran
+// [PERBAIKAN TOTAL] Query untuk modal, sekarang ikut mengambil status dan total pembayaran yang akurat
 $rabUpahUntukModalSql = "
     SELECT 
         ru.id_rab_upah, ru.id_proyek, ru.total_rab_upah,
         mpe.nama_perumahan, mpr.kavling, mm.nama_mandor,
         pu_last.status_pengajuan AS status_terakhir,
-        (SELECT SUM(pu_paid.total_pengajuan) 
-         FROM pengajuan_upah pu_paid 
+        (SELECT SUM(dpu.nilai_upah_diajukan) 
+         FROM detail_pengajuan_upah dpu
+         JOIN pengajuan_upah pu_paid ON dpu.id_pengajuan_upah = pu_paid.id_pengajuan_upah
          WHERE pu_paid.id_rab_upah = ru.id_rab_upah AND pu_paid.status_pengajuan = 'dibayar'
         ) AS total_dibayar
     FROM rab_upah ru

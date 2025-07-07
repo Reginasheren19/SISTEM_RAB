@@ -2,23 +2,22 @@
 session_start();
 include("../config/koneksi_mysql.php");
 
-// Ambil data session pengguna
+// Session dan validasi login...
 $logged_in_user_id = $_SESSION['id_user'] ?? 0;
 $user_role = strtolower($_SESSION['role'] ?? 'guest');
+if ($logged_in_user_id === 0) die("Akses ditolak. Silakan login terlebih dahulu.");
 
-if ($logged_in_user_id === 0) {
-    die("Akses ditolak. Silakan login terlebih dahulu.");
-}
-
-// Ambil semua parameter filter dari URL
-$jenis_laporan = $_GET['laporan'] ?? 'tidak_dikenal';
-$status_filter = $_GET['status'] ?? 'semua';
-$proyek_filter = $_GET['proyek'] ?? 'semua';
-$mandor_filter = $_GET['mandor'] ?? 'semua';
-$tanggal_mulai = $_GET['tanggal_mulai'] ?? '';
-$tanggal_selesai = $_GET['tanggal_selesai'] ?? '';
+// Ambil semua parameter GET
+$jenis_laporan    = $_GET['laporan'] ?? 'tidak_dikenal';
+$status_filter    = $_GET['status'] ?? 'semua';
+$proyek_filter    = $_GET['proyek'] ?? 'semua';      // Untuk laporan pengajuan upah
+$perumahan_filter = $_GET['perumahan'] ?? 'semua';   // Untuk laporan realisasi anggaran
+$mandor_filter    = $_GET['mandor'] ?? 'semua';
+$tanggal_mulai    = $_GET['tanggal_mulai'] ?? '';
+$tanggal_selesai  = $_GET['tanggal_selesai'] ?? '';
 
 setlocale(LC_TIME, 'id_ID.utf8', 'id_ID');
+
 // GANTI FUNGSI LAMA DI cetak_lap_upah.php DENGAN YANG INI
 
 // Fungsi untuk menampilkan header detail proyek
@@ -243,47 +242,51 @@ th {
 
             case 'realisasi_anggaran':
                 $judul_laporan = "Laporan Realisasi Anggaran Upah";
-                    // [PERBAIKAN UTAMA DI SINI] Menggunakan INNER JOIN agar sama dengan halaman web
-                    $sql = "SELECT CONCAT(mpe.nama_perumahan, ' - ', mpr.kavling) AS nama_proyek, ru.total_rab_upah, (SELECT SUM(pu.total_pengajuan) FROM pengajuan_upah pu WHERE pu.id_rab_upah = ru.id_rab_upah AND pu.status_pengajuan = 'dibayar' " . (!empty($tanggal_mulai) ? "AND pu.tanggal_pengajuan >= '" . mysqli_real_escape_string($koneksi, $tanggal_mulai) . "'" : "") . " " . (!empty($tanggal_selesai) ? "AND pu.tanggal_pengajuan <= '" . mysqli_real_escape_string($koneksi, $tanggal_selesai) . "'" : "") . ") AS total_terbayar 
-                            FROM master_proyek mpr 
-                            LEFT JOIN master_perumahan mpe ON mpr.id_perumahan = mpe.id_perumahan 
-                            INNER JOIN rab_upah ru ON mpr.id_proyek = ru.id_proyek"; // <-- PERUBAHAN KUNCI
-                    
-                    $where_conditions = [];
-                    if ($proyek_filter !== 'semua') {
-                        $where_conditions[] = "mpr.id_proyek = " . (int)$proyek_filter;
-                    }
-                    if ($mandor_filter !== 'semua') {
-                        $where_conditions[] = "mpr.id_mandor = " . (int)$mandor_filter;
-                    }
+                
+                // [PERBAIKAN TOTAL] Query diubah untuk menjumlahkan dari detail agar akurat
+                $sql = "SELECT 
+                            CONCAT(mpe.nama_perumahan, ' - ', mpr.kavling) AS nama_proyek, 
+                            ru.total_rab_upah, 
+                            (SELECT SUM(dpu.nilai_upah_diajukan) 
+                             FROM detail_pengajuan_upah dpu
+                             JOIN pengajuan_upah pu ON dpu.id_pengajuan_upah = pu.id_pengajuan_upah
+                             WHERE pu.id_rab_upah = ru.id_rab_upah AND pu.status_pengajuan = 'dibayar'
+                             " . (!empty($tanggal_mulai) ? " AND pu.tanggal_pengajuan >= '" . mysqli_real_escape_string($koneksi, $tanggal_mulai) . "'" : "") . "
+                             " . (!empty($tanggal_selesai) ? " AND pu.tanggal_pengajuan <= '" . mysqli_real_escape_string($koneksi, $tanggal_selesai) . "'" : "") . "
+                            ) AS total_terbayar
+                        FROM master_proyek mpr
+                        LEFT JOIN master_perumahan mpe ON mpr.id_perumahan = mpe.id_perumahan
+                        INNER JOIN rab_upah ru ON mpr.id_proyek = ru.id_proyek";
+                
+                $where_conditions = [];
+                if ($perumahan_filter !== 'semua') $where_conditions[] = "mpr.id_perumahan = " . (int)$perumahan_filter;
+                if ($mandor_filter !== 'semua') $where_conditions[] = "mpr.id_mandor = " . (int)$mandor_filter;
+                if (!empty($where_conditions)) $sql .= " WHERE " . implode(' AND ', $where_conditions);
+                $sql .= " GROUP BY mpr.id_proyek ORDER BY nama_proyek ASC";
+                
+                $result = mysqli_query($koneksi, $sql);
+                
+                echo "<h2 class='report-title'>Laporan Realisasi Anggaran Upah</h2>";
+                if (!empty($tanggal_mulai)) { echo "<p class='filter-info'>Periode Pembayaran: " . date('d M Y', strtotime($tanggal_mulai)) . " s/d " . date('d M Y', strtotime($tanggal_selesai)) . "</p>"; }
 
-                    if (!empty($where_conditions)) {
-                        $sql .= " WHERE " . implode(' AND ', $where_conditions);
+                echo "<table><thead><tr><th>No</th><th>Nama Proyek</th><th class='text-end'>Anggaran</th><th class='text-end'>Terbayar</th><th class='text-end'>Sisa</th><th class='text-center'>Realisasi (%)</th></tr></thead><tbody>";
+                
+                if ($result && mysqli_num_rows($result) > 0) {
+                    $no = 1; $total_rab_semua = 0; $total_terbayar_semua = 0; $total_sisa_semua = 0;
+                    while ($row = mysqli_fetch_assoc($result)) {
+                        $total_rab = (float)($row['total_rab_upah'] ?? 0);
+                        $total_terbayar = (float)($row['total_terbayar'] ?? 0);
+                        $sisa_anggaran = $total_rab - $total_terbayar;
+                        $realisasi_persen = ($total_rab > 0) ? ($total_terbayar / $total_rab) * 100 : 0;
+                        echo "<tr><td class='text-center'>{$no}</td><td>" . htmlspecialchars($row['nama_proyek']) . "</td><td class='text-end'>Rp " . number_format($total_rab, 0, ',', '.') . "</td><td class='text-end'>Rp " . number_format($total_terbayar, 0, ',', '.') . "</td><td class='text-end'>Rp " . number_format($sisa_anggaran, 0, ',', '.') . "</td><td class='text-center'>" . number_format($realisasi_persen, 2) . "%</td></tr>";
+                        $no++; $total_rab_semua += $total_rab; $total_terbayar_semua += $total_terbayar; $total_sisa_semua += $sisa_anggaran;
                     }
-                    
-                    $sql .= " GROUP BY mpr.id_proyek ORDER BY nama_proyek ASC";
-                    $result = mysqli_query($koneksi, $sql);
-                    
-                    echo "<h2 class='report-title'>Laporan Realisasi Anggaran Upah</h2>";
-                    if (!empty($tanggal_mulai)) { echo "<p class='filter-info'>Periode Pembayaran: " . date('d M Y', strtotime($tanggal_mulai)) . " s/d " . date('d M Y', strtotime($tanggal_selesai)) . "</p>"; }
-
-                    echo "<table class='report-data'><thead><tr><th>No</th><th>Nama Proyek</th><th class='text-center'>Anggaran</th><th class='text-center'>Terbayar</th><th class='text-c'>Sisa</th><th class='text-center'>Realisasi (%)</th></tr></thead><tbody>";
-                    if ($result && mysqli_num_rows($result) > 0) {
-                        $no = 1; $total_rab_semua = 0; $total_terbayar_semua = 0; $total_sisa_semua = 0;
-                        while ($row = mysqli_fetch_assoc($result)) {
-                            $total_rab = (float)($row['total_rab_upah'] ?? 0);
-                            $total_terbayar = (float)($row['total_terbayar'] ?? 0);
-                            $sisa_anggaran = $total_rab - $total_terbayar;
-                            $realisasi_persen = ($total_rab > 0) ? ($total_terbayar / $total_rab) * 100 : 0;
-                            echo "<tr><td class='text-center'>{$no}</td><td>" . htmlspecialchars($row['nama_proyek']) . "</td><td class='text-end'>Rp " . number_format($total_rab, 0, ',', '.') . "</td><td class='text-end'>Rp " . number_format($total_terbayar, 0, ',', '.') . "</td><td class='text-end'>Rp " . number_format($sisa_anggaran, 0, ',', '.') . "</td><td class='text-center'>" . number_format($realisasi_persen, 2) . "%</td></tr>";
-                            $no++; $total_rab_semua += $total_rab; $total_terbayar_semua += $total_terbayar; $total_sisa_semua += $sisa_anggaran;
-                        }
-                        echo "<tr class='fw-bold'><td colspan='2' class='text-center'>TOTAL</td><td class='text-end'>Rp " . number_format($total_rab_semua, 0, ',', '.') . "</td><td class='text-end'>Rp " . number_format($total_terbayar_semua, 0, ',', '.') . "</td><td class='text-end'>Rp " . number_format($total_sisa_semua, 0, ',', '.') . "</td><td></td></tr>";
-                    } else {
-                        echo "<tr><td colspan='6' class='text-center'>Tidak ada data yang sesuai.</td></tr>";
-                    }
-                    echo "</tbody></table>";
-                    break;
+                    echo "<tr class='fw-bold'><td colspan='2' class='text-center'>TOTAL</td><td class='text-end'>Rp " . number_format($total_rab_semua, 0, ',', '.') . "</td><td class='text-end'>Rp " . number_format($total_terbayar_semua, 0, ',', '.') . "</td><td class='text-end'>Rp " . number_format($total_sisa_semua, 0, ',', '.') . "</td><td></td></tr>";
+                } else {
+                    echo "<tr><td colspan='6' class='text-center'>Tidak ada data yang sesuai.</td></tr>";
+                }
+                echo "</tbody></table>";
+                break;
         }
 
 if ($result) {

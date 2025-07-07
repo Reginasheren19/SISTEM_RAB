@@ -11,25 +11,32 @@ $can_add_edit = in_array($user_role, ['divisi teknik']);
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-// Query ini mengambil SEMUA data untuk ditampilkan di tabel utama.
+
+// [DIUBAH] Query mengambil data PLUS jumlah pengajuan yang terkait
 $sql = "SELECT 
-          tr.id_rab_upah,
-          tr.id_proyek,
-          mpe.nama_perumahan,
-          mpr.kavling,
-          mpr.type_proyek,
-          mpe.lokasi,
-          mm.nama_mandor,
-          u.nama_lengkap AS pj_proyek, -- Mengambil nama lengkap user sebagai 'pj_proyek'
-          tr.tanggal_mulai,
-          tr.tanggal_selesai,
-          tr.total_rab_upah
+            tr.id_rab_upah,
+            tr.id_proyek,
+            mpe.nama_perumahan,
+            mpr.kavling,
+            mpr.type_proyek,
+            mpe.lokasi,
+            mm.nama_mandor,
+            u.nama_lengkap AS pj_proyek,
+            tr.tanggal_mulai,
+            tr.tanggal_selesai,
+            tr.total_rab_upah,
+            -- Tambahkan ini untuk menghitung jumlah pengajuan
+            COUNT(pu.id_pengajuan_upah) AS jumlah_pengajuan
         FROM rab_upah tr
         JOIN master_proyek mpr ON tr.id_proyek = mpr.id_proyek
         LEFT JOIN master_perumahan mpe ON mpr.id_perumahan = mpe.id_perumahan
         LEFT JOIN master_mandor mm ON mpr.id_mandor = mm.id_mandor
         LEFT JOIN master_user u ON mpr.id_user_pj = u.id_user
-        ORDER BY tr.id_rab_upah DESC"; // Mengurutkan berdasarkan data terbaru
+        -- Tambahkan LEFT JOIN ke tabel pengajuan
+        LEFT JOIN pengajuan_upah pu ON tr.id_rab_upah = pu.id_rab_upah
+        -- Tambahkan GROUP BY
+        GROUP BY tr.id_rab_upah
+        ORDER BY tr.id_rab_upah DESC";
 
 $result = mysqli_query($koneksi, $sql);
 if (!$result) {
@@ -207,11 +214,16 @@ $totalFormatted = 'Rp ' . number_format($row['total_rab_upah'], 0, ',', '.');
                             <td><?= date('d-m-Y', strtotime($row['tanggal_mulai'])) ?></td>
                             <td><?= date('d-m-Y', strtotime($row['tanggal_selesai'])) ?></td>
                             <td><?= htmlspecialchars($totalFormatted) ?></td>
-                            <td>
-                              <a href="detail_rab_upah.php?id_rab_upah=<?= urlencode($row['id_rab_upah']) ?>" class="btn btn-info btn-sm">Detail</a>
-                                                        <?php if ($can_add_edit): ?>
-                                                        <button class="btn btn-danger btn-sm delete-btn" data-id_rab_upah="<?= htmlspecialchars($row['id_rab_upah']) ?>">Delete</button>
-                                                        <?php endif; ?>                            </td>
+<td>
+    <a href="detail_rab_upah.php?id_rab_upah=<?= urlencode($row['id_rab_upah']) ?>" class="btn btn-info btn-sm">Detail</a>
+    
+    <?php 
+    // [DIUBAH] Tombol delete hanya muncul jika user punya izin DAN jumlah pengajuan = 0
+    if ($can_add_edit && $row['jumlah_pengajuan'] == 0): 
+    ?>
+        <button class="btn btn-danger btn-sm delete-btn" data-id_rab_upah="<?= htmlspecialchars($row['id_rab_upah']) ?>">Delete</button>
+    <?php endif; ?>
+</td>
                           </tr>
                           <?php endwhile; ?>
                         </tbody>

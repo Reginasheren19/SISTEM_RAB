@@ -162,7 +162,6 @@ if ($q_rab_terbaru) { while($row = mysqli_fetch_assoc($q_rab_terbaru)) { $rab_te
                     <div class="d-flex align-items-left align-items-md-center flex-column flex-md-row pt-2 pb-4">
                         <div>
                             <h3 class="fw-bold mb-3">Dashboard Divisi Teknik</h3>
-                            <h6 class="op-7 mb-2">Manajemen Rencana Anggaran Biaya (RAB) Proyek</h6>
                         </div>
                     </div>
 
