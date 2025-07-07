@@ -248,9 +248,9 @@ if ($result) {
                                     <div class="col-12 text-end">
                                         <button type="submit" name="reset" class="btn btn-secondary">Reset</button>
                                         <button type="submit" name="filter" class="btn btn-primary"><i class="fas fa-search"></i> Tampilkan</button>
-                                        <a href="cetak_lap_distribusi.php?start=<?= $tanggal_mulai ?>&end=<?= $tanggal_selesai ?>&material=<?= $id_material_filter ?>" target="_blank" class="btn btn-success">
-                                            <i class="fas fa-print"></i> Unduh (PDF)
-                                        </a>
+                                    <a href="cetak_lap_distribusi.php?start=<?= $tanggal_mulai ?>&end=<?= $tanggal_selesai ?>&proyek=<?= $id_proyek_filter ?>&material=<?= $id_material_filter ?>" target="_blank" class="btn btn-success">
+                                        <i class="fas fa-print"></i> Unduh (PDF)
+                                    </a>
                                     </div>
                                 </div>
                             </form>

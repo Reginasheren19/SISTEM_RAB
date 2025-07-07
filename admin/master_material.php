@@ -209,7 +209,7 @@ if (!$result) {
                                                 <th>No.</th>
                                                 <th>Nama Material</th>
                                                 <th>Satuan</th>
-                                                <th>Stok Tersedia</th> <th>Keterangan</th>
+                                                <th>Keterangan</th>
                                                 <?php if ($can_add_edit): ?> <th>Action</th><?php endif; ?>
                                             </tr>
                                         </thead>
@@ -222,14 +222,6 @@ if (!$result) {
                                                     <td><?= $nomor++ ?></td>
                                                     <td><?= htmlspecialchars($row['nama_material']) ?></td>
                                                     <td><?= htmlspecialchars($row['nama_satuan']) ?></td>
-                                                    <td>
-                                                        <strong>
-                                                            <?php
-                                                                // Jika stok NULL (belum ada), tampilkan 0. Jika ada, format angkanya.
-                                                                echo number_format($row['jumlah_stok_tersedia'] ?? 0, 2, ',', '.');
-                                                            ?>
-                                                        </strong>
-                                                    </td>
                                                     <td><?= htmlspecialchars($row['keterangan_material']) ?></td>
                                                     <td>
                                                         <?php if ($can_add_edit): ?>

@@ -95,11 +95,11 @@ function is_active($pages, $current_page) {
                 <!-- ======================================================= -->
                 <!-- 3. GRUP MENU LAPORAN (Hanya Direktur & Admin)           -->
                 <!-- ======================================================= -->
-                <?php if (in_array($user_role, ['direktur', 'admin', 'super admin'])): ?>
                     <li class="nav-section">
                         <span class="sidebar-mini-icon"><i class="fa fa-ellipsis-h"></i></span>
                         <h4 class="text-section">Laporan</h4>
                     </li>
+                    <?php if (in_array($user_role, ['direktur', 'admin', 'super admin'])): ?>
                     <li class="nav-item <?= is_active(['laporan_pembelian.php'], $current_page) ?>">
                         <a href="laporan_pembelian.php">
                             <i class="fas fa-book"></i>
@@ -120,6 +120,12 @@ function is_active($pages, $current_page) {
                     </li>
                 <?php endif; ?>
 
+                <!-- kartu stok admin,pj,direktur -->
+                <?php if (in_array($user_role, ['direktur', 'admin', 'super admin'])): ?>
+                <li class="nav-item <?= is_active(['kartu_stok.php'], $current_page) ?>">
+                    <a href="kartu_stok.php"><i class="fas fa-clipboard-check"></i><p>Kartu Stok</p></a>
+                </li>
+                <?php endif; ?>
 
 <!-- 4. GRUP MENU MASTER DATA -->
     <li class="nav-section">
