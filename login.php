@@ -59,7 +59,7 @@ if ($result->num_rows === 1) {
                 break;
             case 'divisi teknik':
                 // header("Location: admin/dashboard_teknik.php");
-                // header("Location: admin/dashboard_divtek_m.php");
+                header("Location: admin/dashboard_divtek_m.php");
                 break;
             default:
                 // Jika role tidak dikenal, arahkan ke dashboard umum
