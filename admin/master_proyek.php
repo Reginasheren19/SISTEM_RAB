@@ -53,48 +53,29 @@ if (!$result) {
 
 <!DOCTYPE html>
 <html lang="en">
-  <head>
+<head>
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <title>Master Proyek</title>
-    <meta
-      content="width=device-width, initial-scale=1.0, shrink-to-fit=no"
-      name="viewport"
-    />
-    <link
-      rel="icon"
-      href="assets/img/logo/LOGO PT.jpg"
-      type="image/x-icon"
-    />
-    <link href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css" rel="stylesheet" />
+    <title>Dashboard - Kaiadmin</title>
+    <meta content="width=device-width, initial-scale=1.0, shrink-to-fit=no" name="viewport" />
+    <link rel="icon" href="assets/img/logo/LOGO PT.jpg" type="image/x-icon" />
 
     <!-- Fonts and icons -->
     <script src="assets/js/plugin/webfont/webfont.min.js"></script>
     <script>
-      WebFont.load({
-        google: { families: ["Public Sans:300,400,500,600,700"] },
-        custom: {
-          families: [
-            "Font Awesome 5 Solid",
-            "Font Awesome 5 Regular",
-            "Font Awesome 5 Brands",
-            "simple-line-icons",
-          ],
-          urls: ["assets/css/fonts.min.css"],
-        },
-        active: function () {
-          sessionStorage.fonts = true;
-        },
-      });
+        WebFont.load({
+            google: { families: ["Public Sans:300,400,500,600,700"] },
+            custom: {
+                families: [ "Font Awesome 5 Solid", "Font Awesome 5 Regular", "Font Awesome 5 Brands", "simple-line-icons" ],
+                urls: ["assets/css/fonts.min.css"],
+            },
+        });
     </script>
 
     <!-- CSS Files -->
     <link rel="stylesheet" href="assets/css/bootstrap.min.css" />
     <link rel="stylesheet" href="assets/css/plugins.min.css" />
     <link rel="stylesheet" href="assets/css/kaiadmin.min.css" />
-
-    <!-- CSS Just for demo purpose, don't include it in your project -->
-    <link rel="stylesheet" href="assets/css/demo.css" />
-  </head>
+</head>
 <body>
     <div class="wrapper">
         <?php //include 'sidebar_m.php'; ?>
@@ -238,22 +219,22 @@ if (!$result) {
                     <th>Mandor</th>
                     <th>PJ Proyek</th> <!-- Menambahkan kolom PJ Proyek -->
                     <th>Lokasi</th>
-                    <th>Action</th>
+                    <th style="width: 18%;">Action</th>
                 </tr>
             </thead>
             <tbody>
                 <?php while ($row = mysqli_fetch_assoc($result)): ?>
                     <tr>
-                        <td><?= htmlspecialchars($row['id_proyek']) ?></td>
+                        <td class='text-center'><?= htmlspecialchars($row['id_proyek']) ?></td>
                         <td><?= htmlspecialchars($row['nama_perumahan']) ?></td>
-                        <td><?= htmlspecialchars($row['kavling']) ?></td>
-                        <td><?= htmlspecialchars($row['type_proyek']) ?></td>
+                        <td class='text-center'><?= htmlspecialchars($row['kavling']) ?></td>
+                        <td class='text-center'><?= htmlspecialchars($row['type_proyek']) ?></td>
                         <td><?= htmlspecialchars($row['nama_mandor']) ?></td>
                         <td><?= htmlspecialchars($row['nama_pj_proyek'] ?? 'N/A') ?></td> <!-- Menampilkan PJ Proyek -->
                         <td><?= htmlspecialchars($row['lokasi']) ?></td>
                         <td>
                             <!-- Update Button -->
-                            <button class="btn btn-warning btn-sm btn-update" 
+                            <button class="btn btn-primary btn-sm btn-update" 
                                     data-id_proyek='<?= $row['id_proyek'] ?>' 
                                     data-id_perumahan='<?= $row['id_perumahan'] ?>' 
                                     data-kavling='<?= $row['kavling'] ?>' 
@@ -262,15 +243,15 @@ if (!$result) {
                                     data-id_user_pj='<?= $row['id_user_pj'] ?>'
                                     data-bs-toggle="modal" 
                                     data-bs-target="#updateProyekModal">
-                                <i class="fa fa-edit"></i> Update
+                               Update
                             </button>
 
                             <!-- Delete Button -->
-                            <button class="btn btn-danger btn-sm btn-delete" 
+                            <button class="btn btn-danger btn-sm delete-btn" 
                                     data-id_proyek='<?= $row['id_proyek'] ?>'
                                     data-bs-toggle="modal" 
                                     data-bs-target="#confirmDeleteModal">
-                                <i class="fa fa-trash"></i> Delete
+                             Delete
                             </button>
                         </td>
                     </tr>
@@ -437,11 +418,42 @@ if (!$result) {
     </div>
   </div>
 
+    <!--   Core JS Files   -->
     <script src="assets/js/core/jquery-3.7.1.min.js"></script>
     <script src="assets/js/core/popper.min.js"></script>
     <script src="assets/js/core/bootstrap.min.js"></script>
+
+    <!-- jQuery Scrollbar -->
+    <script src="assets/js/plugin/jquery-scrollbar/jquery.scrollbar.min.js"></script>
+
+    <!-- Chart JS -->
+    <script src="assets/js/plugin/chart.js/chart.min.js"></script>
+
+    <!-- jQuery Sparkline -->
+    <script src="assets/js/plugin/jquery.sparkline/jquery.sparkline.min.js"></script>
+
+    <!-- Chart Circle -->
+    <script src="assets/js/plugin/chart-circle/circles.min.js"></script>
+
+    <!-- Datatables -->
     <script src="assets/js/plugin/datatables/datatables.min.js"></script>
 
+    <!-- Bootstrap Notify -->
+    <script src="assets/js/plugin/bootstrap-notify/bootstrap-notify.min.js"></script>
+
+    <!-- jQuery Vector Maps -->
+    <script src="assets/js/plugin/jsvectormap/jsvectormap.min.js"></script>
+    <script src="assets/js/plugin/jsvectormap/world.js"></script>
+
+    <!-- Sweet Alert -->
+    <script src="assets/js/plugin/sweetalert/sweetalert.min.js"></script>
+
+    <!-- Kaiadmin JS -->
+    <script src="assets/js/kaiadmin.min.js"></script>
+
+    <!-- Kaiadmin DEMO methods, don't include it in your project! -->
+    <script src="assets/js/setting-demo.js"></script>
+    <script src="assets/js/demo.js"></script>
 <script>
 $(document).ready(function() {
     // Handle dropdown change for "id_perumahan" to update location
