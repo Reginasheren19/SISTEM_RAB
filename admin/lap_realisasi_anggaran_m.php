@@ -2,7 +2,7 @@
 session_start();
 include("../config/koneksi_mysql.php");
 
-// BAGIAN 1: LOGIKA FILTER DENGAN POLA PRG (POST/REDIRECT/GET)
+// BAGIAN 1: LOGIKA FILTER
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $_SESSION['filter_id_perumahan'] = $_POST['id_perumahan'] ?? null;
     $_SESSION['filter_id_proyek'] = $_POST['id_proyek'] ?? 'semua';
@@ -16,56 +16,29 @@ $id_proyek_filter = $_SESSION['filter_id_proyek'] ?? 'semua';
 $tanggal_mulai = $_SESSION['filter_tanggal_mulai'] ?? date('Y-m-01');
 $tanggal_selesai = $_SESSION['filter_tanggal_selesai'] ?? date('Y-m-t');
 
-
-// BAGIAN 2: LOGIKA PENGAMBILAN & PERHITUNGAN DATA
+// BAGIAN 2: LOGIKA PENGAMBILAN DATA
 $laporan_data = [];
+$detail_realisasi = []; // [BARU] Untuk menyimpan rincian realisasi
 
-// [DIUBAH] Query dasar sekarang menggunakan INNER JOIN dan memiliki WHERE yang dinamis
-$sql_proyek_rab = "
-    SELECT 
-        p.id_proyek,
-        CONCAT(per.nama_perumahan, ' - Kavling: ', p.kavling, ' (Tipe: ', p.type_proyek, ')') AS nama_proyek_lengkap,
-        rab.total_rab_material AS total_anggaran
-    FROM master_proyek p
-    JOIN master_perumahan per ON p.id_perumahan = per.id_perumahan
-    INNER JOIN rab_material rab ON p.id_proyek = rab.id_proyek
-";
-
-// [DIUBAH] Logika WHERE yang lebih fleksibel untuk menangani semua filter
+$sql_proyek_rab = "SELECT p.id_proyek, CONCAT(per.nama_perumahan, ' - Kavling: ', p.kavling, ' (Tipe: ', p.type_proyek, ')') AS nama_proyek_lengkap, rab.total_rab_material AS total_anggaran FROM master_proyek p JOIN master_perumahan per ON p.id_perumahan = per.id_perumahan INNER JOIN rab_material rab ON p.id_proyek = rab.id_proyek";
 $where_conditions = [];
 $params = [];
 $param_types = '';
-
-if (!empty($id_perumahan_filter)) {
-    $where_conditions[] = "p.id_perumahan = ?";
-    $params[] = $id_perumahan_filter;
-    $param_types .= 'i';
-}
-if ($id_proyek_filter != 'semua' && is_numeric($id_proyek_filter)) {
-    $where_conditions[] = "p.id_proyek = ?";
-    $params[] = $id_proyek_filter;
-    $param_types .= 'i';
-}
-
-if (!empty($where_conditions)) {
-    $sql_proyek_rab .= " WHERE " . implode(' AND ', $where_conditions);
-}
+if (!empty($id_perumahan_filter)) { $where_conditions[] = "p.id_perumahan = ?"; $params[] = $id_perumahan_filter; $param_types .= 'i'; }
+if ($id_proyek_filter != 'semua' && is_numeric($id_proyek_filter)) { $where_conditions[] = "p.id_proyek = ?"; $params[] = $id_proyek_filter; $param_types .= 'i'; }
+if (!empty($where_conditions)) { $sql_proyek_rab .= " WHERE " . implode(' AND ', $where_conditions); }
 $sql_proyek_rab .= " ORDER BY per.nama_perumahan, p.kavling";
-
 $stmt_proyek_rab = $koneksi->prepare($sql_proyek_rab);
 
 if ($stmt_proyek_rab) {
-    if (!empty($params)) {
-        $stmt_proyek_rab->bind_param($param_types, ...$params);
-    }
+    if (!empty($params)) { $stmt_proyek_rab->bind_param($param_types, ...$params); }
     $stmt_proyek_rab->execute();
     $result_proyek_rab = $stmt_proyek_rab->get_result();
-
     while ($proyek = $result_proyek_rab->fetch_assoc()) {
         $current_proyek_id = $proyek['id_proyek'];
         $total_realisasi_proyek = 0;
-    
-        $sql_distribusi = "SELECT dd.id_material, SUM(dd.jumlah_distribusi) AS total_kuantitas FROM detail_distribusi dd JOIN distribusi_material dm ON dd.id_distribusi = dm.id_distribusi WHERE dm.id_proyek = ? AND dm.tanggal_distribusi BETWEEN ? AND ? GROUP BY dd.id_material";
+        
+        $sql_distribusi = "SELECT dd.id_material, m.nama_material, s.nama_satuan, SUM(dd.jumlah_distribusi) AS total_kuantitas FROM detail_distribusi dd JOIN distribusi_material dm ON dd.id_distribusi = dm.id_distribusi JOIN master_material m ON dd.id_material = m.id_material LEFT JOIN master_satuan s ON m.id_satuan = s.id_satuan WHERE dm.id_proyek = ? AND dm.tanggal_distribusi BETWEEN ? AND ? GROUP BY dd.id_material, m.nama_material, s.nama_satuan";
         $stmt_distribusi = $koneksi->prepare($sql_distribusi);
         $stmt_distribusi->bind_param("iss", $current_proyek_id, $tanggal_mulai, $tanggal_selesai);
         $stmt_distribusi->execute();
@@ -74,23 +47,28 @@ if ($stmt_proyek_rab) {
         while($item_distribusi = $result_distribusi->fetch_assoc()){
             $id_material = $item_distribusi['id_material'];
             $kuantitas_terpakai = (float)$item_distribusi['total_kuantitas'];
-            $stmt_harga = $koneksi->prepare("SELECT SUM(sub_total_pp) / NULLIF(SUM(quantity), 0) AS harga_rata_rata FROM detail_pencatatan_pembelian WHERE id_material = ? AND quantity > 0 AND harga_satuan_pp > 0");
+            
+            $stmt_harga = $koneksi->prepare("SELECT (SUM(sub_total_pp) / NULLIF(SUM(quantity), 0)) AS harga_rata_rata FROM detail_pencatatan_pembelian WHERE id_material = ? AND quantity > 0");
             $stmt_harga->bind_param("i", $id_material);
             $stmt_harga->execute();
             $harga_rata_rata = (float)($stmt_harga->get_result()->fetch_assoc()['harga_rata_rata'] ?? 0);
             $stmt_harga->close();
-            $total_realisasi_proyek += $kuantitas_terpakai * $harga_rata_rata;
+            
+            $nilai_realisasi_item = $kuantitas_terpakai * $harga_rata_rata;
+            $total_realisasi_proyek += $nilai_realisasi_item;
+            
+            // [BARU] Kumpulkan data detail realisasi jika satu proyek dipilih
+            if ($id_proyek_filter != 'semua' && is_numeric($id_proyek_filter)) {
+                $detail_realisasi[] = ['nama_material' => $item_distribusi['nama_material'], 'satuan' => $item_distribusi['nama_satuan'], 'volume_terpakai' => $kuantitas_terpakai, 'nilai_realisasi' => $nilai_realisasi_item];
+            }
         }
         $stmt_distribusi->close();
-    
         $laporan_data[] = ['nama_proyek' => $proyek['nama_proyek_lengkap'], 'anggaran' => $proyek['total_anggaran'], 'realisasi' => $total_realisasi_proyek, 'selisih' => $proyek['total_anggaran'] - $total_realisasi_proyek];
     }
     $stmt_proyek_rab->close();
 }
-
-// [DIUBAH] Query untuk dropdown perumahan hanya mengambil perumahan yang punya proyek dengan RAB
-$perumahan_dropdown_sql = "SELECT DISTINCT per.id_perumahan, per.nama_perumahan FROM master_perumahan per JOIN master_proyek pro ON per.id_perumahan = pro.id_perumahan JOIN rab_material r ON pro.id_proyek = r.id_proyek ORDER BY per.nama_perumahan ASC";
-$perumahan_dropdown_result = mysqli_query($koneksi, $perumahan_dropdown_sql);
+// Query untuk dropdown tidak berubah
+$perumahan_dropdown_result = mysqli_query($koneksi, "SELECT DISTINCT per.id_perumahan, per.nama_perumahan FROM master_perumahan per JOIN master_proyek pro ON per.id_perumahan = pro.id_perumahan JOIN rab_material r ON pro.id_proyek = r.id_proyek ORDER BY per.nama_perumahan ASC");
 ?>
 
 <!DOCTYPE html>
@@ -265,42 +243,77 @@ $perumahan_dropdown_result = mysqli_query($koneksi, $perumahan_dropdown_sql);
                             <tr class="text-center"><th>No</th><th>Nama Proyek</th><th>Anggaran (RAB)</th><th>Realisasi (Terpakai)</th><th>Selisih</th><th>Persentase</th></tr>
                         </thead>
                         <tbody>
-                            <?php if (!empty($laporan_data)): $nomor = 1; foreach ($laporan_data as $data): ?>
-                            <tr>
-                                <td class="text-center"><?= $nomor++ ?></td>
-                                <td><?= htmlspecialchars($data['nama_proyek']) ?></td>
-                                <td class="text-end">Rp <?= number_format($data['anggaran'], 2, ',', '.') ?></td>
-                                <td class="text-end">Rp <?= number_format($data['realisasi'], 2, ',', '.') ?></td>
-                                <td class="text-end fw-bold <?= ($data['selisih'] >= 0) ? 'text-success' : 'text-danger' ?>">
-                                    Rp <?= number_format(abs($data['selisih']), 2, ',', '.') ?>
-                                    <small class="fw-normal d-block"><?= ($data['selisih'] >= 0) ? '(Hemat)' : '(Boros)' ?></small>
-                                </td>
-                                <td class="text-center" style="width: 15%;">
-                                    <?php 
-                                    $persentase = ($data['anggaran'] > 0) ? ($data['realisasi'] / $data['anggaran']) * 100 : 0;
-                                    $progress_class = $persentase >= 100 ? 'bg-danger' : ($persentase > 80 ? 'bg-warning' : 'bg-success');
-                                    ?>
-                                    <div class="progress" style="height: 20px;" title="Realisasi Aktual: <?= number_format($persentase, 1) ?>%">
-                                        <div class="progress-bar <?= $progress_class ?>" role="progressbar" style="width: <?= min($persentase, 100) ?>%;" aria-valuenow="<?= $persentase ?>" aria-valuemin="0" aria-valuemax="100">
-                                            <span style="white-space: nowrap;">
-                                            <?php if($persentase >= 100): ?>
-                                                <i class="fa fa-exclamation-triangle"></i>&nbsp;<?= number_format($persentase, 1) ?>%
-                                            <?php else: ?>
-                                                <?= number_format($persentase, 1) ?>%
-                                            <?php endif; ?>
-                                            </span>
+                                <?php if (!empty($laporan_data)): $nomor = 1; foreach ($laporan_data as $data): ?>
+                                <tr>
+                                    <td class="text-center"><?= $nomor++ ?></td>
+                                    <td><?= htmlspecialchars($data['nama_proyek']) ?></td>
+                                    <td class="text-end">Rp <?= number_format($data['anggaran'], 0, ',', '.') ?></td>
+                                    <td class="text-end">Rp <?= number_format($data['realisasi'], 0, ',', '.') ?></td>
+                                    <td class="text-end fw-bold <?= ($data['selisih'] >= 0) ? 'text-success' : 'text-danger' ?>">
+                                        Rp <?= number_format(abs($data['selisih']), 0, ',', '.') ?>
+                                    </td>
+                                    <td class="text-center" style="width: 15%;">
+                                        <?php 
+                                        $persentase = ($data['anggaran'] > 0) ? ($data['realisasi'] / $data['anggaran']) * 100 : 0;
+                                        $progress_class = $persentase >= 100 ? 'bg-danger' : ($persentase > 80 ? 'bg-warning' : 'bg-success');
+                                        ?>
+                                        <div class="progress" style="height: 20px;" title="Realisasi Aktual: <?= number_format($persentase, 1) ?>%">
+                                            <div class="progress-bar <?= $progress_class ?>" role="progressbar" style="width: <?= min($persentase, 100) ?>%;" aria-valuenow="<?= $persentase ?>" aria-valuemin="0" aria-valuemax="100">
+                                                <span style="white-space: nowrap;">
+                                                <?php if($persentase >= 100): ?>
+                                                    <i class="fa fa-exclamation-triangle"></i>&nbsp;<?= number_format($persentase, 1) ?>%
+                                                <?php else: ?>
+                                                    <?= number_format($persentase, 1) ?>%
+                                                <?php endif; ?>
+                                                </span>
+                                            </div>
                                         </div>
-                                    </div>
-                                </td>
-                            </tr>
-                            <?php endforeach; else: ?>
-                            <tr><td colspan="6" class="text-center text-muted"><i>Tidak ada data untuk filter yang dipilih.</i></td></tr>
-                            <?php endif; ?>
-                        </tbody>
+                                    </td>
+                                </tr>
+                                <?php endforeach; else: ?>
+                                <tr><td colspan="6" class="text-center text-muted"><i>Tidak ada data untuk filter yang dipilih.</i></td></tr>
+                                <?php endif; ?>
+                            </tbody>
                     </table>
                 </div>
             </div>
         </div>
+
+        <?php if ($id_proyek_filter != 'semua' && is_numeric($id_proyek_filter) && !empty($detail_realisasi)): ?>
+                <div class="card">
+                    <div class="card-header"><h4 class="card-title">Rincian Realisasi Biaya per Material</h4></div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-hover">
+                                <thead>
+                                    <tr>
+                                        <th class="text-center">No.</th>
+                                        <th class="text-center">Nama Material</th>
+                                        <th class="text-center">Volume Terpakai</th>
+                                        <th class="text-center">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php $nomor_detail = 1; $total_nilai_detail = 0; foreach($detail_realisasi as $detail): ?>
+                                    <tr>
+                                        <td class="text-center"><?= $nomor_detail++ ?></td>
+                                        <td><?= htmlspecialchars($detail['nama_material']) ?></td>
+                                        <td class="text-center"><?= number_format($detail['volume_terpakai']) ?> <?= htmlspecialchars($detail['satuan']) ?></td>
+                                        <td class="text-center">Rp <?= number_format($detail['nilai_realisasi']) ?></td>
+                                    </tr>
+                                    <?php $total_nilai_detail += $detail['nilai_realisasi']; endforeach; ?>
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <th colspan="3" class="text-end fw-bold">Total Realisasi</th>
+                                        <th class="text-center fw-bold">Rp <?= number_format($total_nilai_detail, 0, ',', '.') ?></th>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <?php endif; ?>
     </div>
 </div>
     <script src="assets/js/core/jquery-3.7.1.min.js"></script>

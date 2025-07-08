@@ -266,10 +266,17 @@ $detail_result = mysqli_query($koneksi, $sql_detail);
 // Ganti bagian table body Anda dengan kode ini:
 ?>
 
-<div class="card">
-  <div class="card-header">
-    Detail RAB
-  </div>
+<!-- Tabel Detail Pekerjaan -->
+<div class="card shadow-sm">
+  <div class="card-header bg-light d-flex justify-content-between align-items-center">
+    <h4 class="card-title mb-0">Rincian RAB Material</h4>
+<a href="cetak_rab_material.php?id_rab_material=<?= $id_rab_material ?>" target="_blank" class="btn btn-label-info btn-round btn-sm">
+    <span class="btn-label">
+    <i class="fa fa-print"></i>
+    </span>
+    Cetak
+  </a>
+</div>
   <div class="card-body">
     <div class="table-responsive">
       <table class="table table-bordered" id="tblDetailRAB">
