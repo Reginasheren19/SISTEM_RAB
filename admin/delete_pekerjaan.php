@@ -2,25 +2,26 @@
 include("../config/koneksi_mysql.php");
 
 // Debugging $_GET
-echo "Parameter GET: ";
-print_r($_GET);
-echo "<br>";
+// echo "Parameter GET: ";
+// print_r($_GET);
+// echo "<br>";
 
-if (isset($_GET['pekerjaan']) && !empty($_GET['pekerjaan'])) { // Periksa 'user' di URL
-    // Ambil ID user dari parameter URL dan sanitasi
-    $hapus_id_pekerjaan = mysqli_real_escape_string($koneksi, $_GET['pekerjaan']);
-    echo "ID Pekerjaan yang akan dihapus: " . $hapus_id_pekerjaan . "<br>"; // Debugging
+if (isset($_GET['id']) && !empty($_GET['id'])) { // cek 'id', bukan 'pekerjaan'
+    // Ambil ID pekerjaan dari parameter URL dan sanitasi
+    $hapus_id_pekerjaan = mysqli_real_escape_string($koneksi, $_GET['id']);
+    // echo "ID Pekerjaan yang akan dihapus: " . $hapus_id_pekerjaan . "<br>"; // Debugging
 
-    // Jalankan query untuk menghapus user berdasarkan ID
+    // Jalankan query untuk menghapus pekerjaan berdasarkan ID
     $sql = mysqli_query($koneksi, "DELETE FROM master_pekerjaan WHERE id_pekerjaan = '$hapus_id_pekerjaan'");
 
     // Cek apakah query berhasil dieksekusi
     if ($sql && mysqli_affected_rows($koneksi) > 0) { // Pastikan ada baris yang terhapus
-        header("location: master_pekerjaan.php?msg=Data%20berhasil%20dihapus");         exit; // Pastikan untuk menghentikan eksekusi skrip setelah header
+        header("location: master_pekerjaan.php?msg=Data%20berhasil%20dihapus");
+        exit;
     } else {
         echo "Error deleting record: " . mysqli_error($koneksi);
     }
 } else {
-    echo "No user specified for deletion.";
+    echo "No pekerjaan specified for deletion.";
 }
 ?>

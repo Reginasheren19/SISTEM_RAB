@@ -231,56 +231,56 @@ $result = mysqli_query($koneksi, "SELECT * FROM master_user");
         </div>
     </div>
 
-    <div class="modal fade" id="addUserModal" tabindex="-1" aria-labelledby="addUserModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <form method="POST" action="add_user.php" enctype="multipart/form-data">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="addUserModalLabel">Tambah Data User</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="text-center mb-3">
-                            <div class="avatar avatar-xxl">
-                                <img id="addAvatarPreview" src="assets/img/default-avatar.png" alt="..." class="avatar-img rounded-circle">
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <label for="addProfilePic" class="form-label">Foto Profil (Opsional)</label>
-                            <input type="file" class="form-control" id="addProfilePic" name="profile_pic" accept="image/jpeg, image/png">
-                        </div>
-                        <div class="mb-3">
-                            <label for="addNamaLengkap" class="form-label">Nama Lengkap</label>
-                            <input type="text" class="form-control" id="addNamaLengkap" name="nama_lengkap" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="addUsername" class="form-label">Username</label>
-                            <input type="text" class="form-control" id="addUsername" name="username" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="addPassword" class="form-label">Password</label>
-                            <input type="password" class="form-control" id="addPassword" name="password" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="addRole" class="form-label">Role</label>
-                            <select class="form-select" id="addRole" name="role" required>
-                                <option value="" disabled selected>Pilih Role</option>
-                                <option value="Super Admin">Super Admin</option>
-                                <option value="Admin">Admin</option>
-                                <option value="Direktur">Direktur</option>
-                                <option value="PJ Proyek">PJ Proyek</option>
-                                <option value="Divisi Teknik">Divisi Teknik</option>
-                            </select>
+<div class="modal fade" id="addUserModal" tabindex="-1" aria-labelledby="addUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form method="POST" action="add_user.php" enctype="multipart/form-data" autocomplete="off">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addUserModalLabel">Tambah Data User</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="text-center mb-3">
+                        <div class="avatar avatar-xxl">
+                            <img id="addAvatarPreview" src="assets/img/default-avatar.png" alt="..." class="avatar-img rounded-circle">
                         </div>
                     </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                        <button type="submit" class="btn btn-primary">Simpan</button>
+                    <div class="mb-3">
+                        <label for="addProfilePic" class="form-label">Foto Profil (Opsional)</label>
+                        <input type="file" class="form-control" id="addProfilePic" name="profile_pic" accept="image/jpeg, image/png">
                     </div>
-                </form>
-            </div>
+                    <div class="mb-3">
+                        <label for="addNamaLengkap" class="form-label">Nama Lengkap</label>
+                        <input type="text" class="form-control" id="addNamaLengkap" name="nama_lengkap" placeholder="Masukkan nama lengkap" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="addUsername" class="form-label">Username</label>
+                        <input type="text" class="form-control" id="addUsername" name="username" placeholder="Masukkan username" required autocomplete="off">
+                    </div>
+                    <div class="mb-3">
+                        <label for="addPassword" class="form-label">Password</label>
+                        <input type="password" class="form-control" id="addPassword" name="password" placeholder="Masukkan password" required autocomplete="new-password">
+                    </div>
+                    <div class="mb-3">
+                        <label for="addRole" class="form-label">Role</label>
+                        <select class="form-select" id="addRole" name="role" required>
+                            <option value="" disabled selected>Pilih Role</option>
+                            <option value="Super Admin">Super Admin</option>
+                            <option value="Admin">Admin</option>
+                            <option value="Direktur">Direktur</option>
+                            <option value="PJ Proyek">PJ Proyek</option>
+                            <option value="Divisi Teknik">Divisi Teknik</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-primary">Simpan</button>
+                </div>
+            </form>
         </div>
     </div>
+</div>
 
     <div class="modal fade" id="updateUserModal" tabindex="-1" aria-labelledby="updateUserModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg">
@@ -336,23 +336,24 @@ $result = mysqli_query($koneksi, "SELECT * FROM master_user");
         </div>
     </div>
 
-    <div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="confirmDeleteModalLabel">Konfirmasi Hapus</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <p>Apakah Anda yakin ingin menghapus user ini?</p>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                    <a href="#" id="confirmDeleteLink" class="btn btn-danger">Hapus</a>
-                </div>
-            </div>
+  <!-- Modal Delete Confirmation -->
+  <div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="confirmDeleteModalLabel">Confirm Deletion</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
+        <div class="modal-body">
+          <p>Are you sure you want to delete this user?</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <a href="#" id="confirmDeleteLink" class="btn btn-danger">Delete</a>
+        </div>
+      </div>
     </div>
+  </div>
 
     <!--   Core JS Files   -->
     <script src="assets/js/core/jquery-3.7.1.min.js"></script>
