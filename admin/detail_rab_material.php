@@ -351,7 +351,7 @@ if ($detail_result && mysqli_num_rows($detail_result) > 0) {
                 <td>" . $noPekerjaan++ . "</td>
                 <td>&nbsp;&nbsp;&nbsp;&nbsp;" . htmlspecialchars($row['uraian_pekerjaan']) . "</td>
                 <td class='text-center'>" . htmlspecialchars($row['nama_satuan']) . "</td>
-                <td class='text-end'>" . number_format($row['volume'], 2, ',', '.') . "</td>
+                <td class='text-center'>" . number_format($row['volume']) . "</td>
                 <td class='text-end'>Rp " . number_format($row['harga_satuan'], 0, ',', '.') . "</td>
                 <td class='text-end'>Rp " . number_format($row['sub_total'], 0, ',', '.') . "</td>
               </tr>";
@@ -387,8 +387,14 @@ if ($detail_result && mysqli_num_rows($detail_result) > 0) {
     </div>
   </div>
 </div>
+    <script src="assets/js/core/jquery-3.7.1.min.js"></script>
+    <script src="assets/js/core/popper.min.js"></script>
+    <script src="assets/js/core/bootstrap.min.js"></script>
+    <script src="assets/js/plugin/datatables/datatables.min.js"></script>
+    <script src="assets/js/plugin/datatables/dataTables.bootstrap5.min.js"></script>
 
-<script>
+
+<!-- <script>
 $(document).ready(function() {
     $('#tblDetailRAB').DataTable({
         paging: true,
@@ -446,6 +452,6 @@ $(document).ready(function() {
         }
     });
 });
-</script>
+</script> -->
 </body>
 </html>

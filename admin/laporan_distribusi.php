@@ -321,5 +321,11 @@ if ($result) {
         </div>
     </div>
 </div>
+    <script src="assets/js/core/jquery-3.7.1.min.js"></script>
+    <script src="assets/js/core/popper.min.js"></script>
+    <script src="assets/js/core/bootstrap.min.js"></script>
+    <script src="assets/js/plugin/datatables/datatables.min.js"></script>
+    <script src="assets/js/plugin/datatables/dataTables.bootstrap5.min.js"></script>
+
 </body>
 </html>
