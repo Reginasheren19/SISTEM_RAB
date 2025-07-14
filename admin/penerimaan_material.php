@@ -40,7 +40,7 @@ if (!$result) {
 <html lang="en">
   <head>
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <title>Penerimaan Material</title>
+    <title>Penerimaan Gudang</title>
     <meta
       content="width=device-width, initial-scale=1.0, shrink-to-fit=no"
       name="viewport"
@@ -146,7 +146,7 @@ if (!$result) {
     <div class="container">
         <div class="page-inner">
             <div class="page-header">
-                <h3 class="fw-bold mb-3">Penerimaan Material</h3>
+                <h3 class="fw-bold mb-3">Penerimaan Gudang</h3>
                 <ul class="breadcrumbs mb-3">
                     <li class="nav-home">
                         <a href="dashboard.php">
@@ -157,7 +157,7 @@ if (!$result) {
                         <i class="icon-arrow-right"></i>
                     </li>
                     <li class="nav-item">
-                        <a href="#">Penerimaan Material</a>
+                        <a href="#">Penerimaan Gudang</a>
                     </li>
                 </ul>
             </div>
@@ -165,7 +165,7 @@ if (!$result) {
     <div class="col-md-12">
         <div class="card">
             <div class="card-header">
-                <h4 class="card-title">Daftar Tunggu Penerimaan Material</h4>
+                <h4 class="card-title">Daftar Tunggu Penerimaan Gudang</h4>
             </div>
             <div class="card-body">
                 <?php 
@@ -230,7 +230,7 @@ if (!$result) {
         <div class="modal-content">
             <form action="add_penerimaan.php" method="POST" id="form-konfirmasi">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="konfirmasiModalLabel">Konfirmasi Penerimaan Material</h5>
+                    <h5 class="modal-title" id="konfirmasiModalLabel">Konfirmasi Penerimaan Gudang</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
