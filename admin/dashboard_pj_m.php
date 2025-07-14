@@ -177,7 +177,7 @@ $stmt_log->close();
                                 <ul class="list-group list-group-flush">
                                 <?php if (mysqli_num_rows($result_daftar_tunggu) > 0): while($row = mysqli_fetch_assoc($result_daftar_tunggu)): ?>
                                     <li class="list-group-item">
-                                        <a href="detail_pembelian.php?id=<?= $row['id_pembelian'] ?>" class="text-decoration-none">
+                                        <a href="" class="text-decoration-none">
                                             <strong>ID: PB<?= $row['id_pembelian'] . date('Y', strtotime($row['tanggal_pembelian'])) ?></strong>
                                             <small class="d-block text-muted"><?= htmlspecialchars($row['keterangan_pembelian']) ?></small>
                                         </a>
