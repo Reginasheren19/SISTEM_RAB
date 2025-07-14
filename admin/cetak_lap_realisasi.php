@@ -176,7 +176,7 @@ $laporan_data = [[
             <tr>
                 <td class="text-center"><?= $nomor_detail++ ?></td>
                 <td><?= htmlspecialchars($detail['nama_material']) ?></td>
-                <td class="text-center"><?= number_format($detail['volume'], 2, ',', '.') ?> <?= htmlspecialchars($detail['satuan']) ?></td>
+                <td class="text-center"><?= number_format($detail['volume']) ?> <?= htmlspecialchars($detail['satuan']) ?></td>
                 <td class="text-center">Rp <?= number_format($detail['nilai'], 0, ',', '.') ?></td>
             </tr>
             <?php $total_nilai_detail += $detail['nilai']; endforeach; ?>

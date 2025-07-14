@@ -211,7 +211,7 @@ if (!$result) {
                                             $status_text = 'Perlu Tindakan Retur';
                                             $badge_class = 'bg-warning text-dark';
                                         } else {
-                                            $status_text = 'Menunggu Pengganti';
+                                            $status_text = 'Menunggu Konfirmasi';
                                             $badge_class = 'bg-primary';
                                         }
                             ?>

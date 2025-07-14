@@ -287,16 +287,19 @@ $materials_result = mysqli_query($koneksi, $material_sql);
         var nomorUrut = 1;
 
         // 1. Update stok saat material dipilih
-        $('#id_material').on('change', function() {
-            var selectedOption = $(this).find('option:selected');
-            var stok = selectedOption.data('stok');
-            var satuan = selectedOption.data('satuan');
-            if (stok !== '') {
-                $('#stok_saat_ini').val(stok + ' ' + satuan);
-            } else {
-                $('#stok_saat_ini').val('');
-            }
-        });
+            $('#id_material').on('change', function() {
+                var selectedOption = $(this).find('option:selected');
+                var stok = selectedOption.data('stok');
+                var satuan = selectedOption.data('satuan');
+                
+                if (stok !== '') {
+                    // Ubah teks stok menjadi angka untuk menghilangkan .00 yang tidak perlu
+                    var stokTampil = parseFloat(stok); 
+                    $('#stok_saat_ini').val(stokTampil + ' ' + satuan);
+                } else {
+                    $('#stok_saat_ini').val('');
+                }
+            });
 
         // 2. Logika saat tombol "Tambahkan" diklik
         $('#btn-tambah-item').on('click', function() {

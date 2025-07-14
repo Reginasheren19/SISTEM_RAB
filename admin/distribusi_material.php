@@ -40,18 +40,23 @@ if (!isset($_SESSION['id_user'])) {
 
     // Query ini hanya akan mengambil proyek yang PJ-nya adalah user yang sedang login
     $proyek_sql = "
-        SELECT 
-            p.id_proyek,
-            CONCAT(pr.nama_perumahan, ' - Kavling ', p.kavling) AS nama_proyek_lengkap
-        FROM 
-            master_proyek p
-        LEFT JOIN 
-            master_perumahan pr ON p.id_perumahan = pr.id_perumahan
-        WHERE 
-            p.id_user_pj = ?
-        ORDER BY 
-            nama_proyek_lengkap ASC
-    ";
+    SELECT 
+        p.id_proyek,
+        CONCAT(pr.nama_perumahan, ' - Kavling ', p.kavling) AS nama_proyek_lengkap
+    FROM 
+        master_proyek p
+    LEFT JOIN 
+        master_perumahan pr ON p.id_perumahan = pr.id_perumahan
+    WHERE 
+        p.id_user_pj = ? 
+        AND EXISTS (
+            SELECT 1 
+            FROM rab_material r 
+            WHERE r.id_proyek = p.id_proyek
+        )
+    ORDER BY 
+        nama_proyek_lengkap ASC
+";
 
     // Gunakan Prepared Statement untuk keamanan
     $stmt_proyek = mysqli_prepare($koneksi, $proyek_sql);

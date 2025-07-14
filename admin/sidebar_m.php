@@ -121,7 +121,7 @@ function is_active($pages, $current_page) {
                 <?php endif; ?>
 
                 <!-- kartu stok admin,pj,direktur -->
-                <?php if (in_array($user_role, ['direktur', 'admin', 'super admin'])): ?>
+                <?php if (in_array($user_role, ['direktur', 'admin', 'pj proyek','super admin'])): ?>
                 <li class="nav-item <?= is_active(['kartu_stok.php'], $current_page) ?>">
                     <a href="kartu_stok.php"><i class="fas fa-clipboard-check"></i><p>Kartu Stok</p></a>
                 </li>

@@ -261,10 +261,21 @@ if (!empty($id_material_filter)) {
                     </thead>
                     <tbody>
                         <?php 
-                        $saldo = $saldo_awal;
                         if (!empty($detail_transaksi)):
-                            foreach ($detail_transaksi as $trx):
+                            // 1. Proses dulu datanya untuk menghitung saldo berjalan yang benar
+                            $saldo = $saldo_awal;
+                            $transaksi_terproses = [];
+                            foreach ($detail_transaksi as $trx) {
                                 $saldo += $trx['masuk'] - $trx['keluar'];
+                                $trx['saldo_berjalan'] = $saldo; // Simpan saldo di setiap baris
+                                $transaksi_terproses[] = $trx;
+                            }
+
+                            // 2. Balik urutan array agar yang terbaru di atas
+                            $transaksi_terbalik = array_reverse($transaksi_terproses);
+
+                            // 3. Tampilkan data yang sudah dibalik
+                            foreach ($transaksi_terbalik as $trx):
                         ?>
                         <tr>
                             <td><?= date('d-m-Y H:i', strtotime($trx['waktu'])) ?></td>
@@ -276,7 +287,7 @@ if (!empty($id_material_filter)) {
                                 <?= ($trx['keluar'] > 0) ? '-' . number_format($trx['keluar']) : '-' ?>
                             </td>
                             <td class="text-end fw-bold">
-                                <?= number_format($saldo) ?>
+                                <?= number_format($trx['saldo_berjalan']) ?>
                             </td>
                             <td><?= htmlspecialchars($trx['keterangan']) ?></td>
                         </tr>

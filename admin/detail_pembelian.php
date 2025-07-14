@@ -286,9 +286,9 @@ unset($group_data);
                         <tr>
                             <td><?= $nomor++ ?></td>
                             <td><?= htmlspecialchars($item['nama_material']) ?></td>
-                            <td class="text-end"><?= number_format($item['total_dipesan_asli'], 2, ',', '.') ?> <?= htmlspecialchars($item['nama_satuan']) ?></td>
+                            <td class="text-end"><?= number_format($item['total_dipesan_asli'] ) ?> <?= htmlspecialchars($item['nama_satuan']) ?></td>
                             <td class="text-end fw-bold <?= ($item['total_diterima'] < $item['total_dipesan_asli']) ? 'text-warning' : 'text-success' ?>">
-                                <?= number_format($item['total_diterima'], 2, ',', '.') ?>
+                                <?= number_format($item['total_diterima']) ?>
                             </td>
                             <td class="text-end">Rp <?= number_format($item['total_sub_total_asli'], 0, ',', '.') ?></td>
                         </tr>
@@ -340,8 +340,8 @@ unset($group_data);
                                 ?>
                                 <span class="badge <?= $jenis_badge ?>"><?= htmlspecialchars($log_entry['jenis_penerimaan']) ?></span>
                             </td>
-                            <td class="text-end text-success"><?= number_format($log_entry['jumlah_diterima'], 2, ',', '.') ?> <?= htmlspecialchars($log_entry['nama_satuan']) ?></td>
-                            <td class="text-end text-danger"><?= number_format($log_entry['jumlah_rusak'], 2, ',', '.') ?> <?= htmlspecialchars($log_entry['nama_satuan']) ?></td>
+                            <td class="text-end text-success"><?= number_format($log_entry['jumlah_diterima']) ?> <?= htmlspecialchars($log_entry['nama_satuan']) ?></td>
+                            <td class="text-end text-danger"><?= number_format($log_entry['jumlah_rusak']) ?> <?= htmlspecialchars($log_entry['nama_satuan']) ?></td>
                             <td><?= htmlspecialchars($log_entry['catatan']) ?></td>
                         </tr>
                     <?php

@@ -318,7 +318,7 @@ $(document).ready(function() {
                                     <input type="hidden" name="id_material[]" value="${item.id_material}">
                                     <input type="hidden" class="input-diterima" name="jumlah_diterima[]" value="${sisa.toFixed(2)}">
                                 </td>
-                                <td class="text-center align-middle">${sisa.toFixed(2)} ${item.nama_satuan}</td>
+                                <td class="text-center align-middle">${new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(sisa)} ${item.nama_satuan}</td>
                                 <td class="text-center align-middle">
                                     <div class="form-check form-switch d-flex justify-content-center p-0">
                                         <input class="form-check-input sesuai-checkbox" type="checkbox" role="switch" style="height: 1.5em; width: 3em;" checked title="Hapus centang jika kondisi tidak sesuai">
