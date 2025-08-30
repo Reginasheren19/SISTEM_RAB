@@ -132,7 +132,7 @@ if (file_exists($path_logo)) {
                 <?php endif; ?>
                 
                 <td><?= htmlspecialchars($row['nama_material']) ?></td>
-                <td class="text-end"><?= number_format($row['jumlah_distribusi'], 2, ',', '.') ?> <?= htmlspecialchars($row['nama_satuan']) ?></td>
+                <td class="text-end"><?= number_format($row['jumlah_distribusi']) ?> <?= htmlspecialchars($row['nama_satuan']) ?></td>
                 
                 <?php if ($row['id_distribusi'] != $last_id): ?>
                     <td rowspan="<?= $rowspan ?>" style="vertical-align: top;"><?= htmlspecialchars($row['nama_pj']) ?></td>

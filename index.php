@@ -320,7 +320,6 @@ session_start();
                               <input type="password" id="password" name="password" placeholder="Masukkan password" required>
                               <i class="far fa-eye" id="togglePassword" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; color:rgb(187, 160, 101);"></i>
                           </div>
-                          <div class="text"><a href="register.php">Lupa password?</a></div>
                           <div class="button input-box">
                               <input type="submit" value="Kirim">
                           </div>

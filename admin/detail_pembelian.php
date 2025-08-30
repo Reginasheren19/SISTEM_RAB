@@ -235,7 +235,7 @@ unset($group_data);
                                         } elseif ($perlu_proses_retur) {
                                             $status_text = 'Perlu Tindakan Retur'; $badge_class = 'bg-warning text-dark';
                                         } else {
-                                            $status_text = 'Menunggu Pengganti'; $badge_class = 'bg-primary';
+                                            $status_text = 'Menunggu Konfirmasi'; $badge_class = 'bg-primary';
                                         }
                                         ?>
                     <span class="badge <?= $badge_class ?>"><?= $status_text ?></span>
